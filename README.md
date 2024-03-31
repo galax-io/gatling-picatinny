@@ -1,6 +1,6 @@
 # Gatling Picatinny
 
-![Build](https://github.com/cosmospf/gatling-picatinny/workflows/Build/badge.svg) [![Maven Central](https://img.shields.io/maven-central/v/io.cosmospf/gatling-picatinny_2.13.svg?color=success)](https://search.maven.org/search?q=io.cosmospf.gatling-picatinny) [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
+![Build](https://github.com/galax-io/gatling-picatinny/workflows/Build/badge.svg) [![Maven Central](https://img.shields.io/maven-central/v/org.galaxio/gatling-picatinny_2.13.svg?color=success)](https://search.maven.org/search?q=org.galaxio.gatling-picatinny) [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
 ## Table of contents
 
 * [General info](#general-info)
@@ -33,15 +33,15 @@ Library with a bunch of useful functions that extend Gatling DSL and make your p
 
 ### Using Gatling Template Project
 
-If you are using cosmospf/gatling-template.g8, you already have all dependencies in
-it. [Gatling Template Project](https://github.com/cosmospf/gatling-template.g8.git)
+If you are using galax-io/gatling-template.g8, you already have all dependencies in
+it. [Gatling Template Project](https://github.com/galax-io/gatling-template.g8.git)
 
 ### Install manually
 
 Add dependency with version that you need
 
 ```scala
-libraryDependencies += "io.cosmospf" %% "gatling-picatinny" % "<version>"
+libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<version>"
 ```
 
 ## Usage
@@ -57,19 +57,19 @@ Import:
 Scala example:
 
 ```scala
-import io.cosmospf.gatling.config.SimulationConfig._
+import org.galaxio.gatling.config.SimulationConfig._
 ```
 
 Java example:
 
 ```java
-import static io.cosmospf.gatling.javaapi.SimulationConfig.*;
+
 ```
 
 Kotlin example:
 
 ```kotlin
-import io.cosmospf.gatling.javaapi.SimulationConfig.*
+import org.galaxio.gatling.javaapi.SimulationConfig.*
 ```
 
 Using default variables:
@@ -77,7 +77,7 @@ Using default variables:
 Scala example:
 
 ```scala
-import io.cosmospf.gatling.config.SimulationConfig._
+import org.galaxio.gatling.config.SimulationConfig._
 
 val testPlan: Seq[OpenInjectionStep] = List(
   rampUsersPerSec(0).to(intensity).during(rampDuration),
@@ -88,21 +88,31 @@ val testPlan: Seq[OpenInjectionStep] = List(
 Java example:
 
 ```java
-import static io.cosmospf.gatling.javaapi.SimulationConfig.*;
+
 
 SomeScenario.scn.injectOpen(
-        incrementUsersPerSec(intensity() / stagesNumber())
-        .times(stagesNumber())
-        .eachLevelLasting(stageDuration())
-        .separatedByRampsLasting(rampDuration())
-        .startingFrom(0)
+        incrementUsersPerSec(intensity() /
+
+stagesNumber())
+        .
+
+times(stagesNumber())
+        .
+
+eachLevelLasting(stageDuration())
+        .
+
+separatedByRampsLasting(rampDuration())
+        .
+
+startingFrom(0)
         )
 ```
 
 Kotlin example:
 
 ```kotlin
-import io.cosmospf.gatling.javaapi.SimulationConfig.*
+import org.galaxio.gatling.javaapi.SimulationConfig.*
 
 SomeScenario.scn.injectOpen(
   incrementUsersPerSec(intensity() / stagesNumber())
@@ -130,7 +140,7 @@ booleanVariable: true
 Scala example:
 
 ```scala
-import io.cosmospf.gatling.config.SimulationConfig._
+import org.galaxio.gatling.config.SimulationConfig._
 
 val stringVariable = getStringParam("stringVariable")
 val intVariable = getIntParam("intVariable")
@@ -142,7 +152,7 @@ val booleanVariable = getBooleanParam("booleanVariable")
 Java example:
 
 ```java
-import static io.cosmospf.gatling.javaapi.SimulationConfig.*;
+import static org.galaxio.gatling.javaapi.SimulationConfig.*;
 
 String stringVariable = getStringParam("stringVariable");
 int intVariable = getIntParam("intVariable");
@@ -154,7 +164,7 @@ boolean booleanVariable = getBooleanParam("booleanVariable");
 kotlin example:
 
 ```kotlin
-import io.cosmospf.gatling.javaapi.SimulationConfig.*
+import org.galaxio.gatling.javaapi.SimulationConfig.*
 
 val stringVariable = getStringParam("stringVariable")
 val intVariable = getIntParam("intVariable")
@@ -172,7 +182,7 @@ Basic examples will be provided below. Other feeders can be used in a similar wa
 Scala example:
 
 ```scala
-import io.cosmospf.gatling.feeders._
+import org.galaxio.gatling.feeders._
 
 //creates feeder with name 'randomString' that gets random string of length 10
 val stringFeeder = RandomStringFeeder("randomString", 10)
@@ -187,7 +197,7 @@ val uuidFeeder = RandomUUIDFeeder("uuid")
 Java example:
 
 ```java
-import static io.cosmospf.gatling.javaapi.Feeders.*;
+import static org.galaxio.gatling.javaapi.Feeders.*;
 
 //creates feeder with name 'randomString' that gets random string of length 10
 Iterator<Map<String, Object>> stringFeeder = RandomStringFeeder("randomString", 10);
@@ -203,7 +213,7 @@ Iterator<Map<String, Object>> uuidFeeder = RandomUUIDFeeder("uuid");
 Kotlin example:
 
 ```kotlin
-import io.cosmospf.gatling.javaapi.Feeders.*
+import org.galaxio.gatling.javaapi.Feeders.*
 
 //creates feeder with name 'randomString' that gets random string of length 10
 val stringFeeder = RandomStringFeeder("string", 10)
@@ -441,7 +451,7 @@ Scala example:
 Import:
 
 ```scala
-import io.cosmospf.gatling.influxdb.Annotations
+import org.galaxio.gatling.influxdb.Annotations
 ```
 
 For using you should simply add `with Annotations` for your simulation class:
@@ -457,7 +467,7 @@ Java example:
 Import:
 
 ```java
-import io.cosmospf.gatling.javaapi.influxdb.SimulationWithAnnotations;
+
 ```
 
 For using you should extend your simulation class from `SimulationWithAnnotations`:
@@ -473,7 +483,7 @@ Kotlin example:
 Import:
 
 ```kotlin
-import io.cosmospf.gatling.javaapi.influxdb.SimulationWithAnnotations
+import org.galaxio.gatling.javaapi.influxdb.SimulationWithAnnotations
 ```
 
 For using you should extend your simulation class from `SimulationWithAnnotations`:
@@ -509,7 +519,7 @@ Scala example:
 Import:
 
 ```scala
-import io.cosmospf.gatling.influxdb.Annotations._
+import org.galaxio.gatling.influxdb.Annotations._
 ```
 
 Using:
@@ -570,7 +580,7 @@ Java example:
 Import:
 
 ```java
-import static io.cosmospf.gatling.javaapi.influxdb.Annotations.*;
+
 ```
 
 Using:
@@ -631,7 +641,7 @@ Kotlin example:
 Import:
 
 ```kotlin
-import io.cosmospf.gatling.javaapi.influxdb.Annotations.*
+import org.galaxio.gatling.javaapi.influxdb.Annotations.*
 ```
 
 Using:
@@ -698,7 +708,7 @@ setUp(
 #### Import:
 
 ```scala
-import io.cosmospf.gatling.profile._
+import org.galaxio.gatling.profile._
 import pureconfig.generic.auto._
 ```
 
@@ -827,7 +837,7 @@ class Debug extends Simulation {
 Java example:
 
 ```java
-import io.cosmospf.gatling.javaapi.profile.ProfileBuilderNew;
+import org.galaxio.gatling.javaapi.profile.ProfileBuilderNew;
 
 public class Debug extends Simulation {
 
@@ -846,7 +856,7 @@ public class Debug extends Simulation {
 
 Kotlin example:
 ```kotlin
-import io.cosmospf.gatling.javaapi.profile.ProfileBuilderNew
+import org.galaxio.gatling.javaapi.profile.ProfileBuilderNew
 
 class Debug : Simulation() {
   val scn: ScenarioBuilder = ProfileBuilderNew
@@ -882,21 +892,21 @@ Scala example:
 
 ```scala
 import com.redis.RedisClientPool
-import io.cosmospf.gatling.redis.RedisActionBuilder._
+import org.galaxio.gatling.redis.RedisActionBuilder._
 ```
 
 Java example:
 
 ```java
-import io.gatling.javaapi.redis.RedisClientPool;
-import io.cosmospf.gatling.javaapi.redis.RedisClientPoolJava;
+
+
 ```
 
 Kotlin  example:
 
 ```kotlin
 import io.gatling.javaapi.redis.RedisClientPool
-import io.cosmospf.gatling.javaapi.redis.RedisClientPoolJava
+import org.galaxio.gatling.javaapi.redis.RedisClientPoolJava
 ```
 
 #### Using:
@@ -967,8 +977,8 @@ This part contains http request Json body DSL.
 For use this you need import this:
 
 ```scala
-import io.cosmospf.gatling.templates.HttpBodyExt._
-import io.cosmospf.gatling.templates.Syntax._
+import org.galaxio.gatling.templates.HttpBodyExt._
+import org.galaxio.gatling.templates.Syntax._
 ```
 
 Then use described later constructions for embed jsonBody in http requests. For example, you write something like this:
@@ -1042,7 +1052,7 @@ $ tree resources/
 For use templates in `resources/templates` you need import trait `Templates`.
 
 ```scala
-import io.cosmospf.gatling.templates.Templates._
+import org.galaxio.gatling.templates.Templates._
 ```
 
 Then add this trait to your Scenario and use `postTemplate` method like show later:
@@ -1072,18 +1082,19 @@ from `example_template2.json` to route `$baseUrl/post_route`. In template files 
 
 Scala:
 ```scala
-import io.cosmospf.gatling.utils.jwt._
+import org.galaxio.gatling.utils.jwt._
 ```
 
 Java:
+
 ```java
-import io.cosmospf.gatling.utils.jwt.*;
-import static io.cosmospf.gatling.javaapi.utils.Jwt.*;
+
+
 ```
 
 Kotlin
 ```kotlin
-import io.cosmospf.gatling.javaapi.utils.Jwt.*
+import org.galaxio.gatling.javaapi.utils.Jwt.*
 ```
 
 #### Using:
@@ -1168,7 +1179,7 @@ Module helps to load assertion configs from YAML files
 #### Import:
 
 ```scala
-import io.cosmospf.gatling.assertions.AssertionsBuilder.assertionFromYaml
+import org.galaxio.gatling.assertions.AssertionsBuilder.assertionFromYaml
 ```
 
 #### Using:
@@ -1222,22 +1233,28 @@ nfr:
 *Java example*
 
 ```java
-  import static io.cosmospf.gatling.javaapi.Assertions.assertionFromYaml;
 
-  class test extends Simulation {
+
+class test extends Simulation {
 
   setUp(
-    scn.inject(
-      atOnceUsers(10)
-    ).protocols(httpProtocol)
-  ).maxDuration(10)
-    .assertions(assertionFromYaml("src/test/resources/nfr.yml"))
+          scn.inject(
+          atOnceUsers(10)
+    ).
+
+  protocols(httpProtocol)
+  ).
+
+  maxDuration(10)
+    .
+
+  assertions(assertionFromYaml("src/test/resources/nfr.yml"))
 ```
 
 *Kotlin example*
 
 ```kotlin
-  import io.cosmospf.gatling.javaapi.Assertions.assertionFromYaml;
+  import org.galaxio.gatling.javaapi.Assertions.assertionFromYaml;
 
   class test extends Simulation {
 
@@ -1301,7 +1318,7 @@ exec(Actions.createEntity())
 For use this you need gatling with version greater or equal than **3.6.1** and import this in Scenario and Simulations:
 
 ```scala
-import io.cosmospf.gatling.transactions.Predef._
+import org.galaxio.gatling.transactions.Predef._
 ```
 
 **Attention!**
@@ -1316,7 +1333,7 @@ import io.gatling.core.structure.ScenarioBuilder
 ..
 
 .
-import io.cosmospf.gatling.transactions.Predef._
+import org.galaxio.gatling.transactions.Predef._
 
 object DebugScenario {
   val scn: ScenarioBuilder = scenario("Debug")
@@ -1347,7 +1364,7 @@ class DebugTest extends SimulationWithTransactions {
 See the examples in the examples/ directory.
 
 You can run these from the sbt console with the commands ```project example```
-and then ```gatling:testOnly io.cosmospf.load.example.SampleSimulation```.
+and then ```gatling:testOnly org.galaxio.performance.example.SampleSimulation```.
 
 Ensure that the correct InfluxDB parameters are specified in gatling.conf and influx.conf.
 
@@ -1380,7 +1397,7 @@ gatling docs: https://gatling.io/docs/current/general
 ## Versioning
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available, see
-the [tags on this repository](https://github.com/cosmospf/gatling-picatinny/tags).
+the [tags on this repository](https://github.com/galax-io/gatling-picatinny/tags).
 
 ## Authors
 
@@ -1392,7 +1409,7 @@ the [tags on this repository](https://github.com/cosmospf/gatling-picatinny/tags
 
 * **Akhaltsev Ioann** - *founder and spiritual guidance*
 
-See also the list of [contributors](https://github.com/cosmospf/gatling-picatinny/graphs/contributors) who
+See also the list of [contributors](https://github.com/galax-io/gatling-picatinny/graphs/contributors) who
 participated in this project.
 
 ## License
