@@ -26,7 +26,7 @@ public record OneProfileBuilder(OneProfile oneProfile) {
 
         List<Choice.WithWeight> prepRequests = requests
                 .stream()
-                .map(request -> Choice.withWeight(100 * request._1 / intensitySum, request._2))
+                .map(request -> CoreDsl.percent(100 * request._1 / intensitySum).then(request._2))
                 .toList();
 
         return scenario(oneProfile.name()).randomSwitch().on(prepRequests);

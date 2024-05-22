@@ -1,11 +1,11 @@
 package org.galaxio.gatling.assertions
 
-import io.gatling.commons.shared.unstable.model.stats.assertion.AssertionPathParts
 import io.gatling.commons.stats.assertion.Assertion
 import io.gatling.core.Predef._
 import pureconfig.module.yaml.YamlConfigSource
 import pureconfig.generic.auto._
 import io.gatling.core.Predef.configuration
+import io.gatling.core.assertion.AssertionPathParts
 
 object AssertionsBuilder {
 
