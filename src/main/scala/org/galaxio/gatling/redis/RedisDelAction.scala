@@ -48,6 +48,5 @@ case class RedisDelAction(
         next ! session
     }
 
-
   override def statsEngine: StatsEngine = ctx.coreComponents.statsEngine
 }
