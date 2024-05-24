@@ -3,6 +3,7 @@ package org.galaxio.gatling.transactions.actions
 import io.gatling.core.action.{Action, ChainableAction}
 import io.gatling.core.controller.throttle.Throttler
 import io.gatling.core.session.{Expression, Session}
+import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
 import io.gatling.core.util.NameGen
 import org.galaxio.gatling.transactions.TransactionsProtocol
@@ -30,4 +31,6 @@ class EndTransactionAction(
         },
       ),
     )
+
+  override def statsEngine: StatsEngine = ctx.coreComponents.statsEngine
 }

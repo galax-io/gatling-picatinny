@@ -31,7 +31,7 @@ class TransactionsActor(statsEngine: StatsEngine) extends Actor with LazyLogging
     }
 
   private def crash(prefix: String, errorMsg: String, session: Session, next: Action): Unit = {
-    statsEngine.logCrash(session.scenario, session.groups, prefix, errorMsg)
+    statsEngine.logRequestCrash(session.scenario, session.groups, prefix, errorMsg)
     next ! session.markAsFailed
   }
 
