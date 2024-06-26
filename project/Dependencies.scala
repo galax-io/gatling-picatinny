@@ -9,7 +9,7 @@ object Dependencies {
     "io.gatling" % "gatling-redis",
     "io.gatling" % "gatling-core-java",
     "io.gatling" % "gatling-redis-java",
-  ).map(_ % "3.10.5" % Provided)
+  ).map(_ % "3.11.4" % Provided)
 
   lazy val fastUUID: Seq[ModuleID] = Seq(
     "com.eatthepath" % "fast-uuid" % "0.2.0" % Provided,
@@ -18,7 +18,7 @@ object Dependencies {
   lazy val gatling: Seq[ModuleID] = Seq(
     "io.gatling.highcharts" % "gatling-charts-highcharts",
     "io.gatling"            % "gatling-test-framework",
-  ).map(_ % "3.10.5" % Test)
+  ).map(_ % "3.11.4" % Test)
 
   lazy val json4s: Seq[ModuleID] = Seq(
     "org.json4s" %% "json4s-native"  % "4.1.0-M5",
@@ -26,8 +26,8 @@ object Dependencies {
   )
 
   lazy val pureConfig: Seq[ModuleID] = Seq(
-    "com.github.pureconfig" %% "pureconfig"      % "0.17.6",
-    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.6",
+    "com.github.pureconfig" %% "pureconfig"      % "0.17.7",
+    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.7",
   )
 
   lazy val jackson: Seq[ModuleID] = Seq(
@@ -63,7 +63,7 @@ object Dependencies {
     "io.circe" %% "circe-core"    % "0.15.0-M1",
     "io.circe" %% "circe-generic" % "0.15.0-M1",
     "io.circe" %% "circe-parser"  % "0.15.0-M1",
-    "io.circe" %% "circe-yaml"    % "0.15.0-RC1",
+    "io.circe" %% "circe-yaml"    % "1.15.0",
   )
 
   lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus

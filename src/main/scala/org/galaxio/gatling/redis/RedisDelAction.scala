@@ -4,6 +4,7 @@ import com.redis.RedisClientPool
 import io.gatling.commons.validation.{Failure, Success, SuccessWrapper}
 import io.gatling.core.action.{Action, ChainableAction}
 import io.gatling.core.session.{Expression, Session}
+import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
 import io.gatling.core.util.NameGen
 
@@ -38,7 +39,7 @@ case class RedisDelAction(
       next ! session
     } catch {
       case e: Exception =>
-        ctx.coreComponents.statsEngine.logCrash(
+        ctx.coreComponents.statsEngine.logRequestCrash(
           session.scenario,
           session.groups,
           requestName = name,
@@ -47,4 +48,5 @@ case class RedisDelAction(
         next ! session
     }
 
+  override def statsEngine: StatsEngine = ctx.coreComponents.statsEngine
 }

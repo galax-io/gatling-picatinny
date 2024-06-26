@@ -1,9 +1,9 @@
 package org.galaxio.gatling.transactions
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Terminated}
 import io.gatling.commons.util.DefaultClock
 import io.gatling.core.CoreComponents
 import io.gatling.core.pause.Disabled
-import io.gatling.core.protocol.{ProtocolComponentsRegistry, ProtocolKey}
+import io.gatling.core.protocol.{Protocol, ProtocolComponents, ProtocolComponentsRegistry, ProtocolKey}
 import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
 import org.scalamock.scalatest.MockFactory
@@ -24,11 +24,17 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
 
     def getEvents: List[Evt] = this.events.asScala.toList
 
-    val statsEngine = stub[StatsEngine]
+    private val componentsCache           = mutable.Map.empty[ProtocolKey[_, _], ProtocolComponents]
+    private val componentsFactoryCache    = mutable.Map.empty[ProtocolKey[_, _], Protocol => ProtocolComponents]
+    private val defaultProtocolValueCache = mutable.Map.empty[ProtocolKey[_, _], Protocol]
+
+    val statsEngine: StatsEngine = stub[StatsEngine]
 
     val testTransactionsActor: ActorRef = testActorSystem.actorOf(TransactionsActor.props(statsEngine))
 
-    private val protoComponents = new TransactionsComponents(new TransactionTracker(testTransactionsActor))
+    private val protoComponents: TransactionsComponents = new TransactionsComponents(
+      new TransactionTracker(testTransactionsActor),
+    )
 
     private val testCoreComponents = new CoreComponents(
       testActorSystem,
@@ -41,10 +47,16 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
       null,
     )
 
-    val ProtocolComponentsRegistryMock: ProtocolComponentsRegistry =
-      new ProtocolComponentsRegistry(testCoreComponents, Map.empty, mutable.Map.empty) {
-        override def components[P, C](key: ProtocolKey[P, C]): C = protoComponents.asInstanceOf[C]
-      }
+    val ProtocolComponentsRegistryMock: ProtocolComponentsRegistry = new ProtocolComponentsRegistry(
+      testCoreComponents,
+      Map.empty,
+      componentsFactoryCache,
+      defaultProtocolValueCache,
+    )
+
+//      new ProtocolComponentsRegistry(testCoreComponents, Map.empty, mutable.Map.empty, mutable.Map.empty) {
+//        override def components[P, C](key: ProtocolKey[P, C]): C = protoComponents.asInstanceOf[C]
+//      }
 
     val testContext = new ScenarioContext(
       testCoreComponents,
@@ -53,7 +65,7 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
       false,
     )
 
-    def stop = Await.result(testActorSystem.terminate(), 10.seconds)
+    def stop: Terminated = Await.result(testActorSystem.terminate(), 10.seconds)
   }
 
   override protected def afterAll(): Unit = {

@@ -82,7 +82,7 @@ class TransactionsSpec extends AnyFlatSpec with Matchers with Mocks {
   }
 
   "Scenario with not opened transactions after run" should "fail with transaction close error" in new MockedGatlingCtx {
-    (statsEngine.logCrash _)
+    (statsEngine.logRequestCrash _)
       .when(*, *, *, *)
       .onCall { (_, _, c, d) =>
         events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
@@ -105,7 +105,7 @@ class TransactionsSpec extends AnyFlatSpec with Matchers with Mocks {
   }
 
   "Scenario with a transaction that ended before it started after run" should "fail with illegal state error" in new MockedGatlingCtx {
-    (statsEngine.logCrash _)
+    (statsEngine.logRequestCrash _)
       .when(*, *, *, *)
       .onCall { (_, _, c, d) =>
         events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
@@ -128,7 +128,7 @@ class TransactionsSpec extends AnyFlatSpec with Matchers with Mocks {
   }
 
   "Scenario with incorrect transaction sequence after run" should "fail with transaction close error" in new MockedGatlingCtx {
-    (statsEngine.logCrash _)
+    (statsEngine.logRequestCrash _)
       .when(*, *, *, *)
       .onCall { (_, _, c, d) =>
         events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
