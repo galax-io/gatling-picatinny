@@ -35,7 +35,7 @@ class FeedersBaseSpec extends AnyFlatSpec with Matchers with CoreDsl with ScalaC
     forAll { (n1: String, n2: String, v1: AnyVal, v2: AnyVal) =>
       val feeder1: Feeder[AnyVal] = Iterator.continually(Map(n1 -> v1))
       val feeder2: Feeder[AnyVal] = Iterator.continually(Map(n2 -> v2))
-      val result: Feeder[Any] = feeder1 ** feeder2
+      val result: Feeder[Any]     = feeder1 ** feeder2
       assert(result.next().equals(Map(n1 -> v1, n2 -> v2)))
     }
   }
@@ -43,7 +43,7 @@ class FeedersBaseSpec extends AnyFlatSpec with Matchers with CoreDsl with ScalaC
   it should "prepare feeder with finite size" in {
     forAll { (n: String, v: Char) =>
       whenever(n.nonEmpty) {
-        val fdr = RandomDigitFeeder(n)
+        val fdr    = RandomDigitFeeder(n)
         val result = fdr.toFiniteLength(v)
 
         assert(result.readRecords.size == v)
@@ -54,7 +54,7 @@ class FeedersBaseSpec extends AnyFlatSpec with Matchers with CoreDsl with ScalaC
   it should "transform Collection to Feeder" in {
     forAll { (n: String, v: AnyVal) =>
       val collection = List.fill(100)(v)
-      val result = collection.toFeeder(n)
+      val result     = collection.toFeeder(n)
 
       assert(result.readRecords.forall(r => r.equals(Map(n -> v))))
     }
