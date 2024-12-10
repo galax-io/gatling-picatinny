@@ -1,6 +1,11 @@
 package org.galaxio.gatling.utils
 
-import org.galaxio.gatling.utils.RandomDataGenerators.{DoubleRandomProvider, FloatRandomProvider, IntRandomProvider, LongRandomProvider}
+import org.galaxio.gatling.utils.RandomDataGenerators.{
+  DoubleRandomProvider,
+  FloatRandomProvider,
+  IntRandomProvider,
+  LongRandomProvider,
+}
 
 object RandomDataGeneratorsWrapper {
 

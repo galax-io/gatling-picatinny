@@ -4,7 +4,6 @@ import io.gatling.core.feeder.Feeder
 import org.galaxio.gatling.utils.RandomDataGenerators
 import org.galaxio.gatling.utils.RandomDataGenerators.IntRandomProvider
 
-
 object RandomDigitFeeder {
 
   def apply(paramName: String): Feeder[Int] = {

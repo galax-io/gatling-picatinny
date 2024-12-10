@@ -9,4 +9,3 @@ trait RandomProvider[T] {
   def random(min: T, max: T): T
 
 }
-
