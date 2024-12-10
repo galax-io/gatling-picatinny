@@ -1,12 +1,13 @@
 package org.galaxio.gatling.javaapi.utils;
 
+import org.galaxio.gatling.utils.RandomDataGeneratorsWrapper;
+
 import static scala.jdk.javaapi.CollectionConverters.asScala;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalUnit;
-import java.util.Arrays;
 import java.util.List;
 
 public final class RandomDataGenerators {
@@ -27,47 +28,47 @@ public final class RandomDataGenerators {
     }
 
     public static String randomOnlyLettersString(int stringLength) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomOnlyLettersString(stringLength);
+        return org.galaxio.gatling.utils.RandomDataGenerators.lettersString(stringLength);
     }
 
     public static String randomCyrillicString(int n) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomCyrillicString(n);
+        return org.galaxio.gatling.utils.RandomDataGenerators.cyrillicString(n);
     }
 
     public static int randomDigit() {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit();
+        return RandomDataGeneratorsWrapper.randomIntValueFromJava();
     }
 
     public static int randomDigit(int max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(max);
+        return RandomDataGeneratorsWrapper.randomIntValueFromJava(max);
     }
 
     public static int randomDigit(int min, int max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(min, max);
+        return RandomDataGeneratorsWrapper.randomIntValueFromJava(min, max);
     }
 
     public static long randomDigit(long max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(max);
+        return RandomDataGeneratorsWrapper.randomLongValueFromJava(max);
     }
 
     public static long randomDigit(long min, long max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(min, max);
+        return RandomDataGeneratorsWrapper.randomLongValueFromJava(min, max);
     }
 
     public static double randomDigit(double max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(max);
+        return RandomDataGeneratorsWrapper.randomDoubleValueFromJava(max);
     }
 
     public static double randomDigit(double min, double max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(min, max);
+        return RandomDataGeneratorsWrapper.randomDoubleValueFromJava(min, max);
     }
 
     public static float randomDigit(float max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(max);
+        return RandomDataGeneratorsWrapper.randomFloatValueFromJava(max);
     }
 
     public static float randomDigit(float min, float max) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomDigit(min, max);
+        return RandomDataGeneratorsWrapper.randomFloatValueFromJava(min, max);
     }
 
     public static String randomUUID() {
@@ -135,7 +136,7 @@ public final class RandomDataGenerators {
         return org.galaxio.gatling.utils.RandomDataGenerators.randomDate(offsetDate, datePattern, dateFrom, unit, timezone);
     }
 
-    public static String currentDate(DateTimeFormatter datePattern, ZoneId timezone){
+    public static String currentDate(DateTimeFormatter datePattern, ZoneId timezone) {
         return org.galaxio.gatling.utils.RandomDataGenerators.currentDate(datePattern, timezone);
     }
 }
