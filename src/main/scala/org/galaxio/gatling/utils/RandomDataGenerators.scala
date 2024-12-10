@@ -135,6 +135,7 @@ object RandomDataGenerators {
     rng.random(min, max)
   }
 
+
   implicit object IntRandomProvider extends RandomProvider[Int] {
 
     override def random(): Int = ThreadLocalRandom.current().nextInt()
@@ -171,6 +172,7 @@ object RandomDataGenerators {
     override def random(min: Double, max: Double): Double =
       min + ThreadLocalRandom.current().nextDouble() * (max - min)
   }
+
 
   /**
    * Selects a random element from the provided list of integers. If the list is empty, a random integer
