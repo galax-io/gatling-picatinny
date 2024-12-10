@@ -23,7 +23,7 @@ jobs:
           java-version: openjdk@1.17
 
       - name: Test Release
-        run: sbt -DjavaOptions="-Xmx4G -XX:+UseG1GC" clean scalafmtCheckAll scalafmtSbtCheck compile test
+        run: sbt clean scalafmtCheckAll scalafmtSbtCheck compile test
 
   publish:
     name: Publish Release
