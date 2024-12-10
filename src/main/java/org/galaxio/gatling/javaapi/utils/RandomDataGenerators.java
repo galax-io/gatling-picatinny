@@ -27,11 +27,11 @@ public final class RandomDataGenerators {
     }
 
     public static String randomOnlyLettersString(int stringLength) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomOnlyLettersString(stringLength);
+        return org.galaxio.gatling.utils.RandomDataGenerators.lettersString(stringLength);
     }
 
     public static String randomCyrillicString(int n) {
-        return org.galaxio.gatling.utils.RandomDataGenerators.randomCyrillicString(n);
+        return org.galaxio.gatling.utils.RandomDataGenerators.cyrillicString(n);
     }
 
     public static int randomDigit() {
@@ -135,7 +135,7 @@ public final class RandomDataGenerators {
         return org.galaxio.gatling.utils.RandomDataGenerators.randomDate(offsetDate, datePattern, dateFrom, unit, timezone);
     }
 
-    public static String currentDate(DateTimeFormatter datePattern, ZoneId timezone){
+    public static String currentDate(DateTimeFormatter datePattern, ZoneId timezone) {
         return org.galaxio.gatling.utils.RandomDataGenerators.currentDate(datePattern, timezone);
     }
 }
