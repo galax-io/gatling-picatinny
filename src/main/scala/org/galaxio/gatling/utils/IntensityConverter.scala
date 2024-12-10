@@ -1,6 +1,5 @@
 package org.galaxio.gatling.utils
 
-import com.typesafe.scalalogging.LazyLogging
 import scala.util.Try
 
 object IntensityConverter {

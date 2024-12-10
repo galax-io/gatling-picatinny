@@ -5,7 +5,8 @@ import org.galaxio.gatling.utils.RandomDataGenerators
 
 object RandomDigitFeeder {
 
-  def apply(paramName: String): Feeder[Int] =
-    feeder[Int](paramName)(RandomDataGenerators.randomDigit())
+  def apply(paramName: String): Feeder[Int] = {
+    feeder[Int](paramName)(RandomDataGenerators.randomValue[Int]())
+  }
 
 }

@@ -21,26 +21,26 @@ object Dependencies {
   ).map(_ % "3.11.4" % Test)
 
   lazy val json4s: Seq[ModuleID] = Seq(
-    "org.json4s" %% "json4s-native"  % "4.1.0-M5",
-    "org.json4s" %% "json4s-jackson" % "4.1.0-M5",
+    "org.json4s" %% "json4s-native"  % "4.1.0-M8",
+    "org.json4s" %% "json4s-jackson" % "4.1.0-M8",
   )
 
   lazy val pureConfig: Seq[ModuleID] = Seq(
-    "com.github.pureconfig" %% "pureconfig"      % "0.17.7",
-    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.7",
+    "com.github.pureconfig" %% "pureconfig"      % "0.17.8",
+    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.8",
   )
 
   lazy val jackson: Seq[ModuleID] = Seq(
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.17.0",
-    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.17.0",
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.18.2",
+    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.18.2",
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
-    "org.scalatest" %% "scalatest" % "3.2.18" % "test",
+    "org.scalatest" %% "scalatest" % "3.2.19" % "test",
   )
 
   lazy val scalaCheck: Seq[ModuleID] = Seq(
-    "org.scalacheck" %% "scalacheck" % "1.18.0" % "test",
+    "org.scalacheck" %% "scalacheck" % "1.18.1" % "test",
   )
 
   lazy val scalaTestPlus: Seq[ModuleID] = Seq(
@@ -85,6 +85,6 @@ object Dependencies {
     ),
   )
 
-  lazy val junit: Seq[ModuleID] = Seq("org.junit.jupiter" % "junit-jupiter-engine" % "5.10.2" % Test)
+  lazy val junit: Seq[ModuleID] = Seq("org.junit.jupiter" % "junit-jupiter-engine" % "5.11.3" % Test)
 
 }

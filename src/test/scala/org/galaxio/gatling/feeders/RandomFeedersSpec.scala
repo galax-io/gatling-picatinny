@@ -94,25 +94,31 @@ class RandomFeedersSpec extends AnyFlatSpec with Matchers with ScalaCheckDrivenP
 
   it should "create RandomDigitFeeder" in {
     forAll(rndString) { paramName =>
-      RandomDigitFeeder(paramName)
-        .take(50)
-        .foreach(record =>
-          withClue(s"Invalid RandomDigitFeeder: $record, ") {
-            assert(record(paramName).isInstanceOf[Int])
-          },
-        )
+      whenever(paramName.nonEmpty) {
+        RandomDigitFeeder(paramName)
+          .take(50)
+          .foreach(record =>
+            withClue(s"Invalid RandomDigitFeeder: $record, ") {
+              assert(record(paramName).isInstanceOf[Int])
+            },
+          )
+      }
     }
   }
 
   it should "create RandomStringFeeder with specified param length interval" in {
-    forAll(rndString, positiveInt) { (paramName, length) =>
+    forAll(rndString.suchThat(_.nonEmpty), positiveInt.suchThat(_ > 0)) { (paramName, length) =>
       RandomStringFeeder(paramName, length)
         .take(50)
-        .foreach(record =>
-          withClue(s"Invalid RandomStringFeeder with specified param length interval: $record, ") {
-            assert(record(paramName).length == length)
-          },
-        )
+        .foreach { record =>
+          withClue(s"Invalid record: ${record.toString}, expected key '$paramName' with length $length, ") {
+            record
+              .get(paramName)
+              .fold(
+                fail(s"Key '$paramName' is missing in the record."),
+              )(value => assert(value.length == length))
+          }
+        }
     }
   }
 

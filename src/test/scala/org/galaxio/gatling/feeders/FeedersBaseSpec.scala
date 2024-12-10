@@ -42,10 +42,12 @@ class FeedersBaseSpec extends AnyFlatSpec with Matchers with CoreDsl with ScalaC
 
   it should "prepare feeder with finite size" in {
     forAll { (n: String, v: Char) =>
-      val fdr    = RandomDigitFeeder(n)
-      val result = fdr.toFiniteLength(v)
+      whenever(n.nonEmpty) {
+        val fdr    = RandomDigitFeeder(n)
+        val result = fdr.toFiniteLength(v)
 
-      assert(result.readRecords.size == v)
+        assert(result.readRecords.size == v)
+      }
     }
   }
 

@@ -12,17 +12,17 @@ import java.time.{LocalDateTime, ZoneId}
 
 object Feeders {
 
-  private val newYearDate                       = LocalDateTime.of(2020, 1, 1, 0, 0)
-  private val goToWorkDate                      = LocalDateTime.of(2020, 1, 9, 9, 0)
+  private val newYearDate = LocalDateTime.of(2020, 1, 1, 0, 0)
+  private val goToWorkDate = LocalDateTime.of(2020, 1, 9, 9, 0)
   private val formatterShort: DateTimeFormatter = DateTimeFormatter.ofPattern("MM:dd")
 
-//  override implicit def configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
+  //  override implicit def configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
 
   // date2pattern
   val timeShort: Feeder[String] = CurrentDateFeeder("timeShort", formatterShort)
 
   // random date +/- 5 minutes with "Australia/Sydney" timezone
-  val ausTZ: ZoneId                  = ZoneId.of("Australia/Sydney")
+  val ausTZ: ZoneId = ZoneId.of("Australia/Sydney")
   val timezoneRandom: Feeder[String] =
     RandomDateFeeder("timezoneRandom", 5, 5, "hh:mm:dd", unit = ChronoUnit.MINUTES, timezone = ausTZ)
 
@@ -43,10 +43,10 @@ object Feeders {
     RandomDateRangeFeeder("startOfVacation", "endOfVacation", 14, "yyyy-MM-dd", LocalDateTime.now(), ChronoUnit.DAYS)
 
   // random Int
-  val randomDigit: Feeder[Int]      = RandomDigitFeeder("randomDigit")
-  val randomRangeInt: Feeder[Int]   = CustomFeeder[Int]("randomRangeInt", RandomDataGenerators.randomDigit(1, 50))
+  val randomDigit: Feeder[Int] = RandomDigitFeeder("randomDigit")
+  val randomRangeInt: Feeder[Int] = CustomFeeder[Int]("randomRangeInt", RandomDataGenerators.randomValue(1, 50))
   val randomRangeFloat: Feeder[Any] =
-    CustomFeeder("randomRangeFloat", RandomDataGenerators.randomDigit (1.toFloat, 10.toFloat))
+    CustomFeeder("randomRangeFloat", RandomDataGenerators.randomValue(1.toFloat, 10.toFloat))
 
   // random phone
   // +7 country code is default
@@ -64,8 +64,8 @@ object Feeders {
 
   val randomUsaPhone: Feeder[String] = RandomPhoneFeeder("randomUsaPhone", usaPhoneFormats)
 
-  val phoneFormatsFromFile: String   = "phoneTemplates/ru.json"
-  val ruMobileFormat: PhoneFormat    = PhoneFormat(
+  val phoneFormatsFromFile: String = "phoneTemplates/ru.json"
+  val ruMobileFormat: PhoneFormat = PhoneFormat(
     countryCode = "+7",
     length = 10,
     areaCodes = Seq("903", "906", "908"),
@@ -78,20 +78,20 @@ object Feeders {
     areaCodes = Seq("495", "495"),
     format = "X(XXX)XXX-XX-XX",
   )
-  val ruPhoneFormats                 = List(ruMobileFormat, ruCityPhoneFormat)
+  val ruPhoneFormats: List[PhoneFormat] = List(ruMobileFormat, ruCityPhoneFormat)
 
-  val simplePhoneNumber: Feeder[String]                 = RandomPhoneFeeder("simplePhoneFeeder")
-  val randomPhoneNumberFromJson: Feeder[String]         =
+  val simplePhoneNumber: Feeder[String] = RandomPhoneFeeder("simplePhoneFeeder")
+  val randomPhoneNumberFromJson: Feeder[String] =
     RandomPhoneFeeder("randomPhoneNumberFile", phoneFormatsFromFile)
-  val randomPhoneNumber: Feeder[String]                 =
+  val randomPhoneNumber: Feeder[String] =
     RandomPhoneFeeder("randomPhoneNumber", ruPhoneFormats: _*)
-  val randomE164PhoneNumberFromJson: Feeder[String]     =
+  val randomE164PhoneNumberFromJson: Feeder[String] =
     RandomPhoneFeeder("randomE164PhoneNumberFile", phoneFormatsFromFile, TypePhone.E164PhoneNumber)
-  val randomE164PhoneNumber: Feeder[String]             =
+  val randomE164PhoneNumber: Feeder[String] =
     RandomPhoneFeeder("randomE164PhoneNumber", TypePhone.E164PhoneNumber, ruMobileFormat, ruCityPhoneFormat)
   val randomTollFreePhoneNumberFromJson: Feeder[String] =
     RandomPhoneFeeder("randomTollFreePhoneNumberFile", phoneFormatsFromFile, TypePhone.TollFreePhoneNumber)
-  val randomTollFreePhoneNumber: Feeder[String]         =
+  val randomTollFreePhoneNumber: Feeder[String] =
     RandomPhoneFeeder("randomTollFreePhoneNumber", TypePhone.TollFreePhoneNumber, ruMobileFormat)
 
   // random alphanumeric String with specified length
@@ -115,21 +115,21 @@ object Feeders {
   // custom feeder from provided function
   val myCustomFeeder: Feeder[String] = CustomFeeder[String]("myParam", myFunction)
 
-  private val digitFeeder  = RandomDigitFeeder("digit")
+  private val digitFeeder = RandomDigitFeeder("digit")
   private val stringFeeder = RandomStringFeeder("string")
-  private val phoneFeeder  = RandomStringFeeder("phone")
+  private val phoneFeeder = RandomStringFeeder("phone")
 
   // Vault HC feeder
-  private val vaultUrl                       = System.getenv("vaultUrl")
-  private val secretPath                     = System.getenv("secretPath")
-  private val roleId                         = System.getenv("roleId")
-  private val secretId                       = System.getenv("secretId")
-  private val keys                           = List("k1", "k2", "k3")
+  private val vaultUrl = System.getenv("vaultUrl")
+  private val secretPath = System.getenv("secretPath")
+  private val roleId = System.getenv("roleId")
+  private val secretId = System.getenv("secretId")
+  private val keys = List("k1", "k2", "k3")
   val vaultFeeder: FeederBuilderBase[String] = VaultFeeder(vaultUrl, secretPath, roleId, secretId, keys)
 
   // Get separated values feeder from the source
   // SeparatedValuesFeeder will return Vector(Map(HOSTS -> host11), Map(HOSTS -> host12), Map(USERS -> user11), Map(HOSTS -> host21), Map(HOSTS -> host22), Map(USERS -> user21), Map(USERS -> user22), Map(USERS -> user23))
-  val vaultData: FeederBuilderBase[String]             = Vector(
+  val vaultData: FeederBuilderBase[String] = Vector(
     Map(
       "HOSTS" -> "host11,host12",
       "USERS" -> "user11",
@@ -160,7 +160,7 @@ object Feeders {
 
   // random PAN
   val feederWithoutBinPAN: Feeder[String] = RandomPANFeeder("feederWithoutBinPAN")
-  val feederPAN: Feeder[String]           = RandomPANFeeder("feederPAN", "421345", "541673")
+  val feederPAN: Feeder[String] = RandomPANFeeder("feederPAN", "421345", "541673")
 
   // random ITN
   val feederNatITN: Feeder[String] = RandomNatITNFeeder("feederNatITN")
