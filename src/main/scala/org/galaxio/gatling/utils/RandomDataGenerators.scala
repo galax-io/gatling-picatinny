@@ -79,7 +79,7 @@ object RandomDataGenerators {
     *   if `length` is less than or equal to 0
     */
   def alphanumericString(length: Int): String =
-    randomString(Random.alphanumeric.mkString)(length)
+    Random.alphanumeric.take(length).mkString
 
   /** Generates a random string of letters with the specified length.
     *
