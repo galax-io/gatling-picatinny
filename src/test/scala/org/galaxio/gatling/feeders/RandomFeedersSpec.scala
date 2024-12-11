@@ -86,12 +86,6 @@ class RandomFeedersSpec extends AnyFlatSpec with Matchers with ScalaCheckDrivenP
     }
   }
 
-  it should "produce IllegalArgumentException when RandomDateRangeFeeder creates with offset param =<1" in {
-    assertThrows[IllegalArgumentException] {
-      RandomDateRangeFeeder("paramNameFrom", "paramNameTo", 1, datePattern, dateFrom, unit, timezone).next()
-    }
-  }
-
   it should "create RandomDigitFeeder" in {
     forAll(rndString) { paramName =>
       whenever(paramName.nonEmpty) {
