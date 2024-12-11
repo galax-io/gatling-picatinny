@@ -7,17 +7,18 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDateTime, ZoneId}
+
 class RandomDataGeneratorsTest extends AnyFlatSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
-//  //uuid generator
+  //  //uuid generator
   val uuidPattern = "([a-f0-9]{8}(-[a-f0-9]{4}){4}[a-f0-9]{8})"
 
-//  //date generator
-  val dateFormat              = "yyyy-MM-dd'T'HH:mm"
-  val datePattern             = "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}"
+  //  //date generator
+  val dateFormat = "yyyy-MM-dd'T'HH:mm"
+  val datePattern = "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}"
   val dateFrom: LocalDateTime = LocalDateTime.now()
-  val dateTimezone: ZoneId    = ZoneId.systemDefault()
-  val dateUnit                = ChronoUnit.DAYS
+  val dateTimezone: ZoneId = ZoneId.systemDefault()
+  val dateUnit = ChronoUnit.DAYS
 
   it should "generate a string of the specified length" in {
     forAll(Gen.alphaNumStr.filter(_.nonEmpty), Gen.choose(1, 50)) { case (alphabet, len) =>
@@ -29,6 +30,11 @@ class RandomDataGeneratorsTest extends AnyFlatSpec with Matchers with ScalaCheck
   it should "generate correct random UUID pattern" in {
     RandomDataGenerators.randomUUID should fullyMatch regex uuidPattern
   }
+
+  it should "generate correct value that is not greater than the input" in {
+    RandomDataGenerators.randomValue(1L, 1) should be <= 1L
+  }
+
 
   it should "generate correct random date pattern" in {
     forAll(Gen.choose(1, 100), Gen.choose(1, 100)) { (positiveOffset: Int, negativeOffset: Int) =>
