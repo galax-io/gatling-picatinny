@@ -8,7 +8,7 @@ import org.galaxio.gatling.utils.phone._
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{LocalDateTime, ZoneId, ZoneOffset, ZonedDateTime}
 
 object Feeders {
 
@@ -41,6 +41,17 @@ object Feeders {
   // endOfVacation = random date from now() to 14 days in the future
   val vacationDate: Feeder[String] =
     RandomDateRangeFeeder("startOfVacation", "endOfVacation", 14, "yyyy-MM-dd", LocalDateTime.now(), ChronoUnit.DAYS)
+
+  val negativeDateRange: Feeder[String] = {
+    RandomDateRangeFeeder(
+      "from",
+      "to",
+      -1,
+      "YYYY-MM-dd",
+      ZonedDateTime.now(ZoneOffset.UTC).toLocalDateTime,
+      ChronoUnit.MONTHS,
+    )
+  }
 
   // random Int
   val randomDigit: Feeder[Int] = RandomDigitFeeder("randomDigit")
