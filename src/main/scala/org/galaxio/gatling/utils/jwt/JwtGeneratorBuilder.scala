@@ -15,7 +15,7 @@ final case class JwtGeneratorBuilder(header: Header, payload: Payload, algorithm
 
   private def validateJson(json: String): Either[String, String] = {
     try {
-      Right(compact(render(parse(json))).toString)
+      Right(compact(render(parse(json))))
     } catch {
       case e: Exception =>
         Left(s"Invalid json: $json")
@@ -43,9 +43,9 @@ final case class JwtGeneratorBuilder(header: Header, payload: Payload, algorithm
 
   def defaultHeader: JwtGeneratorBuilder = {
     def getBody(algorithm: String): JValue =
-      ("alg"   -> algorithm) ~
+      ("alg" -> algorithm) ~
         ("typ" -> "JWT")
-    def header(algorithm: String): String = compact(render(getBody(algorithm))).toString
+    def header(algorithm: String): String = compact(render(getBody(algorithm)))
 
     this.modify(_.header.json).setTo(header(algorithm))
   }
