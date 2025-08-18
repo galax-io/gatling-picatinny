@@ -35,7 +35,7 @@ object RandomDataGenerators {
     *   the desired length of the random string; must be greater than 0
     * @return
     *   a random string of specified length composed of characters from the provided alphabet
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if `alphabet` is empty or `length` is less than or equal to 0
     */
   def randomString(alphabet: String)(length: Int): String = {
@@ -51,7 +51,7 @@ object RandomDataGenerators {
     *   the desired length of the digit string; must be greater than 0
     * @return
     *   a random string consisting only of numeric digits of the specified length
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if `length` is less than or equal to 0
     */
   def digitString(length: Int): String =
@@ -63,7 +63,7 @@ object RandomDataGenerators {
     *   the desired length of the hexadecimal string; must be greater than 0
     * @return
     *   a randomly generated string of the specified length containing only hexadecimal characters (0-9, a-f)
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if the `length` is less than or equal to 0
     */
   def hexString(length: Int): String =
@@ -75,7 +75,7 @@ object RandomDataGenerators {
     *   the desired length of the random string; must be greater than 0
     * @return
     *   a random string of the specified length composed of alphanumeric characters
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if `length` is less than or equal to 0
     */
   def alphanumericString(length: Int): String =
@@ -87,7 +87,7 @@ object RandomDataGenerators {
     *   the desired length of the string; must be greater than 0
     * @return
     *   a random string consisting only of alphabetic characters of the specified length
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if `length` is less than or equal to 0
     */
   def lettersString(length: Int): String = {
@@ -101,7 +101,7 @@ object RandomDataGenerators {
     *   the desired length of the generated Cyrillic string; must be greater than 0
     * @return
     *   a random string of the specified length composed of Cyrillic characters
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if `length` is less than or equal to 0
     */
   def cyrillicString(length: Int): String =
@@ -148,7 +148,7 @@ object RandomDataGenerators {
     *   an implicit Ordering to compare the minimum and maximum values
     * @return
     *   a randomly generated value of type T within the specified range
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if the minimum value is not less than the maximum value
     */
   def randomValue[T](min: T, max: T)(implicit rng: RandomProvider[T], ord: Ordering[T]): T = {
@@ -356,7 +356,7 @@ object RandomDataGenerators {
     *   the timezone used when formatting the resulting date
     * @return
     *   a string representation of the randomly generated date formatted according to `datePattern`
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if `positiveDelta` or `negativeDelta` is negative
     */
   def randomDate(
@@ -388,7 +388,7 @@ object RandomDataGenerators {
     *   the timezone to apply when formatting the date
     * @return
     *   a string representation of the randomly generated date formatted according to `datePattern`
-    * @throws IllegalArgumentException
+    * @throws java.lang.IllegalArgumentException
     *   if `offsetDate` is 0
     */
   def randomDate(

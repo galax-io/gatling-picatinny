@@ -5,16 +5,16 @@ import io.gatling.core.session.el._
 import io.gatling.http.request.builder.HttpRequestBuilder
 import org.galaxio.gatling.templates.Syntax._
 
-/** This extension give ability to write something like this
+/** This extension gives the ability to write something like this
   *
   * {{{
   * http("PostData")
   * .post(url)
   * .jsonBody(
   *   "id" - 23,                    // in json - "id" : 23
-  *   "name",                       // in json it interpreted as - "name" : get value from session variable ${name}
+  *   "name",                       // in json it is interpreted as - "name" : value from session variable "name"
   *   "project" - (                 // in json - "project" : { ... }
-  *     "id" ~ "projectId",         // in json - "id" : value from session var ${projectId}
+  *     "id" ~ "projectId",         // in json - "id" : value from session variable "projectId"
   *     "name" - "Super Project",   // in json - "name": "Super Project"
   *     "sub" > ( 1,2,3,4,5,6)      // in json - "sub" : [ 1,2,3,4,5,6 ]
   *     )
