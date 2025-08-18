@@ -1,8 +1,9 @@
 package org.galaxio.gatling.config
 
-import scala.concurrent.duration._
 import org.galaxio.gatling.config.ConfigManager.simulationConfig
 import org.galaxio.gatling.utils.IntensityConverter.getIntensityFromString
+
+import scala.concurrent.duration._
 
 object SimulationConfig {
 

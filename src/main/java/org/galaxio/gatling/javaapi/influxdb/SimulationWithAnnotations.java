@@ -8,6 +8,10 @@ import scala.Function0;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Deprecated: InfluxDB integration is deprecated and will be removed in a future release.
+ */
+@Deprecated
 public class SimulationWithAnnotations extends Simulation {
     private final List<Function0<?>> _beforeSteps = new ArrayList<>();
     private final List<Function0<?>> _afterSteps = new ArrayList<>();

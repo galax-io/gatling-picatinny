@@ -7,6 +7,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
+@deprecated("InfluxDB integration is deprecated and will be removed in a future release.", since = "2025-08")
 private[gatling] object AnnotationManager extends StrictLogging {
 
   private def completeAddStatusAnnotation[T](connection: InfluxDB, status: Status, res: Future[T]): Unit = {
