@@ -431,7 +431,9 @@ val randomE164PhoneNumberFromJson = RandomPhoneFeeder("randomE164PhoneNumberFile
 
 ### influxdb
 
-This module allows you to write custom points to InfluxDB.
+Removed: The InfluxDB annotations integration (including annotation helpers and related config) is no longer supported and has been effectively removed. Minimal stubs may remain only for binary compatibility but must not be used in new or existing code.
+
+This section is kept for historical reference only.
 
 #### Two kinds of usage
 
