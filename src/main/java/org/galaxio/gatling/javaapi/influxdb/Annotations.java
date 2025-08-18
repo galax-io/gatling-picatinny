@@ -10,7 +10,10 @@ import java.util.ArrayList;
 import static scala.jdk.CollectionConverters.IterableHasAsScala;
 import static io.gatling.javaapi.core.internal.Expressions.*;
 
-
+/**
+ * Deprecated: InfluxDB integration is deprecated and will be removed in a future release.
+ */
+@Deprecated
 public final class Annotations {
     public static Tag Tag(String key, String value) {
         return Tag.apply(key, value);
