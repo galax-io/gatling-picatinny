@@ -1,6 +1,7 @@
 import sbt.*
 
 object Dependencies {
+  private val GatlingVersion          = "3.11.5"
   lazy val gatlingCore: Seq[ModuleID] = Seq(
     "io.gatling" % "gatling-core",
     "io.gatling" % "gatling-core-java",
@@ -9,16 +10,16 @@ object Dependencies {
     "io.gatling" % "gatling-redis",
     "io.gatling" % "gatling-core-java",
     "io.gatling" % "gatling-redis-java",
-  ).map(_ % "3.11.4" % Provided)
-
-  lazy val fastUUID: Seq[ModuleID] = Seq(
-    "com.eatthepath" % "fast-uuid" % "0.2.0" % Provided,
-  )
+  ).map(_ % GatlingVersion % Provided)
 
   lazy val gatling: Seq[ModuleID] = Seq(
     "io.gatling.highcharts" % "gatling-charts-highcharts",
     "io.gatling"            % "gatling-test-framework",
-  ).map(_ % "3.11.4" % Test)
+  ).map(_ % GatlingVersion % Test)
+
+  lazy val fastUUID: Seq[ModuleID] = Seq(
+    "com.eatthepath" % "fast-uuid" % "0.2.0" % Provided,
+  )
 
   lazy val json4s: Seq[ModuleID] = Seq(
     "org.json4s" %% "json4s-native"  % "4.1.0-M8",
@@ -26,13 +27,13 @@ object Dependencies {
   )
 
   lazy val pureConfig: Seq[ModuleID] = Seq(
-    "com.github.pureconfig" %% "pureconfig"      % "0.17.8",
-    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.8",
+    "com.github.pureconfig" %% "pureconfig"      % "0.17.9",
+    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.9",
   )
 
   lazy val jackson: Seq[ModuleID] = Seq(
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.18.2",
-    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.18.2",
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.19.2",
+    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.19.2",
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
@@ -44,7 +45,7 @@ object Dependencies {
   )
 
   lazy val scalaTestPlus: Seq[ModuleID] = Seq(
-    "org.scalatestplus" %% "scalacheck-1-15" % "3.2.11.0" % Test,
+    "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % Test,
   )
 
   lazy val scalaMock: Seq[ModuleID] = Seq(
@@ -56,7 +57,7 @@ object Dependencies {
   )
 
   lazy val jwt: Seq[ModuleID] = Seq(
-    "com.github.jwt-scala" %% "jwt-core" % "10.0.1",
+    "com.github.jwt-scala" %% "jwt-core" % "11.0.2",
   )
 
   lazy val circeDeps: Seq[ModuleID] = Seq(
@@ -81,10 +82,10 @@ object Dependencies {
       ExclusionRule("io.netty", "netty-handler"),
       ExclusionRule("io.netty", "netty-resolver-dns"),
       ExclusionRule("io.netty", "netty-resolver"),
-      ExclusionRule("io.netty", "netty-transport")
+      ExclusionRule("io.netty", "netty-transport"),
     ),
   )
 
-  lazy val junit: Seq[ModuleID] = Seq("org.junit.jupiter" % "junit-jupiter-engine" % "5.11.3" % Test)
+  lazy val junit: Seq[ModuleID] = Seq("org.junit.jupiter" % "junit-jupiter-engine" % "5.13.4" % Test)
 
 }

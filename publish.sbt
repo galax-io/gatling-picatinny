@@ -3,7 +3,7 @@ ThisBuild / organization         := "org.galaxio"
 ThisBuild / organizationName     := "Galaxio Team"
 ThisBuild / organizationHomepage := Some(url("https://github.com/galax-io"))
 ThisBuild / homepage             := Some(url("https://github.com/galax-io/gatling-picatinny"))
-ThisBuild / description          := "Library with a bunch of useful functions that extend Gatling DSL and make your performance better"
+ThisBuild / description          := "A Scala toolkit that extends the Gatling DSL with production-ready utilities (feeders, transactions, assertions, templates, config helpers, and integrations like InfluxDB and Redis) to build faster, more reliable performance tests."
 ThisBuild / scmInfo              := Some(
   ScmInfo(
     url("https://github.com/galax-io/gatling-picatinny"),
@@ -11,7 +11,7 @@ ThisBuild / scmInfo              := Some(
   ),
 )
 
-ThisBuild / scalaVersion := "2.13.15"
+ThisBuild / scalaVersion := "2.13.16"
 
 ThisBuild / developers := List(
   Developer(
@@ -24,13 +24,4 @@ ThisBuild / developers := List(
 
 // Remove all additional repository other than Maven Central from POM
 ThisBuild / pomIncludeRepository := { _ => false }
-ThisBuild / publishTo            := {
-  val nexus = "https://s01.oss.sonatype.org/"
-  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
-
-ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
-sonatypeRepository                 := "https://s01.oss.sonatype.org/service/local"
-
-ThisBuild / licenses := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
+ThisBuild / licenses             := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
