@@ -1,6 +1,6 @@
 # Gatling Picatinny
 
-![Build](https://github.com/galax-io/gatling-picatinny/workflows/Build/badge.svg) [![Maven Central](https://img.shields.io/maven-central/v/org.galaxio/gatling-picatinny_2.13.svg?color=success)](https://search.maven.org/search?q=org.galaxio.gatling-picatinny) [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
+![CI](https://github.com/galax-io/gatling-picatinny/actions/workflows/ci.yml/badge.svg?branch=main) [![Maven Central](https://img.shields.io/maven-central/v/org.galaxio/gatling-picatinny_2.13.svg?color=success)](https://search.maven.org/search?q=org.galaxio.gatling-picatinny) [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
 ## Table of contents
 
 * [General info](#general-info)
@@ -27,7 +27,7 @@
 
 ## General info
 
-Library with a bunch of useful functions that extend Gatling DSL and make your performance better.
+A Scala toolkit that extends the Gatling DSL with production‑ready utilities (feeders, transactions, assertions, templates, config helpers, and integrations like InfluxDB and Redis) to build faster, more reliable performance tests.
 
 ## Installation
 
@@ -38,10 +38,10 @@ it. [Gatling Template Project](https://github.com/galax-io/gatling-template.g8.g
 
 ### Install manually
 
-Add dependency with version that you need
+Add the dependency and pick the latest version (see the Maven Central badge at the top of this README):
 
 ```scala
-libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<version>"
+libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<latest>"
 ```
 
 ## Usage
@@ -50,7 +50,7 @@ libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<version>"
 
 The only class that you need from this module is `SimulationConfig`. It could be used to attach some default variables
 such as `intensity`, `baseUrl`, `baseAuthUrl` and some others to your scripts. Also, it provides functions to get custom
-variables fom config.
+variables from config.
 
 Import:
 
@@ -63,12 +63,12 @@ import org.galaxio.gatling.config.SimulationConfig._
 Java example:
 
 ```java
-
+import static org.galaxio.gatling.javaapi.SimulationConfig.*;
 ```
 
 Kotlin example:
 
-```kotlin
+```text
 import org.galaxio.gatling.javaapi.SimulationConfig.*
 ```
 
@@ -88,25 +88,19 @@ val testPlan: Seq[OpenInjectionStep] = List(
 Java example:
 
 ```java
+import static org.galaxio.gatling.javaapi.SimulationConfig.*;
 
-
-SomeScenario.scn.injectOpen(
-        incrementUsersPerSec(intensity() /
-
-stagesNumber())
-        .
-
-times(stagesNumber())
-        .
-
-eachLevelLasting(stageDuration())
-        .
-
-separatedByRampsLasting(rampDuration())
-        .
-
-startingFrom(0)
-        )
+public class Example {
+  {
+    SomeScenario.scn.injectOpen(
+      incrementUsersPerSec(intensity() / stagesNumber())
+        .times(stagesNumber())
+        .eachLevelLasting(stageDuration())
+        .separatedByRampsLasting(rampDuration())
+        .startingFrom(0.0)
+    );
+  }
+}
 ```
 
 Kotlin example:
@@ -119,7 +113,7 @@ SomeScenario.scn.injectOpen(
     .times(stagesNumber())
     .eachLevelLasting(stageDuration())
     .separatedByRampsLasting(rampDuration())
-    .startingFrom(0.0),
+    .startingFrom(0.0)
 )
 ```
 
@@ -161,9 +155,9 @@ Duration durationVariable = getDurationParam("duration.durationVariable");
 boolean booleanVariable = getBooleanParam("booleanVariable");
 ```
 
-kotlin example:
+Kotlin example:
 
-```kotlin
+```text
 import org.galaxio.gatling.javaapi.SimulationConfig.*
 
 val stringVariable = getStringParam("stringVariable")
@@ -467,10 +461,10 @@ Java example:
 Import:
 
 ```java
-
+import org.galaxio.gatling.javaapi.influxdb.SimulationWithAnnotations;
 ```
 
-For using you should extend your simulation class from `SimulationWithAnnotations`:
+For using you should extend your simulation class from `SimulationWithAnnotations`: 
 
 ```java
 class LoadTest extends SimulationWithAnnotations {
@@ -482,7 +476,7 @@ Kotlin example:
 
 Import:
 
-```kotlin
+```text
 import org.galaxio.gatling.javaapi.influxdb.SimulationWithAnnotations
 ```
 
@@ -497,7 +491,7 @@ class LoadTest : SimulationWithAnnotations(){
 To see annotations in Grafana you need this two queries, where `Perfix` is from `gatling.data.graphite.rootPathPrefix`
 in `gatling.conf`:
 
-```sql
+```text
 SELECT "annotation_value"  FROM "${Prefix}" where "annotation" = 'Start'
 SELECT "annotation_value"  FROM "${Prefix}" where "annotation" = 'Stop'
 ```
@@ -540,7 +534,7 @@ def customPoint(tag: String, value: String) = Point(configuration.data.graphite.
 ```
 
 _*_[_Custom Point
-reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.2/io/razem/influxdbclient/Point.html)
+reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.3/io/razem/influxdbclient/Point.html)
 
 ```scala
 //write custom prepared Point from scenario
@@ -585,7 +579,7 @@ Import:
 
 Using:
 
-```java
+```text
 //if default prepared Point doesn't suit you
 Point(configuration.data.graphite.rootPathPrefix, System.currentTimeMillis() * 1000000)
   .addTag(tagName, tagValue)
@@ -601,9 +595,9 @@ static Point customPoint(tag: String, value: String){ return Point(configuration
 ```
 
 _*_[_Custom Point
-reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.2/io/razem/influxdbclient/Point.html)
+reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.3/io/razem/influxdbclient/Point.html)
 
-```java
+```text
 //write custom prepared Point from scenario
 .exec(
 ...)
@@ -662,7 +656,7 @@ fun customPoint(tag: String, value: String){ Point(configuration.data.graphite.r
 ```
 
 _*_[_Custom Point
-reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.2/io/razem/influxdbclient/Point.html)
+reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.3/io/razem/influxdbclient/Point.html)
 
 ```scala
 //write custom prepared Point from scenario
@@ -1132,7 +1126,7 @@ This will generate tokens with headers:
 ```
 
 Payload will be generated from json template, templating is done
-using [Gatling EL](https://gatling.io/docs/current/session/expression_el/)
+using [Gatling EL](https://gatling.io/docs/gatling/reference/current/session/expression_el/)
 
 ```json
 {
@@ -1233,37 +1227,40 @@ nfr:
 *Java example*
 
 ```java
+import static org.galaxio.gatling.javaapi.Assertions.assertionFromYaml;
+import static io.gatling.javaapi.core.CoreDsl.atOnceUsers;
 
+import io.gatling.javaapi.core.Simulation;
 
-class test extends Simulation {
-
-  setUp(
-          scn.inject(
-          atOnceUsers(10)
-    ).
-
-  protocols(httpProtocol)
-  ).
-
-  maxDuration(10)
-    .
-
-  assertions(assertionFromYaml("src/test/resources/nfr.yml"))
+public class TestSimulation extends Simulation {
+  public TestSimulation() {
+    setUp(
+      scn.injectOpen(
+        atOnceUsers(10)
+      ).protocols(httpProtocol)
+    ).maxDuration(10)
+     .assertions(assertionFromYaml("src/test/resources/nfr.yml"));
+  }
+}
 ```
 
 *Kotlin example*
 
 ```kotlin
-  import org.galaxio.gatling.javaapi.Assertions.assertionFromYaml;
+import org.galaxio.gatling.javaapi.Assertions.assertionFromYaml
+import io.gatling.javaapi.core.Simulation
+import io.gatling.javaapi.core.CoreDsl.atOnceUsers
 
-  class test extends Simulation {
-
-  setUp(
-    scn.inject(
-      atOnceUsers(10)
-    ).protocols(httpProtocol)
-  ).maxDuration(10)
-    .assertions(assertionFromYaml("src/test/resources/nfr.yml"))
+class TestSimulation : Simulation() {
+  init {
+    setUp(
+      scn.injectOpen(
+        atOnceUsers(10)
+      ).protocols(httpProtocol)
+    ).maxDuration(10)
+      .assertions(assertionFromYaml("src/test/resources/nfr.yml"))
+  }
+}
 ```
 
 ### transactions
@@ -1315,7 +1312,7 @@ exec(Actions.createEntity())
 
 #### Usage:
 
-For use this you need gatling with version greater or equal than **3.6.1** and import this in Scenario and Simulations:
+To use this, you need Gatling version >= **3.11.5** and import this in your Scenarios and Simulations:
 
 ```scala
 import org.galaxio.gatling.transactions.Predef._
@@ -1361,7 +1358,7 @@ class DebugTest extends SimulationWithTransactions {
 
 ### example
 
-See the examples in the examples/ directory.
+See the examples in the example/ directory.
 
 You can run these from the sbt console with the commands ```project example```
 and then ```gatling:testOnly org.galaxio.performance.example.SampleSimulation```.
@@ -1374,29 +1371,29 @@ To test your changes use `sbt test`.
 
 ## Built with
 
-* Scala version: 2.13.8
-* SBT version: 1.6.1
-* Gatling version: 3.7.4
-* SBT Gatling plugin version: 4.1.2
-* SBT CI release plugin version: 1.5.10
-* json4s version: 4.0.2
-* pureconfig version: 0.17.1
-* scalatest version: 3.2.10
-* scalacheck version: 1.15.4
+* Scala version: 2.13.16
+* SBT version: 1.11.4
+* Gatling version: 3.11.5
+* SBT Gatling plugin version: 4.13.3
+* SBT CI release plugin version: 1.11.1
+* json4s version: 4.1.0-M8
+* pureconfig version: 0.17.9
+* scalatest version: 3.2.19
+* scalacheck version: 1.18.1
 * scalamock version: 5.2.0
 * generex version: 1.0.2
-* jwt-core version: 5.0.0
+* jwt-core version: 11.0.2
 * scala influxdb client 0.6.3
 
 ## Help
 
 telegram: @qa_load
 
-gatling docs: https://gatling.io/docs/current/general
+Gatling docs: https://gatling.io/docs/gatling/reference/current/general/
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see
+We use [SemVer](https://semver.org/) for versioning. For the versions available, see
 the [tags on this repository](https://github.com/galax-io/gatling-picatinny/tags).
 
 ## Authors
