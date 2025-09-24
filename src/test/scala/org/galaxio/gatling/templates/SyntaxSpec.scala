@@ -8,14 +8,14 @@ class SyntaxSpec extends AnyFunSuite {
   test("makeJson renders explicit interpolation with ~ as #{var}") {
     val json = makeJson(
       "id" ~ "userId",
-      "fixed" - "value"
+      "fixed" - "value",
     )
     assert(json === "{" + "\"id\": \"#{userId}\",\"fixed\": \"value\"" + "}")
   }
 
   test("makeJson renders array with autodetected '#{var}' string interpolation") {
     val json = makeJson(
-      "items" > ("a", "#{x}", 5)
+      "items" > ("a", "#{x}", 5),
     )
     assert(json === "{" + "\"items\": [\"a\",\"#{x}\",5]" + "}")
   }
@@ -24,7 +24,7 @@ class SyntaxSpec extends AnyFunSuite {
     val xml = makeXml(
       "name" - "foo",
       "ref" ~ "rid",
-      "list" > ("#{v1}", 2)
+      "list" > ("#{v1}", 2),
     )
     assert(xml === "<name>foo</name><ref>#{rid}</ref><list><item>#{v1}</item><item>2</item></list>")
   }
