@@ -551,7 +551,7 @@ reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.3
 ...)
 .userDataPoint("myTag", "tagValue", "myField", "fieldValue")
   //also you can use gatling Expression language for values (could waste DB):
-  .userDataPoint("myTag", "${variableFromGatlingSession}", "myField", "${anotherVariableFromSession}")
+  .userDataPoint("myTag", "#{variableFromGatlingSession}", "myField", "#{anotherVariableFromSession}")
   .exec(
 ...)
 
@@ -988,9 +988,9 @@ class SampleScenario {
           .post(url)
           .jsonBody(
             "id" - 23, // in json - "id" : 23 
-            "name", // in json it interpreted as - "name" : get value from session variable ${name}
+            "name", // in json it interpreted as - "name" : get value from session variable #{name}
             "project" - ( // in json - "project" : { ... }
-              "id" ~ "projectId", // in json - "id" : value from session var ${projectId}
+              "id" ~ "projectId", // in json - "id" : value from session var #{projectId}
               "name" - "Super Project", // in json - "name": "Super Project"
               "sub" > (1, 2, 3, 4, 5, 6) // in json - "sub" : [ 1,2,3,4,5,6 ]
             )
@@ -1023,8 +1023,8 @@ As result this scenario sent POST request with body:
 As you can see in the example:
 
 - construction `"some_name" - <val>` map to `"some_name": <val>` in json;
-- construction `"varName"` map to `"varName" : <get value from session variable ${varName}>` in json;
-- construction `"some_name" ~ "sesVar"` map to `"some_name" : <value from session var ${sesVar}>` in json;
+- construction `"varName"` map to `"varName" : <get value from session variable #{varName}>` in json;
+- construction `"some_name" ~ "sesVar"` map to `"some_name" : <value from session var #{sesVar}>` in json;
 - `"some_name" > (<...items>)` map to array field `"some_name": [ ...items ]` in json;
 - `"some_name" - (<...fields>)` map to object field `"some_name": { ...fields }` in json;
 
@@ -1132,9 +1132,9 @@ using [Gatling EL](https://gatling.io/docs/gatling/reference/current/session/exp
 
 ```json
 {
-  "userName": "${randomString}",
-  "date": "${simpleDate}",
-  "phone": "${randomPhone}"
+  "userName": "#{randomString}",
+  "date": "#{simpleDate}",
+  "phone": "#{randomPhone}"
 }
 ```
 
@@ -1145,7 +1145,7 @@ jwt("HS256", secret)
   .header("""{"alg": "HS256","typ": "JWT", "customField": "customData"}""") //use custom headers from string, it must be valid json
   .headerFromResource("jwtTemplates/header.json") //use src/test/resources/jwtTemplates/header.json as header template
   .defaultHeader //use default jwt header, algorithm from jwt("HS256", secret), template: {"alg": "$algorithm","typ": "JWT"}
-  .payload("""{"userName": "${randomString}","date": "${simpleDate}","phone": "${randomPhone}"}""") //use custom payload from string, it must be valid json
+  .payload("""{"userName": "#{randomString}","date": "#{simpleDate}","phone": "#{randomPhone}"}""") //use custom payload from string, it must be valid json
   .payloadFromResource("jwtTemplates/payload.json") //use src/test/resources/jwtTemplates/payload.json as payload template
 ```
 
@@ -1153,7 +1153,7 @@ For sign requests add this to your scenario chain:
 
 ```scala
     .exec(_.setJwt(jwtGenerator, "jwtToken")) //generates token and save it to gatling session as "jwtToken"
-  .exec(addCookie(Cookie("JWT_TOKEN", "${jwtToken}").withDomain(jwtCookieDomain).withPath("/"))) //set JWT_TOKEN cookie for subsequent requests
+  .exec(addCookie(Cookie("JWT_TOKEN", "#{jwtToken}").withDomain(jwtCookieDomain).withPath("/"))) //set JWT_TOKEN cookie for subsequent requests
 ```
 
 Java:

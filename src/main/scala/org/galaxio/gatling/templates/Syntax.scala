@@ -16,7 +16,7 @@ object Syntax {
 
   def obj(fs: Field*): ObjectVal = ObjectVal(fs.toList)
 
-  private val interpolateRegExpr = "\\$\\{(\\w+)\\}".r
+  private val interpolateRegExpr = "#\\{(\\w+)\\}".r
 
   def arr[T](vs: T*): ArrayVal =
     ArrayVal(vs.map {
@@ -58,8 +58,8 @@ object Syntax {
     fields.map {
       case Field(name, RawValString(s))       => s""""$name": "$s""""
       case Field(name, RawValGen(s))          => s""""$name": $s"""
-      case Field(name, InterpolateStrVal(in)) => s""""$name": "$${$in}""""
-      case Field(name, InterpolateGenVal(in)) => s""""$name": $${$in}"""
+      case Field(name, InterpolateStrVal(in)) => s""""$name": "#{$in}""""
+      case Field(name, InterpolateGenVal(in)) => s""""$name": #{$in}"""
       case Field(name, ObjectVal(f))          => s""""$name": ${makeJson(f)}"""
       case Field(name, ArrayVal(vs))          => s""""$name": ${makeArrJson(vs)}"""
     }.mkString("{", ",", "}")
@@ -70,8 +70,8 @@ object Syntax {
       case RawValGen(f @ Field(_, _)) => s"""${makeJson(List(f))}"""
       case RawValGen(())              => ""
       case RawValGen(s)               => s"""$s"""
-      case InterpolateStrVal(in)      => s""""$${$in}""""
-      case InterpolateGenVal(in)      => s"""$${$in}"""
+      case InterpolateStrVal(in)      => s""""#{$in}""""
+      case InterpolateGenVal(in)      => s"""#{$in}"""
       case ObjectVal(f)               => s"""${makeJson(f)}"""
       case ArrayVal(vs)               => s"""${makeArrJson(vs)}"""
     }.mkString("[", ",", "]")
@@ -81,23 +81,23 @@ object Syntax {
       .foldLeft(new StringBuilder) {
         case (sb, Field(name, RawValString(s)))       => sb.append(s"""<$name>$s</$name>""")
         case (sb, Field(name, RawValGen(s)))          => sb.append(s"""<$name>$s</$name>""")
-        case (sb, Field(name, InterpolateStrVal(in))) => sb.append(s"""<$name>$${$in}</$name>""")
-        case (sb, Field(name, InterpolateGenVal(in))) => sb.append(s"""<$name>$${$in}</$name>""")
+        case (sb, Field(name, InterpolateStrVal(in))) => sb.append(s"""<$name>#{$in}</$name>""")
+        case (sb, Field(name, InterpolateGenVal(in))) => sb.append(s"""<$name>#{$in}</$name>""")
         case (sb, Field(name, ObjectVal(f)))          => sb.append(s"""<$name>${makeXml(f)}</$name>""")
-        case (sb, Field(name, ArrayVal(vs)))          => sb.append(s"""<$name>${makeXmlArray(sb, vs)}</$name>""")
+        case (sb, Field(name, ArrayVal(vs)))          => sb.append(s"""<$name>${makeXmlArray(vs)}</$name>""")
       }
       .mkString
 
-  def makeXmlArray(stringBuilder: StringBuilder, vs: List[FieldVal]): String =
-    vs.foldLeft(stringBuilder) {
+  def makeXmlArray(vs: List[FieldVal]): String =
+    vs.foldLeft(new StringBuilder) {
       case (sb, RawValString(s))            => sb.append(s"<item>$s</item>")
       case (sb, RawValGen(f @ Field(_, _))) => sb.append(s"""<item>${makeXml(List(f))}</item>""")
       case (sb, RawValGen(()))              => sb.append("")
       case (sb, RawValGen(s))               => sb.append(s"<item>$s</item>")
-      case (sb, InterpolateStrVal(in))      => sb.append(s"<item>$${$in}</item>")
-      case (sb, InterpolateGenVal(in))      => sb.append(s"<item>$${$in}</item>")
+      case (sb, InterpolateStrVal(in))      => sb.append(s"<item>#{$in}</item>")
+      case (sb, InterpolateGenVal(in))      => sb.append(s"<item>#{$in}</item>")
       case (sb, ObjectVal(f))               => sb.append(s"""<item>${makeXml(f)}</item>""")
-      case (sb, ArrayVal(vs))               => sb.append(s"""<item>${makeXmlArray(sb, vs)}</item>""")
+      case (sb, ArrayVal(vs))               => sb.append(s"""<item>${makeXmlArray(vs)}</item>""")
     }.mkString
 
   def makeXml(fs: Field*): String = makeXml(fs.toList)
