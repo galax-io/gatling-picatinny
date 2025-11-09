@@ -2,7 +2,7 @@ package org.galaxio.gatling.javaapi;
 
 import java.time.Duration;
 
-import static scala.compat.java8.DurationConverters.toJava;
+import static scala.jdk.javaapi.DurationConverters.toJava;
 
 public final class SimulationConfig {
 
