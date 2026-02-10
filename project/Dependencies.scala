@@ -27,13 +27,13 @@ object Dependencies {
   )
 
   lazy val pureConfig: Seq[ModuleID] = Seq(
-    "com.github.pureconfig" %% "pureconfig"      % "0.17.9",
-    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.9",
+    "com.github.pureconfig" %% "pureconfig"      % "0.17.10",
+    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.10",
   )
 
   lazy val jackson: Seq[ModuleID] = Seq(
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.19.2",
-    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.19.2",
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.21.0",
+    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.21.0",
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
@@ -41,7 +41,7 @@ object Dependencies {
   )
 
   lazy val scalaCheck: Seq[ModuleID] = Seq(
-    "org.scalacheck" %% "scalacheck" % "1.18.1" % "test",
+    "org.scalacheck" %% "scalacheck" % "1.19.0" % "test",
   )
 
   lazy val scalaTestPlus: Seq[ModuleID] = Seq(
@@ -49,7 +49,7 @@ object Dependencies {
   )
 
   lazy val scalaMock: Seq[ModuleID] = Seq(
-    "org.scalamock" %% "scalamock" % "5.2.0" % "test",
+    "org.scalamock" %% "scalamock" % "7.5.5" % "test",
   )
 
   lazy val generex: Seq[ModuleID] = Seq(
@@ -57,7 +57,7 @@ object Dependencies {
   )
 
   lazy val jwt: Seq[ModuleID] = Seq(
-    "com.github.jwt-scala" %% "jwt-core" % "11.0.2",
+    "com.github.jwt-scala" %% "jwt-core" % "11.0.3",
   )
 
   lazy val circeDeps: Seq[ModuleID] = Seq(
