@@ -59,14 +59,14 @@ class FakeEventLoop extends EventLoop {
       initialDelay: Long,
       period: Long,
       unit: juc.TimeUnit,
-  ): ScheduledFuture[_] =
+  ): ScheduledFuture[_]                                                                                       =
     throw new UnsupportedOperationException
   override def scheduleWithFixedDelay(
       command: Runnable,
       initialDelay: Long,
       delay: Long,
       unit: juc.TimeUnit,
-  ): ScheduledFuture[_] =
+  ): ScheduledFuture[_]                                                                                       =
     throw new UnsupportedOperationException
   override def isShutdown: Boolean                                                                            = false
   override def isTerminated: Boolean                                                                          = throw new UnsupportedOperationException
@@ -77,7 +77,7 @@ class FakeEventLoop extends EventLoop {
       tasks: ju.Collection[_ <: juc.Callable[T]],
       timeout: Long,
       unit: juc.TimeUnit,
-  ): ju.List[juc.Future[T]] =
+  ): ju.List[juc.Future[T]]                                                                                   =
     throw new UnsupportedOperationException
   override def invokeAny[T](tasks: ju.Collection[_ <: juc.Callable[T]]): T                                    = throw new UnsupportedOperationException
   override def invokeAny[T](tasks: ju.Collection[_ <: juc.Callable[T]], timeout: Long, unit: juc.TimeUnit): T =
