@@ -7,7 +7,7 @@ import io.gatling.core.protocol.{Protocol, ProtocolComponents, ProtocolComponent
 import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{BeforeAndAfterAll, stats}
+import org.scalatest.{BeforeAndAfterAll, Suite, TestSuite, stats}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.mutable
@@ -16,6 +16,7 @@ import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 
 trait Mocks extends MockFactory with BeforeAndAfterAll {
+  this: Suite with TestSuite =>
 
   trait MockedGatlingCtx {
     private val testActorSystem: ActorSystem = ActorSystem("TestSystem")

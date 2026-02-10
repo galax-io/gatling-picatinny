@@ -3,22 +3,19 @@ package org.galaxio.performance.example
 import io.gatling.core.Predef._
 import org.galaxio.gatling.assertions.AssertionsBuilder.assertionFromYaml
 import org.galaxio.gatling.config.SimulationConfig._
-import org.galaxio.gatling.influxdb.Annotations
 import org.galaxio.gatling.utils.IntensityConverter._
 import org.galaxio.performance.example.scenarios.SampleScenario
 
+import scala.concurrent.duration.FiniteDuration
 import scala.language.postfixOps
 
-/** trait Annotations allows you to write Start annotation to influxdb before starting the simulation and Stop annotation after
-  * completion of the simulation
-  */
-class SampleSimulation extends Simulation with Annotations {
+class SampleSimulation extends Simulation {
 
   /** how to get custom params from simulation.conf OR from JVM params like -DparamName=""
     */
-  val stageWeight    = getDoubleParam("stageWeight")
-  val startIntensity = getDoubleParam("startIntensity")
-  val warmUpDuration = getDurationParam("warmUp")
+  val stageWeight: Double            = getDoubleParam("stageWeight")
+  val startIntensity: Double         = getDoubleParam("startIntensity")
+  val warmUpDuration: FiniteDuration = getDurationParam("warmUp")
 
   /** intensity, stagesNumber, stageDuration, rampDuration, testDuration, baseUrl - default provided params. Values are taken
     * from the simulation.conf or -DparamName="". Passing this params to the simulation is not required if you do not use them.

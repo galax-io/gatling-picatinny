@@ -69,23 +69,6 @@ object Dependencies {
 
   lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus
 
-  // Add excludeAll netty to solve conflict run GatlinRunner with using Gatling 3.6.1 and io.netty:4.1.42.Final. Problem java.lang.NoSuchFieldError: DNT
-  lazy val influxClientScala: Seq[ModuleID] = Seq(
-    "io.razem" %% "scala-influxdb-client" % "0.6.3" excludeAll (
-      ExclusionRule("io.netty", "netty-codec-http"),
-      ExclusionRule("io.netty", "netty-buffer"),
-      ExclusionRule("io.netty", "netty-codec-dns"),
-      ExclusionRule("io.netty", "netty-codec-socks"),
-      ExclusionRule("io.netty", "netty-codec"),
-      ExclusionRule("io.netty", "netty-common"),
-      ExclusionRule("io.netty", "netty-handler-proxy"),
-      ExclusionRule("io.netty", "netty-handler"),
-      ExclusionRule("io.netty", "netty-resolver-dns"),
-      ExclusionRule("io.netty", "netty-resolver"),
-      ExclusionRule("io.netty", "netty-transport"),
-    ),
-  )
-
-  lazy val junit: Seq[ModuleID] = Seq("org.junit.jupiter" % "junit-jupiter-engine" % "5.13.4" % Test)
+  lazy val junit: Seq[ModuleID] = Seq("org.junit.jupiter" % "junit-jupiter-engine" % "6.0.2" % Test)
 
 }
