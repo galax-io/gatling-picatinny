@@ -5,8 +5,8 @@ def UtilsModule(id: String) = Project(id, file(id))
 lazy val root = (project in file("."))
   .enablePlugins(GitVersioning)
   .settings(
-    name          := "gatling-picatinny",
-    scalaVersion  := "2.13.18",
+    name                     := "gatling-picatinny",
+    scalaVersion             := "2.13.18",
     libraryDependencies ++= gatlingCore,
     libraryDependencies ++= gatling,
     libraryDependencies ++= fastUUID,
@@ -18,9 +18,13 @@ lazy val root = (project in file("."))
     libraryDependencies ++= jwt,
     libraryDependencies ++= circeDeps,
     libraryDependencies ++= junit,
-    scalacOptions := Seq(
+    coverageMinimumStmtTotal := 45,
+    coverageFailOnMinimum    := true,
+    javacOptions ++= Seq("--release", "17"),
+    scalacOptions            := Seq(
       "-encoding",
       "UTF-8",
+      "-release:17",
       "-deprecation",
       "-feature",
       "-unchecked",
