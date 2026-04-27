@@ -34,11 +34,3 @@ lazy val root = (project in file("."))
       "-language:postfixOps",
     ),
   )
-
-lazy val example = (project in file("example"))
-  .enablePlugins(GatlingPlugin)
-  .settings(
-    name := "gatling-picatinny-example",
-    libraryDependencies ++= gatling,
-  )
-  .dependsOn(root)

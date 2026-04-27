@@ -1358,14 +1358,39 @@ class DebugTest extends SimulationWithTransactions {
 }
 ```
 
-### example
+### examples
 
-See the examples in the example/ directory.
+See the standalone Gatling projects in the examples/ directory:
 
-You can run these from the sbt console with the commands ```project example```
-and then ```gatling:testOnly org.galaxio.performance.example.SampleSimulation```.
+* `examples/java-maven-example`
+* `examples/kotlin-gradle-example`
+* `examples/scala-sbt-example`
 
-Ensure that the correct InfluxDB parameters are specified in gatling.conf and influx.conf.
+Each project consumes `org.galaxio:gatling-picatinny_2.13` from the local Maven repository.
+Publish the current library first:
+
+```bash
+sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishM2
+```
+
+Run the Java Maven example:
+
+```bash
+mvn -B -f examples/java-maven-example/pom.xml gatling:test
+```
+
+Run the Kotlin Gradle example:
+
+```bash
+gradle -p examples/kotlin-gradle-example gatlingRun --all
+```
+
+Run the Scala sbt example:
+
+```bash
+cd examples/scala-sbt-example
+sbt Gatling/test
+```
 
 ## Testing
 

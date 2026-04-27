@@ -47,6 +47,11 @@ jobs:
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.6'
+
       - name: Cache Coursier
         uses: coursier/cache-action@v8
 
@@ -68,6 +73,21 @@ jobs:
 
       - name: Test
         run: sbt test
+
+      - name: Publish local Picatinny artifact for Gatling projects
+        run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishM2
+
+      - name: Java Maven Gatling Project
+        run: |
+          mvn -B -f examples/java-maven-example/pom.xml clean test-compile
+          mvn -B -f examples/java-maven-example/pom.xml gatling:test
+
+      - name: Kotlin Gradle Gatling Project
+        run: gradle -p examples/kotlin-gradle-example clean gatlingRun --all
+
+      - name: Scala sbt Gatling Project
+        working-directory: examples/scala-sbt-example
+        run: sbt Gatling/test
 
   coverage:
     name: Coverage
