@@ -1,5 +1,0 @@
-{
-  "userName": "${randomString}",
-  "date": "${simpleDate}",
-  "phone": "${randomPhone}"
-}
