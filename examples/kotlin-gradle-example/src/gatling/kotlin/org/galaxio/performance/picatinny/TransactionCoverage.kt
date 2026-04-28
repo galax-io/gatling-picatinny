@@ -9,4 +9,12 @@ class TransactionCoverage : Predef.SimulationWithTransactions() {
         setUp(TransactionScenario.apply("Picatinny Transaction Coverage", "kotlin-transaction-coverage").injectOpen(atOnceUsers(1)))
             .assertions(PerformanceSupport.noFailedRequests())
     }
+
+    override fun before() {
+        println("PICATINNY_TRANSACTION_COVERAGE_BEFORE_EXECUTED")
+    }
+
+    override fun after() {
+        println("PICATINNY_TRANSACTION_COVERAGE_AFTER_EXECUTED")
+    }
 }
