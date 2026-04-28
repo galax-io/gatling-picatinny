@@ -7,6 +7,7 @@
 * [Installation](#installation)
 * [Usage](#usage)
     * [config](#config)
+    * [startup banner and diagnostics](#startup-banner-and-diagnostics)
     * [feeders](#feeders)
         * [HC Vault feeder](#hc-vault-feeder)
         * [SeparatedValuesFeeder](#separatedvaluesfeeder)
@@ -165,6 +166,146 @@ val intVariable = getIntParam("intVariable")
 val doubleVariable = getDoubleParam("doubleVariable")
 val durationVariable = getDurationParam("duration.durationVariable")
 val booleanVariable = getBooleanParam("booleanVariable")
+```
+
+### startup banner and diagnostics
+
+Picatinny provides explicit utility methods for startup output. Put them where it makes sense for your project: in a
+simulation class, a shared package object, or another project bootstrap point.
+
+Default behavior:
+
+```text
+picatinny.startup.banner.enabled = true
+picatinny.diagnostics.enabled = false
+```
+
+Disable the banner for quiet runs:
+
+```bash
+-Dpicatinny.startup.banner.enabled=false
+```
+
+Enable JVM/runtime diagnostics when you need extra debug information:
+
+```bash
+-Dpicatinny.diagnostics.enabled=true
+```
+
+The banner uses the simulation name to render the expected workload shape: `Stability` is shown as `ramp-and-plateau`,
+while `MaxPerformance` is shown as `staged-increment`.
+
+Example `simulation.conf`:
+
+```hocon
+baseUrl = "http://localhost"
+intensity = "60 rpm"
+stagesNumber = 2
+rampDuration = 1 minute
+stageDuration = 5 minutes
+
+picatinny.startup.banner.enabled = true
+picatinny.diagnostics.enabled = false
+```
+
+Scala usage:
+
+```scala
+import io.gatling.core.Predef._
+import org.galaxio.gatling.config.SimulationConfig._
+import org.galaxio.gatling.utils.Utility
+
+class Stability extends Simulation {
+  Utility.banner()
+  Utility.diagnostics()
+
+  setUp(
+    scn.inject(
+      rampUsersPerSec(0).to(intensity).during(rampDuration),
+      constantUsersPerSec(intensity).during(stageDuration),
+    ),
+  ).protocols(http.baseUrl(baseUrl))
+}
+```
+
+Java usage:
+
+```java
+import io.gatling.javaapi.core.Simulation;
+import org.galaxio.gatling.javaapi.Utility;
+import static io.gatling.javaapi.core.CoreDsl.constantUsersPerSec;
+import static io.gatling.javaapi.core.CoreDsl.rampUsersPerSec;
+import static org.galaxio.gatling.javaapi.SimulationConfig.*;
+
+public final class Stability extends Simulation {
+    {
+        Utility.banner();
+        Utility.diagnostics();
+
+        setUp(
+            scn.injectOpen(
+                rampUsersPerSec(0).to(intensity()).during(rampDuration()),
+                constantUsersPerSec(intensity()).during(stageDuration())
+            )
+        );
+    }
+}
+```
+
+Kotlin usage:
+
+```kotlin
+import io.gatling.javaapi.core.CoreDsl.constantUsersPerSec
+import io.gatling.javaapi.core.CoreDsl.rampUsersPerSec
+import io.gatling.javaapi.core.Simulation
+import org.galaxio.gatling.javaapi.Utility
+import org.galaxio.gatling.javaapi.SimulationConfig.*
+
+class Stability : Simulation() {
+    init {
+        Utility.banner()
+        Utility.diagnostics()
+
+        setUp(
+            scn.injectOpen(
+                rampUsersPerSec(0.0).to(intensity()).during(rampDuration()),
+                constantUsersPerSec(intensity()).during(stageDuration()),
+            ),
+        )
+    }
+}
+```
+
+Startup output:
+
+```text
+================================================================================
+ Picatinny Gatling Run
+================================================================================
+ Simulation   : Stability
+ Base URL     : http://localhost
+
+ Workload
+   intensity      : 60 rpm = 1.00 rps
+   profile        : ramp-and-plateau
+   ramp duration  : 1m
+   stage duration : 5m
+   total duration : 6m
+
+ Timeline
+   00:00 - 01:00  ramp   0.00 -> 1.00 rps
+   01:00 - 06:00  plateau  1.00 rps
+
+ ASCII preview
+   rps
+    1.00 |            /_______________________________________________
+    0.75 |         ///
+    0.50 |      ///
+    0.25 |   ///
+    0.00 |///
+         +------------------------------------------------
+          00:00                                    06:00
+================================================================================
 ```
 
 ### feeders

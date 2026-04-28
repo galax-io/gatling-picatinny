@@ -1,6 +1,7 @@
 package org.galaxio.performance.picatinny;
 
 import org.galaxio.gatling.javaapi.SimulationConfig;
+import org.galaxio.gatling.javaapi.Utility;
 import org.galaxio.gatling.transactions.Predef;
 import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario;
 
@@ -9,6 +10,9 @@ import static io.gatling.javaapi.core.CoreDsl.rampUsersPerSec;
 
 public final class Stability extends Predef.SimulationWithTransactions {
     {
+        Utility.banner();
+        Utility.diagnostics();
+
         setUp(
                 PicatinnyScenario.apply("Picatinny Stability", "java-stability")
                         .injectOpen(
