@@ -1,11 +1,13 @@
 package org.galaxio.gatling.diagnostics
 
+import io.gatling.core.Predef._
+import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration._
 
-class DiagnosticsSpec extends AnyFlatSpec with Matchers {
+class DiagnosticsSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "format durations in a compact human readable form" in {
     Formatters.duration(0.seconds) shouldBe "0s"
@@ -107,6 +109,44 @@ class DiagnosticsSpec extends AnyFlatSpec with Matchers {
     AsciiWorkloadChart.strokeColumns(chart).exists(_.contains("|")) shouldBe true
   }
 
+  it should "parse explicit Gatling stability injection as ramp and plateau" in {
+    val settings = InjectionProfileParser
+      .fromOpen(
+        Seq(
+          rampUsersPerSec(0).to(1).during(1.second),
+          constantUsersPerSec(1).during(4.seconds),
+        ),
+      )
+      .value
+
+    settings.profile.label shouldBe "provided-open-injection"
+    WorkloadTimeline.segments(settings) shouldBe List(
+      WorkloadSegment(0.seconds, 1.second, "ramp", 0.0, 1.0),
+      WorkloadSegment(1.second, 5.seconds, "plateau", 1.0, 1.0),
+    )
+  }
+
+  it should "parse explicit Gatling max performance stairs injection" in {
+    val settings = InjectionProfileParser
+      .fromOpen(
+        Seq(
+          incrementUsersPerSec(0.5)
+            .times(2)
+            .eachLevelLasting(1.second)
+            .separatedByRampsLasting(1.second)
+            .startingFrom(0),
+        ),
+      )
+      .value
+
+    WorkloadTimeline.segments(settings) shouldBe List(
+      WorkloadSegment(0.seconds, 1.second, "ramp", 0.0, 0.5),
+      WorkloadSegment(1.second, 2.seconds, "plateau", 0.5, 0.5),
+      WorkloadSegment(2.seconds, 3.seconds, "ramp", 0.5, 1.0),
+      WorkloadSegment(3.seconds, 4.seconds, "plateau", 1.0, 1.0),
+    )
+  }
+
   it should "render startup banner with workload preview" in {
     val banner = StartupBanner.render()
 
@@ -120,9 +160,9 @@ class DiagnosticsSpec extends AnyFlatSpec with Matchers {
     banner should include("_")
   }
 
-  it should "enable startup banner by default and keep diagnostics disabled by default" in {
+  it should "enable startup banner and diagnostics in test resources" in {
     StartupBanner.isEnabled shouldBe true
-    Diagnostics.isEnabled shouldBe false
+    Diagnostics.isEnabled shouldBe true
   }
 
 }

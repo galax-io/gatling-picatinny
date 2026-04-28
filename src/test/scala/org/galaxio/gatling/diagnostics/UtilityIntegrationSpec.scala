@@ -22,14 +22,16 @@ class UtilityIntegrationSpec extends AnyFlatSpec with Matchers {
     AsciiWorkloadChart.hasContinuousStroke(text) shouldBe true
   }
 
-  "Utility.diagnostics" should "stay silent when diagnostics flag is disabled" in {
+  "Utility.diagnostics" should "print diagnostics when enabled in test resources" in {
     val output = new java.io.ByteArrayOutputStream()
 
     Console.withOut(output) {
       Utility.diagnostics()
     }
 
-    output.toString("UTF-8") shouldBe empty
+    val text = output.toString("UTF-8")
+    text should include("Diagnostics")
+    text should include("jvm args")
   }
 
 }
