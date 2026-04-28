@@ -192,8 +192,9 @@ Enable JVM/runtime diagnostics when you need extra debug information:
 -Dpicatinny.diagnostics.enabled=true
 ```
 
-The banner uses the simulation name to render the expected workload shape: `Stability` is shown as `ramp-and-plateau`,
-while `MaxPerformance` is shown as `staged-increment`.
+Pass the same Gatling injection steps to `Utility.banner(...)` that you pass to `inject`/`injectOpen`. The banner parses
+the actual injector objects and renders the effective workload. If no injectors are passed, it falls back to
+`simulation.conf`.
 
 Example `simulation.conf`:
 
@@ -216,14 +217,16 @@ import org.galaxio.gatling.config.SimulationConfig._
 import org.galaxio.gatling.utils.Utility
 
 class Stability extends Simulation {
-  Utility.banner()
+  val injectionProfile = (
+    rampUsersPerSec(0).to(intensity).during(rampDuration),
+    constantUsersPerSec(intensity).during(stageDuration),
+  )
+
+  Utility.banner(injectionProfile)
   Utility.diagnostics()
 
   setUp(
-    scn.inject(
-      rampUsersPerSec(0).to(intensity).during(rampDuration),
-      constantUsersPerSec(intensity).during(stageDuration),
-    ),
+    scn.inject(injectionProfile._1, injectionProfile._2),
   ).protocols(http.baseUrl(baseUrl))
 }
 ```
@@ -231,6 +234,7 @@ class Stability extends Simulation {
 Java usage:
 
 ```java
+import io.gatling.javaapi.core.OpenInjectionStep;
 import io.gatling.javaapi.core.Simulation;
 import org.galaxio.gatling.javaapi.Utility;
 import static io.gatling.javaapi.core.CoreDsl.constantUsersPerSec;
@@ -239,15 +243,15 @@ import static org.galaxio.gatling.javaapi.SimulationConfig.*;
 
 public final class Stability extends Simulation {
     {
-        Utility.banner();
+        OpenInjectionStep[] injectionProfile = {
+            rampUsersPerSec(0).to(intensity()).during(rampDuration()),
+            constantUsersPerSec(intensity()).during(stageDuration())
+        };
+
+        Utility.banner(injectionProfile);
         Utility.diagnostics();
 
-        setUp(
-            scn.injectOpen(
-                rampUsersPerSec(0).to(intensity()).during(rampDuration()),
-                constantUsersPerSec(intensity()).during(stageDuration())
-            )
-        );
+        setUp(scn.injectOpen(injectionProfile));
     }
 }
 ```
@@ -257,21 +261,22 @@ Kotlin usage:
 ```kotlin
 import io.gatling.javaapi.core.CoreDsl.constantUsersPerSec
 import io.gatling.javaapi.core.CoreDsl.rampUsersPerSec
+import io.gatling.javaapi.core.OpenInjectionStep
 import io.gatling.javaapi.core.Simulation
 import org.galaxio.gatling.javaapi.Utility
 import org.galaxio.gatling.javaapi.SimulationConfig.*
 
 class Stability : Simulation() {
     init {
-        Utility.banner()
+        val injectionProfile = arrayOf<OpenInjectionStep>(
+            rampUsersPerSec(0.0).to(intensity()).during(rampDuration()),
+            constantUsersPerSec(intensity()).during(stageDuration()),
+        )
+
+        Utility.banner(*injectionProfile)
         Utility.diagnostics()
 
-        setUp(
-            scn.injectOpen(
-                rampUsersPerSec(0.0).to(intensity()).during(rampDuration()),
-                constantUsersPerSec(intensity()).during(stageDuration()),
-            ),
-        )
+        setUp(scn.injectOpen(*injectionProfile))
     }
 }
 ```
@@ -286,8 +291,8 @@ Startup output:
  Base URL     : http://localhost
 
  Workload
-   intensity      : 60 rpm = 1.00 rps
-   profile        : ramp-and-plateau
+   intensity      : 1.00 rps
+   profile        : provided-open-injection
    ramp duration  : 1m
    stage duration : 5m
    total duration : 6m
@@ -298,13 +303,18 @@ Startup output:
 
  ASCII preview
    rps
-    1.00 |            /_______________________________________________
-    0.75 |         ///
-    0.50 |      ///
-    0.25 |   ///
-    0.00 |///
-         +------------------------------------------------
-          00:00                                    06:00
+    1.00 |           //___________________________________________________________
+    0.89 |          /
+    0.78 |         /
+    0.67 |        /
+    0.56 |      //
+    0.44 |     /
+    0.33 |    /
+    0.22 |   /
+    0.11 | //
+    0.00 |/
+         +------------------------------------------------------------------------
+          00:00                                                            06:00
 ================================================================================
 ```
 

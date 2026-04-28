@@ -1,5 +1,7 @@
 package org.galaxio.gatling.diagnostics
 
+import io.gatling.core.controller.inject.closed.ClosedInjectionStep
+import io.gatling.core.controller.inject.open.OpenInjectionStep
 import org.galaxio.gatling.config.ConfigManager
 import org.galaxio.gatling.utils.IntensityConverter.getIntensityFromString
 
@@ -10,24 +12,36 @@ object StartupBanner {
   private val InternalStackNames = Set("Utility", "StartupBanner", "Diagnostics")
 
   def printIfEnabled(): Unit =
-    printIfEnabled(None)
+    if (isEnabled) println(render())
+
+  def printOpenIfEnabled(openSteps: Iterable[OpenInjectionStep]): Unit =
+    printSettingsIfEnabled(InjectionProfileParser.fromOpen(openSteps))
+
+  def printClosedIfEnabled(closedSteps: Iterable[ClosedInjectionStep]): Unit =
+    printSettingsIfEnabled(InjectionProfileParser.fromClosed(closedSteps))
 
   def printIfEnabled(simulationClass: Class[_]): Unit =
-    printIfEnabled(Some(simulationClass))
+    printSimulationIfEnabled(Some(simulationClass))
 
-  private def printIfEnabled(simulationClass: Option[Class[_]]): Unit =
-    if (isEnabled) println(render(simulationClass))
+  private[gatling] def printSettingsIfEnabled(settings: Option[WorkloadSettings]): Unit =
+    if (isEnabled) println(settings.map(render).getOrElse(render()))
+
+  private def printSimulationIfEnabled(simulationClass: Option[Class[_]]): Unit =
+    if (isEnabled) println(render(simulationClass, None))
 
   private[gatling] def isEnabled: Boolean =
     ConfigManager.simulationConfig.get(EnabledPath, true)
 
   private[diagnostics] def render(): String =
-    render(None)
+    render(None, None)
+
+  private[diagnostics] def render(settings: WorkloadSettings): String =
+    render(None, Some(settings))
 
   private[diagnostics] def render(simulationClass: Class[_]): String =
-    render(Some(simulationClass))
+    render(Some(simulationClass), None)
 
-  private def render(simulationClass: Option[Class[_]]): String = {
+  private def render(simulationClass: Option[Class[_]], providedSettings: Option[WorkloadSettings]): String = {
     val config = ConfigManager.simulationConfig
     val stages = config.get[Int]("stagesNumber", 1)
     val line   = "=" * 80
@@ -39,12 +53,12 @@ object StartupBanner {
        | Simulation   : $name
        | Base URL     : ${config.get[String]("baseUrl", "<undefined>")}
        |
-       |${workloadBlock(name, stages)}
+       |${providedSettings.map(workloadBlock).getOrElse(configWorkloadBlock(name, stages))}
        |$line
        |""".stripMargin
   }
 
-  private def workloadBlock(simulationName: String, stages: Int): String = {
+  private def configWorkloadBlock(simulationName: String, stages: Int): String = {
     val config        = ConfigManager.simulationConfig
     val intensityText = config.getOpt[String]("intensity")
     val ramp          = config.getOpt[FiniteDuration]("rampDuration")
@@ -56,6 +70,7 @@ object StartupBanner {
         val fallback = profile match {
           case WorkloadProfile.RampAndPlateau  => rampDuration + stageDuration
           case WorkloadProfile.StagedIncrement => (rampDuration + stageDuration) * stages
+          case WorkloadProfile.Provided(_)     => rampDuration + stageDuration
         }
         val total    = config.get[FiniteDuration]("testDuration", fallback)
         val settings = WorkloadSettings(
@@ -68,14 +83,7 @@ object StartupBanner {
           testDuration = total,
         )
 
-        s""" Workload
-           |${settingsBlock(settings)}
-           |
-           | Timeline
-           |${WorkloadTimeline.render(settings)}
-           |
-           | ASCII preview
-           |${AsciiWorkloadChart.render(settings)}""".stripMargin
+        workloadBlock(settings)
 
       case _ =>
         val missing = List(
@@ -89,18 +97,34 @@ object StartupBanner {
     }
   }
 
+  private def workloadBlock(settings: WorkloadSettings): String =
+    s""" Workload
+       |${settingsBlock(settings)}
+       |
+       | Timeline
+       |${WorkloadTimeline.render(settings)}
+       |
+       | ASCII preview
+       |${AsciiWorkloadChart.render(settings)}""".stripMargin
+
   private def settingsBlock(settings: WorkloadSettings): String =
     List(
-      "intensity"      -> s"${settings.intensityText} = ${Formatters.decimal(settings.intensityRps)} rps",
+      "intensity"      -> intensityLine(settings),
       "profile"        -> settings.profile.label,
       "stages"         -> settings.stagesNumber.toString,
       "ramp duration"  -> Formatters.duration(settings.rampDuration),
       "stage duration" -> Formatters.duration(settings.stageDuration),
       "total duration" -> Formatters.duration(settings.testDuration),
-    ).filterNot { case (name, _) => name == "stages" && settings.profile == WorkloadProfile.RampAndPlateau }.map {
-      case (name, value) => s"   ${name.padTo(15, ' ')}: $value"
+    ).filterNot { case (name, _) =>
+      name == "stages" && (settings.profile == WorkloadProfile.RampAndPlateau || settings.stagesNumber <= 1)
+    }.map { case (name, value) =>
+      s"   ${name.padTo(15, ' ')}: $value"
     }
       .mkString("\n")
+
+  private def intensityLine(settings: WorkloadSettings): String =
+    if (settings.intensityText.endsWith(s" ${settings.unit}")) settings.intensityText
+    else s"${settings.intensityText} = ${Formatters.decimal(settings.intensityRps)} ${settings.unit}"
 
   private def simulationName(simulationClass: Option[Class[_]]): String =
     simulationClass
