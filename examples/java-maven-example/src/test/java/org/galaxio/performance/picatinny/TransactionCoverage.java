@@ -10,4 +10,14 @@ public final class TransactionCoverage extends Predef.SimulationWithTransactions
         setUp(TransactionScenario.apply("Picatinny Transaction Coverage", "java-transaction-coverage").injectOpen(atOnceUsers(1)))
                 .assertions(PerformanceSupport.noFailedRequests());
     }
+
+    @Override
+    public void before() {
+        System.out.println("PICATINNY_TRANSACTION_COVERAGE_BEFORE_EXECUTED");
+    }
+
+    @Override
+    public void after() {
+        System.out.println("PICATINNY_TRANSACTION_COVERAGE_AFTER_EXECUTED");
+    }
 }

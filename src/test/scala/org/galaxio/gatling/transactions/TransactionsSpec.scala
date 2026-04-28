@@ -1,6 +1,8 @@
 package org.galaxio.gatling.transactions
 
 import io.gatling.core.Predef._
+import io.gatling.core.config.GatlingConfiguration
+import io.gatling.core.scenario.SimulationParams
 import io.gatling.core.session.Expression
 import io.gatling.core.structure.{ScenarioBuilder, ScenarioContext}
 import org.scalatest.OptionValues._
@@ -10,6 +12,8 @@ import org.galaxio.gatling.transactions.Predef._
 import org.galaxio.gatling.transactions.actions.builders._
 
 object TransactionsSpec {
+  private implicit val configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
+
   private val now                          = System.currentTimeMillis()
   val transactionScenario: ScenarioBuilder =
     scenario("Test transaction scenario")
@@ -38,6 +42,32 @@ object TransactionsSpec {
       .exec(s => s)
       .endTransaction("t1")
       .endTransaction("t2")
+
+  final class OverrideHookSimulation(hooks: scala.collection.mutable.ArrayBuffer[String]) extends SimulationWithTransactions {
+    setUp(scenario("Override hook scenario").exec(s => s).inject(atOnceUsers(1)))
+
+    override def before(): Unit = hooks += "before"
+
+    override def after(): Unit = hooks += "after"
+  }
+
+  final class RegisteredHookSimulation(hooks: scala.collection.mutable.ArrayBuffer[String]) extends SimulationWithTransactions {
+    before {
+      hooks += "before"
+    }
+
+    after {
+      hooks += "after"
+    }
+
+    setUp(scenario("Registered hook scenario").exec(s => s).inject(atOnceUsers(1)))
+  }
+
+  def paramsOf(simulation: SimulationWithTransactions): SimulationParams =
+    classOf[io.gatling.core.scenario.Simulation]
+      .getMethod("params", classOf[GatlingConfiguration])
+      .invoke(simulation, configuration)
+      .asInstanceOf[SimulationParams]
 }
 
 class TransactionsSpec extends AnyFlatSpec with Matchers with Mocks {
@@ -146,6 +176,26 @@ class TransactionsSpec extends AnyFlatSpec with Matchers with Mocks {
       status("KO"),
     )
     errorRecord.get.errorMsg.value shouldBe "has unclosed transaction t2"
+  }
+
+  "SimulationWithTransactions" should "execute override-style hooks for Java and Kotlin simulations" in {
+    val hooks            = scala.collection.mutable.ArrayBuffer.empty[String]
+    val simulationParams = paramsOf(new OverrideHookSimulation(hooks))
+
+    simulationParams.before()
+    simulationParams.after()
+
+    hooks.toSeq shouldBe Seq("before", "after")
+  }
+
+  it should "preserve registered Scala hooks" in {
+    val hooks            = scala.collection.mutable.ArrayBuffer.empty[String]
+    val simulationParams = paramsOf(new RegisteredHookSimulation(hooks))
+
+    simulationParams.before()
+    simulationParams.after()
+
+    hooks.toSeq shouldBe Seq("before", "after")
   }
 
 }

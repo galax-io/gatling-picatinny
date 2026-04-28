@@ -11,6 +11,12 @@ import scala.jdk.CollectionConverters._
 
 object Predef {
   abstract class SimulationWithTransactions extends Simulation {
+    def before(): Unit = ()
+
+    def after(): Unit = ()
+
+    super.before(before())
+    super.after(after())
 
     override def setUp(populationBuilders: PopulationBuilder*): SetUp = setUp(populationBuilders.toList)
 
