@@ -72,4 +72,7 @@ public class JavaUtilsTest {
     Double intensity_prm = rpm(intensity);
     Double intensity_prs = rps(intensity);
     Double _intensity = getIntensityFromString(s_intensity);
+
+    Runnable startupBannerFacade = Utility::banner;
+    Runnable diagnosticsFacade = Utility::diagnostics;
 }
