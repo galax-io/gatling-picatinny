@@ -27,7 +27,7 @@ private[diagnostics] object AsciiWorkloadChart {
     }
       .mkString("\n")
 
-    s"""   rps
+    s"""   ${settings.unit}
        |$body
        |         +${"-" * Width}
        |          00:00${" " * math.max(1, Width - 12)}${Formatters.time(settings.testDuration)}

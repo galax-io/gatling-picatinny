@@ -10,6 +10,8 @@ private[diagnostics] final case class WorkloadSettings(
     rampDuration: FiniteDuration,
     stageDuration: FiniteDuration,
     testDuration: FiniteDuration,
+    unit: String = "rps",
+    segmentsOverride: Option[List[WorkloadSegment]] = None,
 )
 
 private[diagnostics] final case class WorkloadSegment(
@@ -18,7 +20,9 @@ private[diagnostics] final case class WorkloadSegment(
     kind: String,
     fromRps: Double,
     toRps: Double,
-)
+) {
+  def duration: FiniteDuration = end - start
+}
 
 private[diagnostics] sealed trait WorkloadProfile {
   def label: String
@@ -33,6 +37,8 @@ private[diagnostics] object WorkloadProfile {
     override val label: String = "staged-increment"
   }
 
+  final case class Provided(label: String) extends WorkloadProfile
+
   def fromSimulationName(name: String): WorkloadProfile =
     if (name.toLowerCase.contains("maxperformance")) StagedIncrement
     else RampAndPlateau
@@ -41,9 +47,12 @@ private[diagnostics] object WorkloadProfile {
 private[diagnostics] object WorkloadTimeline {
 
   def segments(settings: WorkloadSettings): List[WorkloadSegment] =
-    settings.profile match {
-      case WorkloadProfile.RampAndPlateau  => clamp(rampAndPlateau(settings), settings.testDuration)
-      case WorkloadProfile.StagedIncrement => clamp(stagedIncrement(settings), settings.testDuration)
+    settings.segmentsOverride.getOrElse {
+      settings.profile match {
+        case WorkloadProfile.RampAndPlateau  => clamp(rampAndPlateau(settings), settings.testDuration)
+        case WorkloadProfile.StagedIncrement => clamp(stagedIncrement(settings), settings.testDuration)
+        case WorkloadProfile.Provided(_)     => Nil
+      }
     }
 
   private def rampAndPlateau(settings: WorkloadSettings): List[WorkloadSegment] =
@@ -88,17 +97,18 @@ private[diagnostics] object WorkloadTimeline {
 
   def render(settings: WorkloadSettings): String =
     segments(settings)
-      .map(renderSegment)
+      .map(renderSegment(_, settings.unit))
       .mkString("\n")
 
-  private def renderSegment(segment: WorkloadSegment): String = {
+  private def renderSegment(segment: WorkloadSegment, unit: String): String = {
     val range = s"${Formatters.time(segment.start)} - ${Formatters.time(segment.end)}"
     val label = segment.kind.padTo(5, ' ')
     val level = Formatters.decimal(segment.toRps)
 
     segment.kind match {
-      case "ramp" => s"   $range  $label  ${Formatters.decimal(segment.fromRps)} -> $level rps"
-      case _      => s"   $range  $label  $level rps"
+      case "ramp" | "randomized-ramp" | "stress-peak" =>
+        s"   $range  $label  ${Formatters.decimal(segment.fromRps)} -> $level $unit"
+      case _                                          => s"   $range  $label  $level $unit"
     }
   }
 
