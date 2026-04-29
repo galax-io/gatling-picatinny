@@ -130,6 +130,10 @@ duration: {
     durationVariable: 3600s
 }
 booleanVariable: true
+stringListVariable: ["foo", "bar"]
+client {
+  timeout: 10 seconds
+}
 ```
 
 Scala example:
@@ -142,6 +146,10 @@ val intVariable = getIntParam("intVariable")
 val doubleVariable = getDoubleParam("doubleVariable")
 val durationVariable = getDurationParam("duration.durationVariable")
 val booleanVariable = getBooleanParam("booleanVariable")
+val stringListVariable = getStringListParam("stringListVariable")
+val clientConfig = getConfigParam("client")
+
+val optionalValue = getOptStringParam("optionalVariable")
 ```
 
 Java example:
@@ -154,6 +162,10 @@ int intVariable = getIntParam("intVariable");
 double doubleVariable = getDoubleParam("doubleVariable");
 Duration durationVariable = getDurationParam("duration.durationVariable");
 boolean booleanVariable = getBooleanParam("booleanVariable");
+List<String> stringListVariable = getStringListParam("stringListVariable");
+Config clientConfig = getConfigParam("client");
+
+Optional<String> optionalValue = getOptStringParam("optionalVariable");
 ```
 
 Kotlin example:
@@ -166,7 +178,30 @@ val intVariable = getIntParam("intVariable")
 val doubleVariable = getDoubleParam("doubleVariable")
 val durationVariable = getDurationParam("duration.durationVariable")
 val booleanVariable = getBooleanParam("booleanVariable")
+val stringListVariable = getStringListParam("stringListVariable")
+val clientConfig = getConfigParam("client")
+
+val optionalValue = getOptStringParam("optionalVariable")
 ```
+
+Required getters throw `SimulationConfigException` when a value is missing or has an invalid type. Optional getters return
+`None` in Scala and `Optional.empty()` in Java/Kotlin when the path is not defined.
+
+JVM system properties override values from `simulation.conf`, which is useful for CI and environment-specific runs:
+
+```bash
+sbt Gatling/test -DbaseUrl=https://test.example.org -Dintensity="120 rpm"
+```
+
+Workload defaults are validated when they are first read:
+
+- `stagesNumber` must be greater than `0`
+- `intensity` must resolve to a value greater than `0` rps
+- `rampDuration` must be `0` or greater
+- `stageDuration` and `testDuration` must be greater than `0`
+
+Config values are logged when they are read. Paths containing words like `password`, `secret`, `token`, `apiKey`, or
+`credential` are masked in logs as `******`.
 
 ### startup banner and diagnostics
 
