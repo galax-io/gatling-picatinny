@@ -35,6 +35,23 @@ class JavaConfigTest extends AnyFlatSpec with Matchers {
     getBooleanParam("booleanParam") shouldBe true
   }
 
+  it should "get string list param from simulation.conf" in {
+    getStringListParam("stringListParam") shouldBe java.util.List.of("first", "second")
+  }
+
+  it should "get nested config param from simulation.conf" in {
+    getConfigParam("nestedParam").getString("child") shouldBe "value"
+  }
+
+  it should "get optional param from simulation.conf" in {
+    getOptStringParam("stringParam").orElseThrow() shouldBe "testString"
+    getOptStringParam("missingParam").isEmpty shouldBe true
+  }
+
+  it should "get optional string list param from simulation.conf" in {
+    getOptStringListParam("stringListParam").orElseThrow() shouldBe java.util.List.of("first", "second")
+  }
+
   it should "get duration param from simulation.conf" in {
     getDurationParam("durationParam") shouldBe Duration.ofSeconds(10)
   }
