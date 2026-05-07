@@ -3,36 +3,36 @@ package org.galaxio.gatling.redis
 import com.redis.RedisClientPool
 import io.gatling.core.Predef._
 import io.gatling.core.session.Expression
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import org.galaxio.gatling.redis.RedisActionBuilder._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class RedisActionBuilderSpec extends AnyFlatSpec with Matchers {
+class RedisActionBuilderSpec extends AnyWordSpec with Matchers {
 
-  val redisPool                           = new RedisClientPool("localhost", 6379)
-  val keyTest: Expression[String]         = "key"
-  val keysTest: Seq[Expression[String]]   = Seq("keys")
-  val valueTest: Expression[String]       = "value"
-  val valuesTest: Seq[Expression[String]] = Seq("values")
+  private val redisPool = new RedisClientPool("localhost", 6379)
 
-  it should "return correct RedisDelActionBuilder" in {
-    assert {
-      exec(redisPool.DEL(keyTest, keysTest: _*)).actionBuilders.contains(RedisDelActionBuilder(redisPool, keyTest, keysTest))
+  private val redisKey: Expression[String]         = "key"
+  private val redisKeys: Seq[Expression[String]]   = Seq("keys")
+  private val redisValue: Expression[String]       = "value"
+  private val redisValues: Seq[Expression[String]] = Seq("values")
+
+  "RedisActionBuilder syntax" should {
+    "add DEL builders to Gatling chains" in {
+      exec(redisPool.DEL(redisKey, redisKeys: _*)).actionBuilders should contain(
+        RedisDelActionBuilder(redisPool, redisKey, redisKeys),
+      )
+    }
+
+    "add SREM builders to Gatling chains" in {
+      exec(redisPool.SREM(redisKey, redisValue, redisValues: _*)).actionBuilders should contain(
+        RedisSremActionBuilder(redisPool, redisKey, redisValue, redisValues),
+      )
+    }
+
+    "add SADD builders to Gatling chains" in {
+      exec(redisPool.SADD(redisKey, redisValue, redisValues: _*)).actionBuilders should contain(
+        RedisSaddActionBuilder(redisPool, redisKey, redisValue, redisValues),
+      )
     }
   }
-
-  it should "return correct RedisSremActionBuilder" in {
-    assert {
-      exec(redisPool.SREM(keyTest, valueTest, valuesTest: _*)).actionBuilders
-        .contains(RedisSremActionBuilder(redisPool, keyTest, valueTest, valuesTest))
-    }
-  }
-
-  it should "return correct RedisSaddActionBuilder" in {
-    assert {
-      exec(redisPool.SADD(keyTest, valueTest, valuesTest: _*)).actionBuilders
-        .contains(RedisSaddActionBuilder(redisPool, keyTest, valueTest, valuesTest))
-    }
-  }
-
 }

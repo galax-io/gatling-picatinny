@@ -10,7 +10,7 @@ import scala.concurrent.duration.DurationInt
 
 object PicatinnyCases {
   private val jwtGenerator = jwt("HS256", "performance-secret").defaultHeader
-    .payloadFromResource("jwtTemplates/payload.json")
+    .payload("""{"subject":"picatinny","scope":"scala-sbt-template"}""")
 
   val businessOperation: ChainBuilder =
     exec(session => session.setJwt(jwtGenerator, "jwt"))
@@ -20,7 +20,7 @@ object PicatinnyCases {
         require(60.rpm == intensity, "intensity")
         require(session("uuid").as[String].length == 36, "uuid")
         require(session("jwt").as[String].split("\\.").length == 3, "jwt")
-        require(session("phoneFromJson").as[String].nonEmpty, "phoneFromJson")
+        require(session("formattedPhone").as[String].nonEmpty, "formattedPhone")
         require(session("pan").as[String].length >= 16, "pan")
         session
       }

@@ -5,11 +5,11 @@ import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.scenario.SimulationParams
 import io.gatling.core.session.Expression
 import io.gatling.core.structure.{ScenarioBuilder, ScenarioContext}
-import org.scalatest.OptionValues._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import org.galaxio.gatling.transactions.Predef._
 import org.galaxio.gatling.transactions.actions.builders._
+import org.scalatest.OptionValues._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 object TransactionsSpec {
   private implicit val configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
@@ -70,21 +70,11 @@ object TransactionsSpec {
       .asInstanceOf[SimulationParams]
 }
 
-class TransactionsSpec extends AnyFlatSpec with Matchers with Mocks {
+class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
   import TransactionsSpec._
 
-  val tName: Symbol          = Symbol("tName")
-  val tn: Expression[String] = "t1"
+  private val session = fixtures.emptySession(transactionScenario.name)
 
-  "Scenario with startTransaction" should "contain start transaction action builder with specified name" in {
-    transactionScenario.actionBuilders should contain(startBuilder)
-  }
-
-  "Scenario with endTransaction" should "contain end transaction action builder with specified name" in {
-    transactionScenario.actionBuilders should contain(endBuilder)
-  }
-
-  private val session                                                       = fixtures.emptySession(transactionScenario.name)
   private def runScenario(s: ScenarioBuilder, testContext: ScenarioContext) = {
     val actions = s.actionBuilders.foldLeft(fixtures.noAction)((next, builder) => builder.build(testContext, next))
     actions ! session
@@ -96,106 +86,118 @@ class TransactionsSpec extends AnyFlatSpec with Matchers with Mocks {
   private val status   = Symbol("status")
   private val errorMsg = Symbol("errorMsg")
 
-  "Scenario with transactions after run" should "write request with correct start/stop timestamps and name" in new MockedGatlingCtx {
-    (statsEngine.logResponse _)
-      .when(*, *, *, *, *, *, *, *)
-      .onCall { (_, _, c, d, e, f, _, h) => events.add(Evt("REQUEST", c, d, e, f.name, h)) }
-      .once()
+  "Transaction scenario DSL" should {
+    "contain start transaction action builder with specified name" in {
+      transactionScenario.actionBuilders should contain(startBuilder)
+    }
 
-    runScenario(transactionScenarioWithDefaultEndTime, testContext)
-
-    val requestRecord: Option[Evt] = getEvents.find(_.evtType == "REQUEST")
-
-    requestRecord shouldBe defined
-    requestRecord.value should have(name("t1"), status("OK"), errorMsg(None))
-    assert(requestRecord.value.startTimestamp <= requestRecord.value.endTimestamp)
+    "contain end transaction action builder with specified name" in {
+      transactionScenario.actionBuilders should contain(endBuilder)
+    }
   }
 
-  "Scenario with not opened transactions after run" should "fail with transaction close error" in new MockedGatlingCtx {
-    (statsEngine.logRequestCrash _)
-      .when(*, *, *, *)
-      .onCall { (_, _, c, d) =>
-        events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
-      }
-      .once()
+  "Transaction scenario execution" should {
+    "write request with correct start/stop timestamps and name" in new MockedGatlingCtx {
+      (statsEngine.logResponse _)
+        .when(*, *, *, *, *, *, *, *)
+        .onCall { (_, _, c, d, e, f, _, h) => events.add(Evt("REQUEST", c, d, e, f.name, h)) }
+        .once()
 
-    runScenario(notOpenedTransactionScenario, testContext)
+      runScenario(transactionScenarioWithDefaultEndTime, testContext)
 
-    val errorRecord: Option[Evt]   = getEvents.find(_.evtType == "ERROR")
-    val requestRecord: Option[Evt] = getEvents.find(_.evtType == "REQUEST")
+      val requestRecord = getEvents.find(_.evtType == "REQUEST")
 
-    requestRecord should not be defined
-    errorRecord shouldBe defined
-    errorRecord.value should have(
-      name("Transaction 't1' close error"),
-      status("KO"),
-    )
-    errorRecord.get.errorMsg.value shouldBe "transaction 't1' wasn't started"
+      requestRecord shouldBe defined
+      requestRecord.value should have(name("t1"), status("OK"), errorMsg(None))
+      requestRecord.value.startTimestamp should be <= requestRecord.value.endTimestamp
+    }
 
+    "fail with transaction close error when closing a not opened transaction" in new MockedGatlingCtx {
+      (statsEngine.logRequestCrash _)
+        .when(*, *, *, *)
+        .onCall { (_, _, c, d) =>
+          events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
+        }
+        .once()
+
+      runScenario(notOpenedTransactionScenario, testContext)
+
+      val errorRecord   = getEvents.find(_.evtType == "ERROR")
+      val requestRecord = getEvents.find(_.evtType == "REQUEST")
+
+      requestRecord should not be defined
+      errorRecord shouldBe defined
+      errorRecord.value should have(
+        name("Transaction 't1' close error"),
+        status("KO"),
+      )
+      errorRecord.value.errorMsg.value shouldBe "transaction 't1' wasn't started"
+    }
+
+    "fail with illegal state error when a transaction ended before it started" in new MockedGatlingCtx {
+      (statsEngine.logRequestCrash _)
+        .when(*, *, *, *)
+        .onCall { (_, _, c, d) =>
+          events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
+        }
+        .once()
+
+      runScenario(incorrectEndTimeTransactionScenario, testContext)
+
+      val errorRecord   = getEvents.find(_.evtType == "ERROR")
+      val requestRecord = getEvents.find(_.evtType == "REQUEST")
+
+      requestRecord should not be defined
+      errorRecord shouldBe defined
+      errorRecord.value should have(
+        name("Transaction 't1' illegal state"),
+        status("KO"),
+      )
+      errorRecord.value.errorMsg.value shouldBe "transaction not be able end before they started"
+    }
+
+    "fail with transaction close error when transaction sequence is incorrect" in new MockedGatlingCtx {
+      (statsEngine.logRequestCrash _)
+        .when(*, *, *, *)
+        .onCall { (_, _, c, d) =>
+          events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
+        }
+        .once()
+
+      runScenario(incorrectTransactionSequenceScenario, testContext)
+
+      val errorRecord   = getEvents.find(_.evtType == "ERROR")
+      val requestRecord = getEvents.find(_.evtType == "REQUEST")
+
+      requestRecord should not be defined
+      errorRecord shouldBe defined
+      errorRecord.value should have(
+        name("Transaction 't1' close error"),
+        status("KO"),
+      )
+      errorRecord.value.errorMsg.value shouldBe "has unclosed transaction t2"
+    }
   }
 
-  "Scenario with a transaction that ended before it started after run" should "fail with illegal state error" in new MockedGatlingCtx {
-    (statsEngine.logRequestCrash _)
-      .when(*, *, *, *)
-      .onCall { (_, _, c, d) =>
-        events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
-      }
-      .once()
+  "SimulationWithTransactions" should {
+    "execute override-style hooks for Java and Kotlin simulations" in {
+      val hooks            = scala.collection.mutable.ArrayBuffer.empty[String]
+      val simulationParams = paramsOf(new OverrideHookSimulation(hooks))
 
-    runScenario(incorrectEndTimeTransactionScenario, testContext)
+      simulationParams.before()
+      simulationParams.after()
 
-    val errorRecord: Option[Evt]   = getEvents.find(_.evtType == "ERROR")
-    val requestRecord: Option[Evt] = getEvents.find(_.evtType == "REQUEST")
+      hooks.toSeq shouldBe Seq("before", "after")
+    }
 
-    requestRecord should not be defined
-    errorRecord shouldBe defined
-    errorRecord.value should have(
-      name("Transaction 't1' illegal state"),
-      status("KO"),
-    )
-    errorRecord.get.errorMsg.value shouldBe "transaction not be able end before they started"
+    "preserve registered Scala hooks" in {
+      val hooks            = scala.collection.mutable.ArrayBuffer.empty[String]
+      val simulationParams = paramsOf(new RegisteredHookSimulation(hooks))
 
+      simulationParams.before()
+      simulationParams.after()
+
+      hooks.toSeq shouldBe Seq("before", "after")
+    }
   }
-
-  "Scenario with incorrect transaction sequence after run" should "fail with transaction close error" in new MockedGatlingCtx {
-    (statsEngine.logRequestCrash _)
-      .when(*, *, *, *)
-      .onCall { (_, _, c, d) =>
-        events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
-      }
-      .once()
-    runScenario(incorrectTransactionSequenceScenario, testContext)
-
-    val errorRecord: Option[Evt]   = getEvents.find(_.evtType == "ERROR")
-    val requestRecord: Option[Evt] = getEvents.find(_.evtType == "REQUEST")
-
-    requestRecord should not be defined
-    errorRecord shouldBe defined
-    errorRecord.value should have(
-      name("Transaction 't1' close error"),
-      status("KO"),
-    )
-    errorRecord.get.errorMsg.value shouldBe "has unclosed transaction t2"
-  }
-
-  "SimulationWithTransactions" should "execute override-style hooks for Java and Kotlin simulations" in {
-    val hooks            = scala.collection.mutable.ArrayBuffer.empty[String]
-    val simulationParams = paramsOf(new OverrideHookSimulation(hooks))
-
-    simulationParams.before()
-    simulationParams.after()
-
-    hooks.toSeq shouldBe Seq("before", "after")
-  }
-
-  it should "preserve registered Scala hooks" in {
-    val hooks            = scala.collection.mutable.ArrayBuffer.empty[String]
-    val simulationParams = paramsOf(new RegisteredHookSimulation(hooks))
-
-    simulationParams.before()
-    simulationParams.after()
-
-    hooks.toSeq shouldBe Seq("before", "after")
-  }
-
 }

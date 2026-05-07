@@ -1546,37 +1546,24 @@ class DebugTest extends SimulationWithTransactions {
 
 ### examples
 
-See the standalone Gatling projects in the examples/ directory:
+See the standalone Gatling projects in the `examples/` directory:
 
 * `examples/java-maven-example`
 * `examples/kotlin-gradle-example`
-* `examples/scala-sbt-example`
 
-Each project consumes `org.galaxio:gatling-picatinny_2.13` from the local Maven repository.
-Publish the current library first:
+For a new Scala sbt project, prefer the Galaxio Gatling template and add Picatinny as a dependency:
 
 ```bash
-sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishM2
+galaxio template init gatling/scala-sbt
 ```
 
-Run the Java Maven example:
-
-```bash
-mvn -B -f examples/java-maven-example/pom.xml gatling:test
+```scala
+libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<latest>"
 ```
 
-Run the Kotlin Gradle example:
-
-```bash
-gradle -p examples/kotlin-gradle-example gatlingRun --all
-```
-
-Run the Scala sbt example:
-
-```bash
-cd examples/scala-sbt-example
-sbt Gatling/test
-```
+The Java and Kotlin examples show the Java API facade from Maven and Gradle projects. The Scala examples follow the
+same package layout as the Gatling template: protocols in a shared package object, request code in `cases`, feeder setup
+in `feeders`, business flows in `scenarios`, and injection/profile setup in simulations.
 
 ## Testing
 
