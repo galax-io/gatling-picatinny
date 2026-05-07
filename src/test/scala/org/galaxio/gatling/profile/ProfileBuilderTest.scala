@@ -1,38 +1,14 @@
 package org.galaxio.gatling.profile
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.galaxio.gatling.profile.ProfileBuilderNew.ProfileBuilderException
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-import java.io.FileNotFoundException
+class ProfileBuilderTest extends AnyWordSpec with Matchers {
 
-class ProfileBuilderTest extends AnyFlatSpec with Matchers with ScalaCheckDrivenPropertyChecks {
+  private val profilePath = "src/test/resources/profileTemplates/profile1.yml"
 
-  val profile1FromFile: String  = "src/test/resources/profileTemplates/profile1.yml"
-  val parsedYaml: Yaml          = Yaml(
-    "link.ru/v1alpha1",
-    "PerformanceTestProfiles",
-    Metadata("performance-test-profile", "performance test profile"),
-    ProfileSpec(
-      List(
-        OneProfile(
-          "maxPerf",
-          "10.05.2022 - 20.05.2022",
-          "http",
-          List(
-            Request(
-              "request-1",
-              "100 rph",
-              Some(List("Group1")),
-              Params("POST", "/test/a", Some(List("greetings: Hello world!")), Some("""{"a": "b"}""")),
-            ),
-          ),
-        ),
-      ),
-    ),
-  )
-  val parsedProfile: OneProfile = OneProfile(
+  private val expectedProfile = OneProfile(
     "maxPerf",
     "10.05.2022 - 20.05.2022",
     "http",
@@ -46,54 +22,65 @@ class ProfileBuilderTest extends AnyFlatSpec with Matchers with ScalaCheckDriven
     ),
   )
 
-  it should "load profile yaml correctly" in {
-    ProfileBuilderNew.buildFromYaml(profile1FromFile) shouldBe parsedYaml
-  }
+  private val expectedYaml = Yaml(
+    "link.ru/v1alpha1",
+    "PerformanceTestProfiles",
+    Metadata("performance-test-profile", "performance test profile"),
+    ProfileSpec(List(expectedProfile)),
+  )
 
-  it should "get profile from parsed yaml correctly" in {
-    ProfileBuilderNew.buildFromYaml(profile1FromFile).selectProfile("maxPerf") shouldBe parsedProfile
-  }
-
-  it should "Java test expected exceptions if file not exists" in {
-    val thrown = intercept[ProfileBuilderException] {
-      ProfileBuilderNew.buildFromYamlJava("notExistsFile")
+  "ProfileBuilderNew.buildFromYaml" should {
+    "load profile yaml files" in {
+      ProfileBuilderNew.buildFromYaml(profilePath) shouldBe expectedYaml
     }
-    assert(thrown.getMessage.contains("File not found notExistsFile"))
-  }
 
-  it should "Java test expected exceptions if file path not passed" in {
-    val thrown = intercept[ProfileBuilderException] {
-      ProfileBuilderNew.buildFromYamlJava("")
+    "select profiles from parsed yaml" in {
+      ProfileBuilderNew.buildFromYaml(profilePath).selectProfile("maxPerf") shouldBe expectedProfile
     }
-    assert(thrown.getMessage.contains("File not found"))
-  }
 
-  it should "Java test expected exceptions if incorrect file content" in {
-    val thrown = intercept[ProfileBuilderException] {
-      ProfileBuilderNew.buildFromYamlJava("src/test/resources/profileTemplates/incorrectProfile.yml")
+    "report missing files clearly" in {
+      val thrown = the[ProfileBuilderException] thrownBy {
+        ProfileBuilderNew.buildFromYaml("notExistsFile")
+      }
+
+      thrown.getMessage should include("File not found notExistsFile")
     }
-    assert(thrown.getMessage.contains("Incorrect file content in src/test/resources/profileTemplates/incorrectProfile.yml"))
-  }
 
-  it should "test expected exceptions if file not exists" in {
-    val thrown = intercept[ProfileBuilderException] {
-      ProfileBuilderNew.buildFromYaml("notExistsFile")
+    "report empty file paths clearly" in {
+      val thrown = the[ProfileBuilderException] thrownBy {
+        ProfileBuilderNew.buildFromYaml("")
+      }
+
+      thrown.getMessage should include("File not found")
     }
-    assert(thrown.getMessage.contains("File not found notExistsFile"))
-  }
 
-  it should "test expected exceptions if file path not passed" in {
-    val thrown = intercept[ProfileBuilderException] {
-      ProfileBuilderNew.buildFromYaml("")
+    "report invalid yaml content clearly" in {
+      val path = "src/test/resources/profileTemplates/incorrectProfile.yml"
+
+      val thrown = the[ProfileBuilderException] thrownBy {
+        ProfileBuilderNew.buildFromYaml(path)
+      }
+
+      thrown.getMessage should include(s"Incorrect file content in $path")
     }
-    assert(thrown.getMessage.contains("File not found"))
   }
 
-  it should "test expected exceptions if incorrect file content" in {
-    val thrown = intercept[ProfileBuilderException] {
-      ProfileBuilderNew.buildFromYaml("src/test/resources/profileTemplates/incorrectProfile.yml")
+  "ProfileBuilderNew.buildFromYamlJava" should {
+    "use the same error model as the Scala facade" in {
+      Seq(
+        "notExistsFile"                                            -> "File not found notExistsFile",
+        ""                                                         -> "File not found",
+        "src/test/resources/profileTemplates/incorrectProfile.yml" ->
+          "Incorrect file content in src/test/resources/profileTemplates/incorrectProfile.yml",
+      ).foreach { case (path, expectedMessage) =>
+        withClue(s"path=$path") {
+          val thrown = the[ProfileBuilderException] thrownBy {
+            ProfileBuilderNew.buildFromYamlJava(path)
+          }
+
+          thrown.getMessage should include(expectedMessage)
+        }
+      }
     }
-    assert(thrown.getMessage.contains("Incorrect file content in src/test/resources/profileTemplates/incorrectProfile.yml"))
   }
-
 }
