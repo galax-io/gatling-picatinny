@@ -1,51 +1,65 @@
 package org.galaxio.gatling.utils
 
 import org.scalacheck.Gen
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDateTime, ZoneId}
 
-class RandomDataGeneratorsTest extends AnyFlatSpec with Matchers with ScalaCheckDrivenPropertyChecks {
+class RandomDataGeneratorsTest extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
-  //  //uuid generator
-  val uuidPattern = "([a-f0-9]{8}(-[a-f0-9]{4}){4}[a-f0-9]{8})"
+  private val nonEmptyAlphabet: Gen[String] =
+    Gen.nonEmptyListOf(Gen.alphaNumChar).map(_.mkString.distinct).suchThat(_.nonEmpty)
 
-  //  //date generator
-  val dateFormat              = "yyyy-MM-dd'T'HH:mm"
-  val datePattern             = "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}"
-  val dateFrom: LocalDateTime = LocalDateTime.now()
-  val dateTimezone: ZoneId    = ZoneId.systemDefault()
-  val dateUnit                = ChronoUnit.DAYS
+  "RandomDataGenerators.randomString" should {
+    "generate strings of the requested length using only the supplied alphabet" in {
+      forAll(nonEmptyAlphabet, Gen.choose(1, 50)) { (alphabet, length) =>
+        val generated = RandomDataGenerators.randomString(alphabet)(length)
 
-  it should "generate a string of the specified length" in {
-    forAll(Gen.alphaNumStr.filter(_.nonEmpty), Gen.choose(1, 50)) { case (alphabet, len) =>
-      val x = RandomDataGenerators.randomString(alphabet)(len)
-      x.foreach(c => assert(alphabet.contains(c) && len.equals(x.length)))
+        generated should have length length
+        generated.foreach { char =>
+          withClue(s"generated=$generated alphabet=$alphabet") {
+            alphabet should include(char.toString)
+          }
+        }
+      }
     }
   }
 
-  it should "generate correct random UUID pattern" in {
-    RandomDataGenerators.randomUUID should fullyMatch regex uuidPattern
+  "RandomDataGenerators.randomUUID" should {
+    "generate canonical lowercase UUID strings" in {
+      RandomDataGenerators.randomUUID should fullyMatch regex "[a-f0-9]{8}(-[a-f0-9]{4}){4}[a-f0-9]{8}"
+    }
   }
 
-  it should "generate correct value that is not greater than the input" in {
-    RandomDataGenerators.randomValue(1L, 1) should be <= 1L
+  "RandomDataGenerators.randomValue" should {
+    "stay within the requested inclusive range" in {
+      forAll(Gen.choose(0L, 999_999L), Gen.choose(1L, 1_000L)) { (min, width) =>
+        val max       = min + width
+        val generated = RandomDataGenerators.randomValue(min, max)
+
+        generated should (be >= min and be <= max)
+      }
+    }
   }
 
-  it should "generate correct random date pattern" in {
-    forAll(Gen.choose(1, 100), Gen.choose(1, 100)) { (positiveOffset: Int, negativeOffset: Int) =>
-      RandomDataGenerators
-        .randomDate(
-          positiveOffset,
-          negativeOffset,
-          dateFormat,
-          dateFrom,
-          dateUnit,
-          dateTimezone,
-        ) should fullyMatch regex datePattern
+  "RandomDataGenerators.randomDate" should {
+    "render dates with the requested formatter" in {
+      val dateFrom = LocalDateTime.of(2026, 5, 7, 12, 0)
+
+      forAll(Gen.choose(1, 100), Gen.choose(1, 100)) { (positiveOffset, negativeOffset) =>
+        RandomDataGenerators
+          .randomDate(
+            positiveOffset,
+            negativeOffset,
+            "yyyy-MM-dd'T'HH:mm",
+            dateFrom,
+            ChronoUnit.DAYS,
+            ZoneId.of("UTC"),
+          ) should fullyMatch regex raw"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}"
+      }
     }
   }
 }

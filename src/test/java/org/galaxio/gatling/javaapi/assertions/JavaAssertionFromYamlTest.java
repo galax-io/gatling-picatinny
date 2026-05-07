@@ -1,30 +1,24 @@
 package org.galaxio.gatling.javaapi.assertions;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.galaxio.gatling.javaapi.Assertions.assertionFromYaml;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 import org.galaxio.gatling.javaapi.AssertionBuilderException;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
-public class JavaAssertionFromYamlTest {
+class JavaAssertionFromYamlTest {
 
-    @Test
-    void incorrectFileContent() {
-        AssertionBuilderException thrown = Assertions.assertThrows(AssertionBuilderException.class, () -> assertionFromYaml("src/test/resources/nfrInvalid.yml"));
-        Assertions.assertEquals("Incorrect file content src/test/resources/nfrInvalid.yml", thrown.msg().trim());
-    }
-
-    @Test
-    void fileNotFoundEmptyName() {
-
-        AssertionBuilderException thrown = Assertions.assertThrows(AssertionBuilderException.class, () -> assertionFromYaml(""));
-        Assertions.assertEquals("NFR File not found", thrown.msg().trim());
-    }
-
-    @Test
-    void fileNotFound() {
-
-        AssertionBuilderException thrown = Assertions.assertThrows(AssertionBuilderException.class, () -> assertionFromYaml("perf/nfr1.yml"));
-        Assertions.assertEquals("NFR File not found perf/nfr1.yml", thrown.msg().trim());
+    @ParameterizedTest(name = "path ''{0}'' fails with ''{1}''")
+    @CsvSource({
+        "src/test/resources/nfrInvalid.yml, Incorrect file content src/test/resources/nfrInvalid.yml",
+        "'', NFR File not found",
+        "perf/nfr1.yml, NFR File not found perf/nfr1.yml"
+    })
+    void shouldReportYamlAssertionErrors(String path, String message) {
+        assertThatThrownBy(() -> assertionFromYaml(path))
+                .isInstanceOf(AssertionBuilderException.class)
+                .extracting(error -> ((AssertionBuilderException) error).msg().trim())
+                .isEqualTo(message);
     }
 }

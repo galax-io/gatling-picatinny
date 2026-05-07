@@ -1,31 +1,33 @@
 package org.galaxio.gatling.templates
 
-import org.scalatest.funsuite.AnyFunSuite
+import org.galaxio.gatling.templates.Syntax._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SyntaxSpec extends AnyFunSuite {
-  import Syntax._
+class SyntaxSpec extends AnyWordSpec with Matchers {
 
-  test("makeJson renders explicit interpolation with ~ as #{var}") {
-    val json = makeJson(
-      "id" ~ "userId",
-      "fixed" - "value",
-    )
-    assert(json === "{" + "\"id\": \"#{userId}\",\"fixed\": \"value\"" + "}")
+  "Syntax.makeJson" should {
+    "render explicit interpolation with ~ as a Gatling EL reference" in {
+      makeJson(
+        "id" ~ "userId",
+        "fixed" - "value",
+      ) shouldBe """{"id": "#{userId}","fixed": "value"}"""
+    }
+
+    "render arrays with autodetected Gatling EL string interpolation" in {
+      makeJson(
+        "items" > ("a", "#{x}", 5),
+      ) shouldBe """{"items": ["a","#{x}",5]}"""
+    }
   }
 
-  test("makeJson renders array with autodetected '#{var}' string interpolation") {
-    val json = makeJson(
-      "items" > ("a", "#{x}", 5),
-    )
-    assert(json === "{" + "\"items\": [\"a\",\"#{x}\",5]" + "}")
-  }
-
-  test("makeXml renders fields and arrays with '#{var}' interpolation") {
-    val xml = makeXml(
-      "name" - "foo",
-      "ref" ~ "rid",
-      "list" > ("#{v1}", 2),
-    )
-    assert(xml === "<name>foo</name><ref>#{rid}</ref><list><item>#{v1}</item><item>2</item></list>")
+  "Syntax.makeXml" should {
+    "render fields and arrays with Gatling EL interpolation" in {
+      makeXml(
+        "name" - "foo",
+        "ref" ~ "rid",
+        "list" > ("#{v1}", 2),
+      ) shouldBe "<name>foo</name><ref>#{rid}</ref><list><item>#{v1}</item><item>2</item></list>"
+    }
   }
 }

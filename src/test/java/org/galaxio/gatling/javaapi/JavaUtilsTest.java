@@ -1,78 +1,80 @@
 package org.galaxio.gatling.javaapi;
 
-import io.gatling.javaapi.core.ScenarioBuilder;
-import org.galaxio.gatling.javaapi.utils.RandomPhoneGenerator;
-import org.galaxio.gatling.javaapi.utils.RandomDataGenerators;
-import org.galaxio.gatling.javaapi.utils.phone.*;
-import org.galaxio.gatling.utils.jwt.JwtGeneratorBuilder;
-import org.galaxio.gatling.utils.phone.PhoneFormat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.galaxio.gatling.javaapi.utils.IntensityConverter.getIntensityFromString;
+import static org.galaxio.gatling.javaapi.utils.IntensityConverter.rph;
+import static org.galaxio.gatling.javaapi.utils.IntensityConverter.rpm;
+import static org.galaxio.gatling.javaapi.utils.IntensityConverter.rps;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.List;
+import org.galaxio.gatling.javaapi.utils.RandomDataGenerators;
+import org.galaxio.gatling.javaapi.utils.RandomPhoneGenerator;
+import org.galaxio.gatling.javaapi.utils.phone.PhoneFormatBuilder;
+import org.galaxio.gatling.javaapi.utils.phone.TypePhone;
+import org.galaxio.gatling.utils.phone.PhoneFormat;
+import org.junit.jupiter.api.Test;
 
-import static io.gatling.javaapi.core.CoreDsl.scenario;
-import static org.galaxio.gatling.javaapi.utils.IntensityConverter.*;
-import static org.galaxio.gatling.javaapi.utils.Jwt.jwt;
-import static org.galaxio.gatling.javaapi.utils.Jwt.setJwt;
+class JavaUtilsTest {
+    private static final PhoneFormat RU_MOBILE_FORMAT =
+            PhoneFormatBuilder.apply("+7", 10, List.of("945", "946"), "+X XXX XXX-XX-XX", List.of("123", "321"));
 
-public class JavaUtilsTest {
-    // RandomPhoneGenerator
-    PhoneFormat ruMobileFormat = PhoneFormatBuilder.apply("+7", 10, Arrays.asList("945", "946"), "+X XXX XXX-XX-XX", Arrays.asList("qwe", "weew"));
-    PhoneFormat ruCityPhoneFormat = PhoneFormatBuilder.apply("+7", 10, Arrays.asList("945", "946"), "+X XXX XXX-XX-XX");
+    private static final PhoneFormat RU_CITY_FORMAT =
+            PhoneFormatBuilder.apply("+7", 10, List.of("945", "946"), "+X XXX XXX-XX-XX");
 
-    String randomPhone1 = RandomPhoneGenerator.randomPhone(List.of(ruMobileFormat, ruCityPhoneFormat), TypePhone.E164PhoneNumber());
-    String randomPhone2 = RandomPhoneGenerator.randomPhone("pathToFormats", TypePhone.E164PhoneNumber());
+    @Test
+    void shouldConvertIntensityValuesToRequestsPerSecond() {
+        assertThat(rph(3600.0)).isEqualTo(1.0);
+        assertThat(rpm(60.0)).isEqualTo(1.0);
+        assertThat(rps(42.0)).isEqualTo(42.0);
+        assertThat(getIntensityFromString("30")).isEqualTo(30.0);
+    }
 
-    // RandomDataGenerators
-    String randomString = RandomDataGenerators.randomString("asd", 2);
-    String digitString = RandomDataGenerators.digitString(2);
-    String hexString = RandomDataGenerators.hexString(3);
-    String alphanumericString = RandomDataGenerators.alphanumericString(1);
-    String randomOnlyLettersString = RandomDataGenerators.randomOnlyLettersString(1);
-    String randomCyrillicString = RandomDataGenerators.randomCyrillicString(1);
-    int randomDigit1 = RandomDataGenerators.randomDigit();
-    int randomDigit2 = RandomDataGenerators.randomDigit(1);
-    int randomDigit3 = RandomDataGenerators.randomDigit(1, 2);
-    long randomDigit4 = RandomDataGenerators.randomDigit(3000000000L);
-    long randomDigit5 = RandomDataGenerators.randomDigit(3000000000L, 3000000005L);
-    double randomDigit6 = RandomDataGenerators.randomDigit(2.0);
-    double randomDigit7 = RandomDataGenerators.randomDigit(2.5, 3.6);
-    float randomDigit8 = RandomDataGenerators.randomDigit(2.5f);
-    float randomDigit9 = RandomDataGenerators.randomDigit(2.5f, 3.6f);
-    String randomUUID = RandomDataGenerators.randomUUID();
-    String randomPAN = RandomDataGenerators.randomPAN(List.of("123", "234"));
-    String randomOGRN = RandomDataGenerators.randomOGRN();
-    String randomPSRNSP = RandomDataGenerators.randomPSRNSP();
-    String randomKPP = RandomDataGenerators.randomKPP();
-    String randomNatITN = RandomDataGenerators.randomNatITN();
-    String randomJurITN = RandomDataGenerators.randomJurITN();
-    String randomSNILS = RandomDataGenerators.randomSNILS();
-    String randomRusPassport = RandomDataGenerators.randomRusPassport();
-    String randomDate1 = RandomDataGenerators.randomDate(2, 1, "yyyy.MM.dd", LocalDateTime.now(), ChronoUnit.DAYS, ZoneId.of("Australia/Sydney"));
-    String randomDate2 = RandomDataGenerators.randomDate(1, LocalDateTime.now(), ChronoUnit.DAYS, ZoneId.of("Australia/Sydney"));
-    String randomDate3 = RandomDataGenerators.randomDate(1, "yyyy-MM-dd", LocalDateTime.now(), ChronoUnit.DAYS, ZoneId.of("Australia/Sydney"));
-    String currentDate = RandomDataGenerators.currentDate(DateTimeFormatter.ofPattern("MM:dd"), ZoneId.of("Australia/Sydney"));
+    @Test
+    void shouldGenerateRandomPhoneThroughJavaFacade() {
+        String phone = RandomPhoneGenerator.randomPhone(List.of(RU_MOBILE_FORMAT, RU_CITY_FORMAT), TypePhone.E164PhoneNumber());
 
-    // jwt
-    static JwtGeneratorBuilder jwtGenerator = jwt("HS256", "jwtSecretToken")
-            .defaultHeader()
-            .payloadFromResource("/");
+        assertThat(phone).matches("^\\+?\\d{6,15}$");
+    }
 
-    public static ScenarioBuilder scn = scenario("Runs Scenario")
-            .exec(setJwt(jwtGenerator, "jwtToken"));
+    @Test
+    void shouldGenerateBoundedRandomDataThroughJavaFacade() {
+        assertThat(RandomDataGenerators.randomString("abc", 12)).hasSize(12).matches("[abc]+");
+        assertThat(RandomDataGenerators.digitString(4)).hasSize(4).containsOnlyDigits();
+        assertThat(RandomDataGenerators.hexString(8)).hasSize(8).matches("[a-f0-9]+");
+        assertThat(RandomDataGenerators.alphanumericString(8)).hasSize(8).matches("[A-Za-z0-9]+");
+        assertThat(RandomDataGenerators.randomOnlyLettersString(8)).hasSize(8).matches("[A-Za-z]+");
+        assertThat(RandomDataGenerators.randomCyrillicString(8)).hasSize(8);
+        assertThat(RandomDataGenerators.randomDigit(1, 3)).isBetween(1, 3);
+        assertThat(RandomDataGenerators.randomDigit(3_000_000_000L, 3_000_000_005L)).isBetween(3_000_000_000L, 3_000_000_005L);
+        assertThat(RandomDataGenerators.randomDigit(2.5, 3.6)).isBetween(2.5, 3.6);
+        assertThat(RandomDataGenerators.randomDigit(2.5f, 3.6f)).isBetween(2.5f, 3.6f);
+    }
 
-    // IntensityConverter
-    Double intensity = 30.0;
-    String s_intensity = "30";
-    Double intensity_prh = rph(intensity);
-    Double intensity_prm = rpm(intensity);
-    Double intensity_prs = rps(intensity);
-    Double _intensity = getIntensityFromString(s_intensity);
+    @Test
+    void shouldGenerateDomainIdentifiersThroughJavaFacade() {
+        assertThat(RandomDataGenerators.randomUUID()).matches("[a-f0-9]{8}(-[a-f0-9]{4}){4}[a-f0-9]{8}");
+        assertThat(RandomDataGenerators.randomPAN(List.of("123456"))).startsWith("123456").hasSizeGreaterThanOrEqualTo(16);
+        assertThat(RandomDataGenerators.randomOGRN()).hasSize(13).containsOnlyDigits();
+        assertThat(RandomDataGenerators.randomPSRNSP()).hasSize(15).containsOnlyDigits();
+        assertThat(RandomDataGenerators.randomKPP()).hasSize(9).containsOnlyDigits();
+        assertThat(RandomDataGenerators.randomNatITN()).hasSize(10).containsOnlyDigits();
+        assertThat(RandomDataGenerators.randomJurITN()).hasSize(12).containsOnlyDigits();
+        assertThat(RandomDataGenerators.randomSNILS()).hasSize(11).containsOnlyDigits();
+        assertThat(RandomDataGenerators.randomRusPassport()).hasSize(10).containsOnlyDigits();
+    }
 
-    Runnable startupBannerFacade = Utility::banner;
-    Runnable diagnosticsFacade = Utility::diagnostics;
+    @Test
+    void shouldGenerateDatesThroughJavaFacade() {
+        LocalDateTime now = LocalDateTime.of(2026, 5, 7, 12, 0);
+        ZoneId zone = ZoneId.of("UTC");
+
+        assertThat(RandomDataGenerators.randomDate(2, 1, "yyyy.MM.dd", now, ChronoUnit.DAYS, zone)).matches("\\d{4}\\.\\d{2}\\.\\d{2}");
+        assertThat(RandomDataGenerators.randomDate(1, now, ChronoUnit.DAYS, zone)).matches("\\d{4}-\\d{2}-\\d{2}");
+        assertThat(RandomDataGenerators.randomDate(1, "yyyy-MM-dd", now, ChronoUnit.DAYS, zone)).matches("\\d{4}-\\d{2}-\\d{2}");
+        assertThat(RandomDataGenerators.currentDate(DateTimeFormatter.ofPattern("MM:dd"), zone)).matches("\\d{2}:\\d{2}");
+    }
 }

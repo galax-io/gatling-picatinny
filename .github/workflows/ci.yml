@@ -52,6 +52,14 @@ jobs:
         with:
           gradle-version: '8.6'
 
+      - name: Setup Go for galaxio CLI
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Install galaxio CLI from main
+        run: go install github.com/galax-io/galaxio-cli/cmd/galaxio@main
+
       - name: Cache Coursier
         uses: coursier/cache-action@v8
 
@@ -75,7 +83,7 @@ jobs:
         run: sbt test
 
       - name: Publish local Picatinny artifact for Gatling projects
-        run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishM2
+        run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishLocal publishM2
 
       - name: Java Maven Gatling Project
         run: |
@@ -85,9 +93,8 @@ jobs:
       - name: Kotlin Gradle Gatling Project
         run: gradle -p examples/kotlin-gradle-example clean gatlingRun --all
 
-      - name: Scala sbt Gatling Project
-        working-directory: examples/scala-sbt-example
-        run: sbt Gatling/test
+      - name: Scala sbt Gatling Project from template main
+        run: scripts/test-scala-sbt-template.sh
 
   coverage:
     name: Coverage

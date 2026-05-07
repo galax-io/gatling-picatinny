@@ -1,38 +1,49 @@
 package org.galaxio.gatling.utils
 
-import org.scalacheck.Arbitrary._
-import org.scalatest.flatspec.AnyFlatSpec
+import org.galaxio.gatling.utils.IntensityConverter._
+import org.scalacheck.Gen
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
-class IntensityConverterTest extends AnyFlatSpec with Matchers with ScalaCheckDrivenPropertyChecks {
+class IntensityConverterTest extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
-  import org.galaxio.gatling.utils.IntensityConverter._
+  private val finiteDouble: Gen[Double] =
+    Gen.chooseNum(-1_000_000.0, 1_000_000.0)
 
-  val intensityValue           = 3600.0
-  val intensityString          = s"$intensityValue rps"
-  val intensityIncorrectString = s"$intensityValue jpeg"
+  "IntensityConverter syntax" should {
+    "convert hourly rates to requests per second" in {
+      forAll(finiteDouble) { value =>
+        value.rph shouldBe value / 3600.0
+      }
+    }
 
-  it should "convert rph correctly" in {
-    forAll { i: Double =>
-      (i rph) shouldBe (i / 3600.0)
+    "convert minute rates to requests per second" in {
+      forAll(finiteDouble) { value =>
+        value.rpm shouldBe value / 60.0
+      }
+    }
+
+    "leave requests per second unchanged" in {
+      forAll(finiteDouble) { value =>
+        value.rps shouldBe value
+      }
     }
   }
-  it should "convert rpm correctly" in {
-    forAll { i: Double =>
-      (i rpm) shouldBe (i / 60.0)
-    }
-  }
-  it should "convert rps correctly" in {
-    forAll { i: Double =>
-      (i rps) shouldBe i
-    }
-  }
-  it should "display correctly intensity value from string" in {
-    getIntensityFromString(intensityString) shouldBe intensityValue
-  }
 
-  it should "display correctly intensity value from incorrect string throw exception" in {
-    assertThrows[IllegalArgumentException] { getIntensityFromString(intensityIncorrectString) }
+  "getIntensityFromString" should {
+    "parse explicit rps values" in {
+      getIntensityFromString("3600.0 rps") shouldBe 3600.0
+    }
+
+    "parse plain numeric values as requests per second" in {
+      getIntensityFromString("30") shouldBe 30.0
+    }
+
+    "reject unsupported units" in {
+      an[IllegalArgumentException] shouldBe thrownBy {
+        getIntensityFromString("3600.0 jpeg")
+      }
+    }
   }
 }
