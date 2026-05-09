@@ -8,8 +8,10 @@ import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDateTime, ZoneId}
+import scala.annotation.nowarn
 import scala.util.Random
 
+@nowarn("cat=deprecation")
 object PicatinnyFeeders {
   private val ruMobileFormat = PhoneFormat(
     countryCode = "+7",
