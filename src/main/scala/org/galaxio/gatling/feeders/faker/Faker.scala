@@ -73,38 +73,20 @@ object Faker {
 
   /** Person data generators. */
   object person {
-    private val MaleFirstNames   =
-      Vector("Ivan", "Alexey", "Dmitry", "Sergey", "Nicolas", "John", "Pedro", "Lucas", "Martin", "Andres")
-    private val FemaleFirstNames =
-      Vector("Anna", "Maria", "Elena", "Sofia", "Camila", "Julia", "Lucia", "Valentina", "Fernanda", "Olga")
-    private val LastNames        =
-      Vector("Ivanov", "Petrov", "Sidorov", "Garcia", "Silva", "Smith", "Brown", "Martinez", "Fernandez", "Volkov")
-    private val JobTitles        =
-      Vector(
-        "Performance Engineer",
-        "QA Engineer",
-        "Backend Developer",
-        "SRE",
-        "Product Analyst",
-        "Data Engineer",
-        "Security Engineer",
-      )
-    private val Prefixes         = Vector("Mr.", "Mrs.", "Ms.", "Dr.")
-
     def gender(): Generator[Gender] =
       oneOf(Gender.Male, Gender.Female, Gender.Unspecified)
 
     def firstName(gender: Gender = Gender.Unspecified): Generator[String] = gender match {
-      case Gender.Male        => oneOf(MaleFirstNames)
-      case Gender.Female      => oneOf(FemaleFirstNames)
-      case Gender.Unspecified => oneOf(MaleFirstNames ++ FemaleFirstNames)
+      case Gender.Male        => oneOf(FakerData.maleFirstNames)
+      case Gender.Female      => oneOf(FakerData.femaleFirstNames)
+      case Gender.Unspecified => oneOf(FakerData.maleFirstNames ++ FakerData.femaleFirstNames)
     }
 
     def lastName(): Generator[String] =
-      oneOf(LastNames)
+      oneOf(FakerData.lastNames)
 
     def prefix(): Generator[String] =
-      oneOf(Prefixes)
+      oneOf(FakerData.personPrefixes)
 
     def fullName(gender: Gender = Gender.Unspecified): Generator[String] =
       for {
@@ -113,7 +95,7 @@ object Faker {
       } yield s"$first $last"
 
     def jobTitle(): Generator[String] =
-      oneOf(JobTitles)
+      oneOf(FakerData.jobTitles)
 
     def companyEmailName(): Generator[String] =
       fullName().map(_.toLowerCase.replaceAll("[^a-z0-9]+", ".").stripPrefix(".").stripSuffix("."))
@@ -121,15 +103,8 @@ object Faker {
 
   /** Internet-oriented generators. */
   object internet {
-    private val Domains    = Vector("example.com", "test.local", "load.test", "picatinny.dev")
-    private val UserAgents = Vector(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 Version/17.4 Safari/605.1.15",
-      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
-    )
-
     def domain(): Generator[String] =
-      oneOf(Domains)
+      oneOf(FakerData.domains)
 
     def email(domain: String = "example.com"): Generator[String] =
       for {
@@ -153,7 +128,7 @@ object Faker {
       string.fromAlphabet("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*", length)
 
     def userAgent(): Generator[String] =
-      oneOf(UserAgents)
+      oneOf(FakerData.userAgents)
 
     def ipv4(): Generator[String] =
       (number.int(1, 254), number.int(0, 255), number.int(0, 255), number.int(1, 254)).mapN { (a, b, c, d) =>
@@ -173,15 +148,6 @@ object Faker {
 
   /** Location and address generators for common payload fields. */
   object location {
-    private val Cities: Map[Country, Vector[String]] = Map(
-      Country.RU -> Vector("Moscow", "Saint Petersburg", "Kazan", "Novosibirsk"),
-      Country.AR -> Vector("Buenos Aires", "Cordoba", "Rosario", "Mendoza"),
-      Country.BR -> Vector("Sao Paulo", "Rio de Janeiro", "Brasilia", "Curitiba"),
-      Country.US -> Vector("New York", "Austin", "Seattle", "Chicago"),
-      Country.DE -> Vector("Berlin", "Munich", "Hamburg", "Frankfurt"),
-    )
-    private val Streets                              = Vector("Main Street", "Performance Avenue", "Load Test Road", "Central Boulevard", "Liberty Street")
-
     def country(): Generator[Country] =
       oneOf(
         Country.RU,
@@ -200,10 +166,10 @@ object Faker {
       country().map(_.iso2)
 
     def city(country: Country = Country.US): Generator[String] =
-      oneOf(Cities.getOrElse(country, Cities(Country.US)))
+      oneOf(FakerData.citiesByCountry.getOrElse(country, FakerData.citiesByCountry(Country.US)))
 
     def streetName(): Generator[String] =
-      oneOf(Streets)
+      oneOf(FakerData.streetNames)
 
     def streetAddress(country: Country = Country.US): Generator[String] =
       for {
@@ -331,7 +297,7 @@ object Faker {
       amount(min, max).map(Money(_, currency))
 
     def currency(): Generator[String] =
-      oneOf("USD", "EUR", "RUB", "BRL", "ARS", "GBP", "AED")
+      oneOf(FakerData.currencies)
 
     def accountNumber(length: Int = 20): Generator[String] =
       string.numeric(length)
@@ -358,11 +324,8 @@ object Faker {
 
   /** Commerce generators for request bodies and order scenarios. */
   object commerce {
-    private val Products   = Vector("Laptop", "Phone", "Subscription", "Support package", "Gift card")
-    private val Categories = Vector("electronics", "services", "finance", "books", "travel")
-
-    def productName(): Generator[String]                                                             = oneOf(Products)
-    def category(): Generator[String]                                                                = oneOf(Categories)
+    def productName(): Generator[String]                                                             = oneOf(FakerData.products)
+    def category(): Generator[String]                                                                = oneOf(FakerData.categories)
     def sku(prefix: String = "SKU"): Generator[String]                                               =
       string.alphanumeric(10).map(value => s"$prefix-$value")
     def orderId(prefix: String = "ord"): Generator[String]                                           =
@@ -389,18 +352,8 @@ object Faker {
       case PhoneFormatMode.TollFree      => TypePhone.TollFreePhoneNumber
     }
 
-    private def countryFormats(country: Country): Seq[PhoneFormat] = country match {
-      case Country.RU => Seq(PhoneFormat("+7", 10, Seq("903", "906", "908", "926", "999"), "+X XXX XXX-XX-XX"))
-      case Country.AR => Seq(PhoneFormat("+54", 10, Seq("11", "221", "351", "261"), "+XX XXX XXX-XXXX"))
-      case Country.BR => Seq(PhoneFormat("+55", 11, Seq("11", "21", "31", "41"), "+XX XX XXXXX-XXXX"))
-      case Country.GB => Seq(PhoneFormat("+44", 10, Seq("7400", "7500", "7700"), "+XX XXXX XXXXXX"))
-      case Country.DE => Seq(PhoneFormat("+49", 10, Seq("151", "152", "160", "170"), "+XX XXX XXXXXXX"))
-      case Country.FR => Seq(PhoneFormat("+33", 9, Seq("6", "7"), "+XX X XX XX XX XX"))
-      case Country.ES => Seq(PhoneFormat("+34", 9, Seq("6", "7"), "+XX XXX XXX XXX"))
-      case Country.IT => Seq(PhoneFormat("+39", 10, Seq("320", "328", "333"), "+XX XXX XXX XXXX"))
-      case Country.AE => Seq(PhoneFormat("+971", 9, Seq("50", "52", "54", "55"), "+XXX XX XXX XXXX"))
-      case _          => Seq.empty
-    }
+    private def countryFormats(country: Country): Seq[PhoneFormat] =
+      FakerData.phoneFormatsByCountry.getOrElse(country, Seq.empty)
   }
 
   /** Passport generators. */
@@ -459,10 +412,8 @@ object Faker {
 
   /** Weather values for synthetic telemetry and environment-like payloads. */
   object weather {
-    private val Conditions = Vector("clear", "cloudy", "rain", "storm", "snow", "fog", "wind")
-
     def condition(): Generator[String] =
-      oneOf(Conditions)
+      oneOf(FakerData.weatherConditions)
 
     def temperatureCelsius(min: Double = -30.0, max: Double = 45.0): Generator[Double] =
       number.double(min, max).map(value => BigDecimal(value).setScale(1, RoundingMode.HALF_UP).toDouble)
@@ -476,23 +427,8 @@ object Faker {
 
   /** Lorem ipsum generators for payload text. */
   object lorem {
-    private val Words = Vector(
-      "lorem",
-      "ipsum",
-      "dolor",
-      "sit",
-      "amet",
-      "consectetur",
-      "adipiscing",
-      "elit",
-      "sed",
-      "do",
-      "eiusmod",
-      "tempor",
-    )
-
     def word(): Generator[String] =
-      oneOf(Words)
+      oneOf(FakerData.loremWords)
 
     def words(count: Int): Generator[String] = {
       require(count > 0, s"count must be > 0: $count")

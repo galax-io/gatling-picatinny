@@ -127,6 +127,26 @@ The first slice includes:
 - `Faker.weather.condition`, `temperatureCelsius`, `humidityPercent`, `pressureHPa`
 - `Faker.lorem.word`, `words`, `sentence`
 
+## Predefined Data
+
+`FakerData` exposes the predefined catalogs used by `Faker`, so scenarios can build custom generators without copying internal data.
+
+```scala
+val qaJob = Faker.oneOf(FakerData.jobTitles.filter(_.contains("Engineer")))
+val ruCity = Faker.oneOf(FakerData.citiesByCountry(Country.RU))
+```
+
+Available catalogs include:
+
+- `FakerData.maleFirstNames`, `femaleFirstNames`, `lastNames`, `personPrefixes`, `jobTitles`
+- `FakerData.domains`, `userAgents`
+- `FakerData.citiesByCountry`, `streetNames`
+- `FakerData.currencies`
+- `FakerData.products`, `categories`
+- `FakerData.weatherConditions`
+- `FakerData.loremWords`
+- `FakerData.phoneFormatsByCountry`
+
 ## Migration Examples
 
 Old:
