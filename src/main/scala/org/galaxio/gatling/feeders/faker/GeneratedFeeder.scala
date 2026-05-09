@@ -4,10 +4,8 @@ import io.gatling.core.feeder.{Feeder, Record}
 
 /** Gatling feeder bridge for faker generators.
   *
-  * Use this object when generated values need to become Gatling session
-  * variables. Heterogeneous records are represented as `Feeder[Any]`, matching
-  * how Gatling scenarios usually combine strings, numbers, booleans, and dates
-  * in the same session map.
+  * Use this object when generated values need to become Gatling session variables. Heterogeneous records are represented as
+  * `Feeder[Any]`, matching how Gatling scenarios usually combine strings, numbers, booleans, and dates in the same session map.
   */
 object GeneratedFeeder {
 

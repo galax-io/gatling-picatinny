@@ -2,11 +2,9 @@ package org.galaxio.gatling.feeders.faker
 
 /** A lazy, composable description of how to produce a value.
   *
-  * `Generator` is intentionally small: it gives load-test code the useful
-  * functional operations (`map`, `flatMap`, `zip`) without exposing Cats or
-  * implementation details in the public API. Values are generated only when
-  * `sample()` is called directly or when a Gatling feeder asks for the next
-  * record.
+  * `Generator` is intentionally small: it gives load-test code the useful functional operations (`map`, `flatMap`, `zip`)
+  * without exposing Cats or implementation details in the public API. Values are generated only when `sample()` is called
+  * directly or when a Gatling feeder asks for the next record.
   *
   * @tparam A
   *   generated value type
