@@ -3,6 +3,7 @@ package org.galaxio.gatling.feeders
 import io.gatling.core.feeder.Feeder
 import org.galaxio.gatling.utils.RandomDataGenerators
 
+@deprecated("Use org.galaxio.gatling.feeders.faker.Faker.ru.inn.person with GeneratedFeeder instead", "faker-api")
 object RandomNatITNFeeder {
 
   /** Creates a feeder that generates a random ITN of the natural person (Individual Taxpayer Number)

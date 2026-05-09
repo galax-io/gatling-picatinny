@@ -3,6 +3,7 @@ package org.galaxio.gatling.feeders
 import io.gatling.core.feeder.Feeder
 import org.galaxio.gatling.utils.RandomDataGenerators
 
+@deprecated("Use org.galaxio.gatling.feeders.faker.Faker.ru.ogrnip with GeneratedFeeder instead", "faker-api")
 object RandomPSRNSPFeeder {
 
   /** Creates a feeder that generates a random PSRNSP (Primary State Registration Number of the Sole Proprietor)

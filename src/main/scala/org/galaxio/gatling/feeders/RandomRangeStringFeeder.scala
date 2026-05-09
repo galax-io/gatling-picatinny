@@ -3,6 +3,7 @@ package org.galaxio.gatling.feeders
 import io.gatling.core.feeder.Feeder
 import org.galaxio.gatling.utils.RandomDataGenerators
 
+@deprecated("Use org.galaxio.gatling.feeders.faker.Faker.string.lengthBetween with GeneratedFeeder instead", "faker-api")
 object RandomRangeStringFeeder {
 
   lazy val alphabet = """abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#%"&*()_-+={}<>?|:[].~"""
