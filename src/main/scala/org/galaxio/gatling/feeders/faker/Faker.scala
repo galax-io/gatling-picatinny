@@ -12,15 +12,14 @@ import scala.math.BigDecimal.RoundingMode
 
 /** Faker facade for generating load-test data.
   *
-  * The API is intentionally domain-oriented: use `Faker.internet.email()` or
-  * `Faker.ru.inn.person()` in scenarios, then pass generators into
-  * `GeneratedFeeder` when Gatling needs session records.
+  * The API is intentionally domain-oriented: use `Faker.internet.email()` or `Faker.ru.inn.person()` in scenarios, then pass
+  * generators into `GeneratedFeeder` when Gatling needs session records.
   */
 object Faker {
 
   /** UUID generators. */
   object uuid {
-    def value: Generator[UUID]   = Generator.delay(UUID.randomUUID())
+    def value: Generator[UUID]    = Generator.delay(UUID.randomUUID())
     def string: Generator[String] = value.map(_.toString)
   }
 
@@ -74,13 +73,13 @@ object Faker {
 
   /** Person data generators. */
   object person {
-    private val MaleFirstNames =
+    private val MaleFirstNames   =
       Vector("Ivan", "Alexey", "Dmitry", "Sergey", "Nicolas", "John", "Pedro", "Lucas", "Martin", "Andres")
     private val FemaleFirstNames =
       Vector("Anna", "Maria", "Elena", "Sofia", "Camila", "Julia", "Lucia", "Valentina", "Fernanda", "Olga")
-    private val LastNames =
+    private val LastNames        =
       Vector("Ivanov", "Petrov", "Sidorov", "Garcia", "Silva", "Smith", "Brown", "Martinez", "Fernandez", "Volkov")
-    private val JobTitles =
+    private val JobTitles        =
       Vector(
         "Performance Engineer",
         "QA Engineer",
@@ -90,7 +89,7 @@ object Faker {
         "Data Engineer",
         "Security Engineer",
       )
-    private val Prefixes = Vector("Mr.", "Mrs.", "Ms.", "Dr.")
+    private val Prefixes         = Vector("Mr.", "Mrs.", "Ms.", "Dr.")
 
     def gender(): Generator[Gender] =
       oneOf(Gender.Male, Gender.Female, Gender.Unspecified)
@@ -122,7 +121,7 @@ object Faker {
 
   /** Internet-oriented generators. */
   object internet {
-    private val Domains = Vector("example.com", "test.local", "load.test", "picatinny.dev")
+    private val Domains    = Vector("example.com", "test.local", "load.test", "picatinny.dev")
     private val UserAgents = Vector(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 Version/17.4 Safari/605.1.15",
@@ -134,7 +133,7 @@ object Faker {
 
     def email(domain: String = "example.com"): Generator[String] =
       for {
-        name <- person.fullName()
+        name   <- person.fullName()
         suffix <- string.alphanumeric(6)
       } yield emailFromName(name, domain, suffix)
 
@@ -166,7 +165,7 @@ object Faker {
 
     private def emailFromName(name: String, domain: String, suffix: String): String = {
       require(domain.nonEmpty, "Email domain must be non-empty")
-      val localPart = name.toLowerCase.replaceAll("[^a-z0-9]+", ".").stripPrefix(".").stripSuffix(".")
+      val localPart           = name.toLowerCase.replaceAll("[^a-z0-9]+", ".").stripPrefix(".").stripSuffix(".")
       val normalizedLocalPart = if (localPart.isEmpty) "user" else localPart
       s"$normalizedLocalPart.$suffix@$domain"
     }
@@ -181,10 +180,21 @@ object Faker {
       Country.US -> Vector("New York", "Austin", "Seattle", "Chicago"),
       Country.DE -> Vector("Berlin", "Munich", "Hamburg", "Frankfurt"),
     )
-    private val Streets = Vector("Main Street", "Performance Avenue", "Load Test Road", "Central Boulevard", "Liberty Street")
+    private val Streets                              = Vector("Main Street", "Performance Avenue", "Load Test Road", "Central Boulevard", "Liberty Street")
 
     def country(): Generator[Country] =
-      oneOf(Country.RU, Country.AR, Country.BR, Country.US, Country.GB, Country.DE, Country.FR, Country.ES, Country.IT, Country.AE)
+      oneOf(
+        Country.RU,
+        Country.AR,
+        Country.BR,
+        Country.US,
+        Country.GB,
+        Country.DE,
+        Country.FR,
+        Country.ES,
+        Country.IT,
+        Country.AE,
+      )
 
     def countryCode(): Generator[String] =
       country().map(_.iso2)
@@ -223,13 +233,13 @@ object Faker {
       location.country()
 
     def currency(country: Country): Generator[String] = country match {
-      case Country.RU => Generator.const("RUB")
-      case Country.AR => Generator.const("ARS")
-      case Country.BR => Generator.const("BRL")
-      case Country.GB => Generator.const("GBP")
-      case Country.AE => Generator.const("AED")
+      case Country.RU                                        => Generator.const("RUB")
+      case Country.AR                                        => Generator.const("ARS")
+      case Country.BR                                        => Generator.const("BRL")
+      case Country.GB                                        => Generator.const("GBP")
+      case Country.AE                                        => Generator.const("AED")
       case Country.DE | Country.FR | Country.ES | Country.IT => Generator.const("EUR")
-      case _ => Generator.const("USD")
+      case _                                                 => Generator.const("USD")
     }
 
     def languageCode(country: Country): Generator[String] = country match {
@@ -240,7 +250,7 @@ object Faker {
       case Country.FR => Generator.const("fr")
       case Country.ES => Generator.const("es")
       case Country.IT => Generator.const("it")
-      case _ => Generator.const("en")
+      case _          => Generator.const("en")
     }
   }
 
@@ -328,15 +338,16 @@ object Faker {
 
     def bic(): Generator[String] =
       for {
-        bank <- string.alphabetic(4).map(_.toUpperCase)
-        country <- location.countryCode()
+        bank         <- string.alphabetic(4).map(_.toUpperCase)
+        country      <- location.countryCode()
         locationCode <- string.alphanumeric(2).map(_.toUpperCase)
-        branch <- string.alphanumeric(3).map(_.toUpperCase)
+        branch       <- string.alphanumeric(3).map(_.toUpperCase)
       } yield s"$bank$country$locationCode$branch"
 
     def iban(country: Country = Country.DE): Generator[String] = country match {
       case Country.DE => string.numeric(18).map(value => s"DE89$value")
-      case Country.GB => string.alphanumeric(4).map(_.toUpperCase).zip(string.numeric(14)).map { case (bank, digits) => s"GB82$bank$digits" }
+      case Country.GB =>
+        string.alphanumeric(4).map(_.toUpperCase).zip(string.numeric(14)).map { case (bank, digits) => s"GB82$bank$digits" }
       case Country.FR => string.numeric(23).map(value => s"FR14$value")
       case _          => string.alphanumeric(20).map(value => s"${country.iso2}00${value.toUpperCase}")
     }
@@ -350,11 +361,11 @@ object Faker {
     private val Products   = Vector("Laptop", "Phone", "Subscription", "Support package", "Gift card")
     private val Categories = Vector("electronics", "services", "finance", "books", "travel")
 
-    def productName(): Generator[String] = oneOf(Products)
-    def category(): Generator[String]    = oneOf(Categories)
-    def sku(prefix: String = "SKU"): Generator[String] =
+    def productName(): Generator[String]                                                             = oneOf(Products)
+    def category(): Generator[String]                                                                = oneOf(Categories)
+    def sku(prefix: String = "SKU"): Generator[String]                                               =
       string.alphanumeric(10).map(value => s"$prefix-$value")
-    def orderId(prefix: String = "ord"): Generator[String] =
+    def orderId(prefix: String = "ord"): Generator[String]                                           =
       string.alphanumeric(16).map(value => s"$prefix-$value")
     def price(min: BigDecimal = BigDecimal(1), max: BigDecimal = BigDecimal(1000)): Generator[Money] =
       finance.money(min, max, "USD")
@@ -502,8 +513,9 @@ object Faker {
   def oneOf[A](first: A, second: A, rest: A*): Generator[A] =
     oneOf(first +: second +: rest)
 
-  implicit final class GeneratorTuple4Ops[A, B, C, D](private val tuple: (Generator[A], Generator[B], Generator[C], Generator[D]))
-      extends AnyVal {
+  implicit final class GeneratorTuple4Ops[A, B, C, D](
+      private val tuple: (Generator[A], Generator[B], Generator[C], Generator[D]),
+  ) extends AnyVal {
     def mapN[E](f: (A, B, C, D) => E): Generator[E] =
       for {
         a <- tuple._1

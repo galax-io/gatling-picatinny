@@ -4,8 +4,7 @@ import java.math.{BigDecimal => JBigDecimal}
 
 /** A generated Gatling field with a stable session key and typed value generator.
   *
-  * Heterogeneous records are widened to `Any` only at the feeder boundary, where
-  * Gatling itself stores session values in a map.
+  * Heterogeneous records are widened to `Any` only at the feeder boundary, where Gatling itself stores session values in a map.
   */
 final case class Field[+A](name: String, generator: Generator[A]) {
   require(name.nonEmpty, "Generated feeder field name must be non-empty")
@@ -16,8 +15,7 @@ final case class Field[+A](name: String, generator: Generator[A]) {
 
 /** ISO-like country identifiers supported by the faker API.
   *
-  * The catalog will grow over time. Unknown countries can still be represented
-  * with `Country.custom`.
+  * The catalog will grow over time. Unknown countries can still be represented with `Country.custom`.
   */
 sealed abstract class Country(val iso2: String, val displayName: String)
 
