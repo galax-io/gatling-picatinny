@@ -1,7 +1,7 @@
 package org.galaxio.performance.picatinny.feeders
 
 import io.gatling.core.Predef._
-import io.gatling.core.feeder.Feeder
+import io.gatling.core.feeder.{Feeder, FeederBuilderBase}
 import org.galaxio.gatling.feeders.faker.Predef._
 import org.galaxio.gatling.feeders.faker._
 
@@ -49,7 +49,7 @@ object GeneratedPicatinnyFeeders {
     )
 
   /** In-memory collections can become feeders without replacing Gatling CSV/JDBC feeders. */
-  val countries: Feeder[Any] =
+  val countries: FeederBuilderBase[Any] =
     List("RU", "AR", "BR").toFeeder("country").circular
 
   /** Existing Gatling feeders can be enriched with generated fields. */
