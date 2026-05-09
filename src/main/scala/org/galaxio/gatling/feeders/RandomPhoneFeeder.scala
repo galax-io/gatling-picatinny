@@ -5,6 +5,7 @@ import org.galaxio.gatling.utils.RandomPhoneGenerator
 import org.galaxio.gatling.utils.phone.TypePhone.TypePhone
 import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
 
+@deprecated("Use org.galaxio.gatling.feeders.faker.Faker.phone with GeneratedFeeder instead", "faker-api")
 object RandomPhoneFeeder {
 
   def apply(

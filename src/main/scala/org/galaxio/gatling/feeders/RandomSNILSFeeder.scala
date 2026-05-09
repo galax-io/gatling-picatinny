@@ -3,6 +3,7 @@ package org.galaxio.gatling.feeders
 import io.gatling.core.feeder.Feeder
 import org.galaxio.gatling.utils.RandomDataGenerators
 
+@deprecated("Use org.galaxio.gatling.feeders.faker.Faker.ru.snils with GeneratedFeeder instead", "faker-api")
 object RandomSNILSFeeder {
 
   /** Creates a feeder that generates a random SNILS (Insurance Number of Individual Ledger Account)

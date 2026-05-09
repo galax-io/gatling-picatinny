@@ -6,6 +6,7 @@ import java.time.temporal.{ChronoUnit, TemporalUnit}
 import io.gatling.core.feeder.Feeder
 import org.galaxio.gatling.utils.RandomDataGenerators
 
+@deprecated("Use org.galaxio.gatling.feeders.faker.Faker.date.range with GeneratedFeeder.records instead", "faker-api")
 object RandomDateRangeFeeder {
 
   def apply(
