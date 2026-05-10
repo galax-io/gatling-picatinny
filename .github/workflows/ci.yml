@@ -85,15 +85,62 @@ jobs:
       - name: Publish local Picatinny artifact for Gatling projects
         run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishLocal publishM2
 
-      - name: Java Maven Gatling Project
+      - name: Java Maven Gatling project from template main
+        shell: bash
         run: |
-          mvn -B -f examples/java-maven-example/pom.xml clean test-compile
-          mvn -B -f examples/java-maven-example/pom.xml gatling:test
+          set -euo pipefail
+
+          work_dir="$(mktemp -d)"
+          trap 'rm -rf "$work_dir"' EXIT
+
+          templates_dir="$work_dir/templates-gatling"
+          registry_dir="$work_dir/registry"
+          project_dir="$work_dir/java-maven-example"
+
+          git clone --depth 1 https://github.com/galax-io/templates-gatling.git "$templates_dir"
+
+          mkdir -p "$registry_dir"
+          cat > "$registry_dir/galaxio-registry.yaml" <<YAML
+          apiVersion: galaxio.io/v1
+          kind: TemplateRegistry
+          packs:
+            - name: gatling
+              source: local:$templates_dir
+              description: Gatling performance testing templates from main
+          YAML
+
+          galaxio template init gatling/java-maven \
+            --registry "local:$registry_dir" \
+            --destination "$project_dir" \
+            --set Name=java-maven-example \
+            --set NameWord=picatinny \
+            --set Package=org.galaxio.performance \
+            --set PackagePath=org/galaxio/performance \
+            --set GatlingPicatinnyVersion=0.0.0-ci-local \
+            --set BaseUrl=http://localhost \
+            --set BaseAuthUrl=http://localhost/auth \
+            --set WsBaseUrl=ws://localhost/ws \
+            --set Intensity="60 rpm" \
+            --set StagesNumber=2 \
+            --set RampDuration="1 second" \
+            --set StageDuration="1 second" \
+            --set TestDuration="5 seconds" \
+            --set StartupBannerEnabled=true \
+            --set DiagnosticsEnabled=true
+
+          rm -rf "$project_dir/src/test/java/org/galaxio/performance/picatinny"
+          cp -R examples/java-maven-example/src/test/java/org/galaxio/performance/picatinny \
+            "$project_dir/src/test/java/org/galaxio/performance/picatinny"
+          rm -rf "$project_dir/src/test/resources"
+          cp -R examples/java-maven-example/src/test/resources "$project_dir/src/test/resources"
+
+          mvn -B -f "$project_dir/pom.xml" clean test-compile
+          mvn -B -f "$project_dir/pom.xml" gatling:test
 
       - name: Kotlin Gradle Gatling Project
         run: gradle -p examples/kotlin-gradle-example clean gatlingRun --all
 
-      - name: Scala sbt Gatling Project from template main
+      - name: Scala sbt Gatling project from template main
         run: scripts/test-scala-sbt-template.sh
 
   coverage:
