@@ -81,6 +81,24 @@ val enriched =
     .withGenerated("sessionPhone", Faker.phone.mobile(Country.AR))
 ```
 
+Use feeder transformations when external data needs small production-safe adjustments before it enters a scenario:
+
+```scala
+val normalized =
+  csv("users.csv").circular
+    .withGenerated(
+      "traceId" -> Faker.uuid.string,
+      "runCurrency" -> Faker.localization.currency(Country.US)
+    )
+    .renameKeys(Map("mail" -> "email"))
+    .withDefaults("country" -> "US")
+    .requireKeys("id", "email")
+    .dropKeys("debugOnly")
+```
+
+Available feeder syntax includes `withGenerated`, `rename`, `renameKeys`, `prefixKeys`, `suffixKeys`, `dropKeys`,
+`selectKeys`, `withDefaults`, `requireKeys`, `mapRecord`, and `takeRecords`.
+
 ## Collections
 
 Use collection syntax when data is already in memory.
@@ -110,7 +128,7 @@ The returned collection is a normal Gatling-compatible in-memory feeder source, 
 The first slice includes:
 
 - `Faker.uuid.string`
-- `Faker.number.int`, `long`, `double`, `float`, `boolean`
+- `Faker.number.int`, `long`, `double`, `float`, `byte`, `short`, `char`, `bigInt`, `bigDecimal`, `boolean`, `positiveInt`, `positiveLong`, `negativeInt`, `negativeLong`, `percentage`
 - `Faker.string.alphabetic`, `alphanumeric`, `numeric`, `hex`, `cyrillic`, `fromAlphabet`, `lengthBetween`
 - `Faker.person.gender`, `firstName`, `lastName`, `prefix`, `fullName`, `jobTitle`
 - `Faker.internet.email`, `username`, `domain`, `url`, `password`, `userAgent`, `ipv4`, `ipv6`
@@ -119,13 +137,21 @@ The first slice includes:
 - `Faker.date.today`, `now`, `between`, `past`, `future`, `offset`, `range`
 - `Faker.finance.pan`, `amount`, `money`, `currency`, `accountNumber`, `bic`, `iban`, `transactionId`
 - `Faker.commerce.productName`, `category`, `sku`, `orderId`, `price`
-- `Faker.phone.mobile`, `tollFree`, `fromFormats`
+- `Faker.phone.mobile`, `tollFree`, `fromFormats`, `builder` — 16 countries supported
 - `Faker.passport.ru`, `Faker.passport.number`
 - `Faker.ru.inn.person`, `Faker.ru.inn.company`, `kpp`, `ogrn`, `ogrnip`, `snils`
 - `Faker.br.cpf`
 - `Faker.ar.dni`
+- `Faker.es.nif` — Spanish NIF with valid check letter
+- `Faker.it.codiceFiscale` — Italian Codice Fiscale (structural format)
+- `Faker.de.steueridentifikationsnummer` — German tax ID
+- `Faker.us.ssn` — US Social Security Number
+- `Faker.gb.nino` — UK National Insurance Number
+- `Faker.fr.nir` — French social security number with valid key
 - `Faker.weather.condition`, `temperatureCelsius`, `humidityPercent`, `pressureHPa`
 - `Faker.lorem.word`, `words`, `sentence`
+- `Generator.sequence`, `Generator.listOf`, `Generator.mapOf`, `Generator.tupleOf` — collection combinators
+- `Generator.filter` — retry-based filtering
 
 ## Predefined Data
 

@@ -175,6 +175,12 @@ object FakerData {
     Country.ES -> Vector("Madrid", "Barcelona", "Valencia", "Seville", "Bilbao", "Malaga", "Zaragoza", "Murcia"),
     Country.IT -> Vector("Rome", "Milan", "Naples", "Turin", "Florence", "Bologna", "Genoa", "Venice"),
     Country.AE -> Vector("Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah", "Al Ain", "Umm Al Quwain"),
+    Country.JP -> Vector("Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Fukuoka", "Kobe", "Kyoto"),
+    Country.CN -> Vector("Beijing", "Shanghai", "Shenzhen", "Guangzhou", "Chengdu", "Hangzhou", "Wuhan", "Nanjing"),
+    Country.IN -> Vector("Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad"),
+    Country.CA -> Vector("Toronto", "Vancouver", "Montreal", "Calgary", "Ottawa", "Edmonton", "Winnipeg", "Quebec City"),
+    Country.AU -> Vector("Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Gold Coast", "Canberra", "Hobart"),
+    Country.MX -> Vector("Mexico City", "Guadalajara", "Monterrey", "Puebla", "Tijuana", "Cancun", "Merida", "Queretaro"),
   )
 
   /** Generic street names for address generation. */
@@ -284,5 +290,11 @@ object FakerData {
     Country.ES -> Seq(PhoneFormat("+34", 9, Seq("6", "7"), "+XX XXX XXX XXX")),
     Country.IT -> Seq(PhoneFormat("+39", 10, Seq("320", "328", "333", "347", "349"), "+XX XXX XXX XXXX")),
     Country.AE -> Seq(PhoneFormat("+971", 9, Seq("50", "52", "54", "55", "56", "58"), "+XXX XX XXX XXXX")),
+    Country.JP -> Seq(PhoneFormat("+81", 10, Seq("70", "80", "90"), "+XX XX XXXX XXXX")),
+    Country.CN -> Seq(PhoneFormat("+86", 11, Seq("130", "131", "132", "155", "156", "185", "186"), "+XX XXX XXXX XXXX")),
+    Country.IN -> Seq(PhoneFormat("+91", 10, Seq("70", "80", "90", "98", "99"), "+XX XXXXX XXXXX")),
+    Country.CA -> Seq(PhoneFormat("+1", 10, Seq("204", "226", "236", "249", "289", "306", "343"), "+X XXX XXX-XXXX")),
+    Country.AU -> Seq(PhoneFormat("+61", 9, Seq("4"), "+XX XXX XXX XXX")),
+    Country.MX -> Seq(PhoneFormat("+52", 10, Seq("55", "33", "81", "656", "664"), "+XX XX XXXX XXXX")),
   )
 }

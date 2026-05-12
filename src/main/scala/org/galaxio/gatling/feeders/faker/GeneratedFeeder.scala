@@ -44,6 +44,14 @@ object GeneratedFeeder {
     feeder.map(record => record.asInstanceOf[Map[String, Any]] + (name -> generator.sample()))
   }
 
+  /** Adds several generated fields to every record produced by an existing Gatling feeder. */
+  def withGenerated[A](feeder: Feeder[A], fields: Field[_]*): Feeder[Any] = {
+    require(fields.nonEmpty, "Generated feeder requires at least one field")
+    feeder.map { record =>
+      record.asInstanceOf[Map[String, Any]] ++ fields.map(_.sampleAny)
+    }
+  }
+
   /** Materializes records so Gatling's built-in feeder strategies can be used. */
   def recordsFrom(records: Iterable[Map[String, Any]]): IndexedSeq[Record[Any]] = {
     val vector = records.map(_.toMap).toIndexedSeq

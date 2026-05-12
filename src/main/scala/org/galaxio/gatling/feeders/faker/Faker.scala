@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
+import scala.annotation.tailrec
 import scala.math.BigDecimal.RoundingMode
 
 /** Faker facade for generating load-test data.
@@ -27,14 +28,15 @@ object Faker {
   object number {
     def int(min: Int, max: Int): Generator[Int] = {
       require(min <= max, s"min must be <= max: $min > $max")
-      Generator.delay(if (min == max) min else ThreadLocalRandom.current().nextInt(min, max + 1))
+      Generator.delay(if (min == max) min else ThreadLocalRandom.current().nextLong(min.toLong, max.toLong + 1L).toInt)
     }
 
     def long(min: Long, max: Long): Generator[Long] = {
       require(min <= max, s"min must be <= max: $min > $max")
-      Generator.delay(if (min == max) min else ThreadLocalRandom.current().nextLong(min, max + 1))
+      Generator.delay(nextLongInclusive(min, max))
     }
 
+    /** Generates a double in [min, max). Note: max is exclusive per JDK ThreadLocalRandom contract. */
     def double(min: Double, max: Double): Generator[Double] = {
       require(min <= max, s"min must be <= max: $min > $max")
       Generator.delay(if (min == max) min else ThreadLocalRandom.current().nextDouble(min, max))
@@ -43,8 +45,68 @@ object Faker {
     def float(min: Float, max: Float): Generator[Float] =
       double(min.toDouble, max.toDouble).map(_.toFloat)
 
+    def byte(min: Byte = Byte.MinValue, max: Byte = Byte.MaxValue): Generator[Byte] =
+      int(min.toInt, max.toInt).map(_.toByte)
+
+    def short(min: Short = Short.MinValue, max: Short = Short.MaxValue): Generator[Short] =
+      int(min.toInt, max.toInt).map(_.toShort)
+
+    def char(min: Char = 'A', max: Char = 'z'): Generator[Char] =
+      int(min.toInt, max.toInt).map(_.toChar)
+
+    def bigInt(min: BigInt, max: BigInt): Generator[BigInt] = {
+      require(min <= max, s"min must be <= max: $min > $max")
+      val range = max - min + 1
+      Generator.delay(min + randomBigInt(range))
+    }
+
+    def bigDecimal(min: BigDecimal, max: BigDecimal, scale: Int = 2): Generator[BigDecimal] = {
+      require(scale >= 0, s"scale must be >= 0: $scale")
+      require(min <= max, s"min must be <= max: $min > $max")
+      val factor   = BigDecimal(10).pow(scale)
+      val minUnits = (min.setScale(scale, RoundingMode.CEILING) * factor).toBigInt
+      val maxUnits = (max.setScale(scale, RoundingMode.FLOOR) * factor).toBigInt
+      require(minUnits <= maxUnits, s"range has no values at scale $scale: $min..$max")
+      bigInt(minUnits, maxUnits).map(units => (BigDecimal(units) / factor).setScale(scale))
+    }
+
     def boolean: Generator[Boolean] =
       Generator.delay(ThreadLocalRandom.current().nextBoolean())
+
+    def positiveInt: Generator[Int]   = int(1, Int.MaxValue)
+    def positiveLong: Generator[Long] = long(1L, Long.MaxValue)
+    def negativeInt: Generator[Int]   = int(Int.MinValue, -1)
+    def negativeLong: Generator[Long] = long(Long.MinValue, -1L)
+    def percentage: Generator[Int]    = int(0, 100)
+
+    private def nextLongInclusive(min: Long, max: Long): Long =
+      if (min == max) min
+      else if (BigInt(max) - BigInt(min) + 1 <= BigInt(Long.MaxValue)) {
+        val bound = (BigInt(max) - BigInt(min) + 1).toLong
+        min + ThreadLocalRandom.current().nextLong(bound)
+      } else if (min == Long.MinValue) ThreadLocalRandom.current().nextLong()
+      else {
+        @tailrec
+        def retry(): Long = {
+          val value = ThreadLocalRandom.current().nextLong()
+          if (value >= min) value else retry()
+        }
+        retry()
+      }
+
+    private def randomBigInt(exclusiveUpperBound: BigInt): BigInt = {
+      require(exclusiveUpperBound > 0, s"exclusiveUpperBound must be > 0: $exclusiveUpperBound")
+      val bytes = new Array[Byte]((exclusiveUpperBound.bitLength + 7) / 8)
+
+      @tailrec
+      def retry(): BigInt = {
+        ThreadLocalRandom.current().nextBytes(bytes)
+        val candidate = BigInt(1, bytes)
+        if (candidate < exclusiveUpperBound) candidate else retry()
+      }
+
+      retry()
+    }
   }
 
   /** String generators for identifiers, payload fields, and templates. */
@@ -160,6 +222,12 @@ object Faker {
         Country.ES,
         Country.IT,
         Country.AE,
+        Country.JP,
+        Country.CN,
+        Country.IN,
+        Country.CA,
+        Country.AU,
+        Country.MX,
       )
 
     def countryCode(): Generator[String] =
@@ -183,6 +251,12 @@ object Faker {
       case Country.BR => string.numeric(8)
       case Country.US => string.numeric(5)
       case Country.DE => string.numeric(5)
+      case Country.JP => string.numeric(7)
+      case Country.CN => string.numeric(6)
+      case Country.IN => string.numeric(6)
+      case Country.CA => string.alphanumeric(6).map(_.toUpperCase)
+      case Country.AU => string.numeric(4)
+      case Country.MX => string.numeric(5)
       case _          => string.alphanumeric(6)
     }
 
@@ -204,6 +278,12 @@ object Faker {
       case Country.BR                                        => Generator.const("BRL")
       case Country.GB                                        => Generator.const("GBP")
       case Country.AE                                        => Generator.const("AED")
+      case Country.JP                                        => Generator.const("JPY")
+      case Country.CN                                        => Generator.const("CNY")
+      case Country.IN                                        => Generator.const("INR")
+      case Country.CA                                        => Generator.const("CAD")
+      case Country.AU                                        => Generator.const("AUD")
+      case Country.MX                                        => Generator.const("MXN")
       case Country.DE | Country.FR | Country.ES | Country.IT => Generator.const("EUR")
       case _                                                 => Generator.const("USD")
     }
@@ -216,6 +296,10 @@ object Faker {
       case Country.FR => Generator.const("fr")
       case Country.ES => Generator.const("es")
       case Country.IT => Generator.const("it")
+      case Country.JP => Generator.const("ja")
+      case Country.CN => Generator.const("zh")
+      case Country.IN => Generator.const("hi")
+      case Country.MX => Generator.const("es")
       case _          => Generator.const("en")
     }
   }
@@ -263,12 +347,19 @@ object Faker {
     ): Generator[(LocalDate, LocalDate)] = {
       require(minLengthDays >= 0, s"minLengthDays must be >= 0: $minLengthDays")
       require(minLengthDays <= maxLengthDays, s"minLengthDays must be <= maxLengthDays")
+      require(!from.isAfter(to), s"from must be <= to: $from > $to")
+      val totalDays   = ChronoUnit.DAYS.between(from, to)
+      require(
+        minLengthDays <= totalDays,
+        s"minLengthDays must fit inside the date range: $minLengthDays > $totalDays",
+      )
+      val latestStart = to.minusDays(minLengthDays)
       for {
-        start  <- between(from, to)
-        length <- number.long(minLengthDays, maxLengthDays)
+        start       <- between(from, latestStart)
+        maxEndLength = math.min(maxLengthDays, ChronoUnit.DAYS.between(start, to))
+        length      <- number.long(minLengthDays, maxEndLength)
       } yield {
-        val end = start.plusDays(length)
-        start -> (if (end.isAfter(to)) to else end)
+        start -> start.plusDays(length)
       }
     }
 
@@ -290,7 +381,7 @@ object Faker {
 
     def amount(min: BigDecimal, max: BigDecimal, scale: Int = 2): Generator[BigDecimal] = {
       require(min <= max, s"min must be <= max: $min > $max")
-      number.double(min.toDouble, max.toDouble).map(value => BigDecimal(value).setScale(scale, RoundingMode.HALF_UP))
+      number.bigDecimal(min, max, scale)
     }
 
     def money(min: BigDecimal, max: BigDecimal, currency: String = "USD"): Generator[Money] =
@@ -310,11 +401,19 @@ object Faker {
         branch       <- string.alphanumeric(3).map(_.toUpperCase)
       } yield s"$bank$country$locationCode$branch"
 
+    /** Generates IBAN-like strings. Check digits are hardcoded placeholders — values will not pass strict ISO 7064 validation
+      * but are structurally correct for load-test payloads.
+      */
     def iban(country: Country = Country.DE): Generator[String] = country match {
       case Country.DE => string.numeric(18).map(value => s"DE89$value")
       case Country.GB =>
         string.alphanumeric(4).map(_.toUpperCase).zip(string.numeric(14)).map { case (bank, digits) => s"GB82$bank$digits" }
       case Country.FR => string.numeric(23).map(value => s"FR14$value")
+      case Country.ES => string.numeric(20).map(value => s"ES91$value")
+      case Country.IT =>
+        string.alphabetic(1).map(_.toUpperCase).zip(string.numeric(22)).map { case (check, digits) => s"IT60$check$digits" }
+      case Country.RU => string.numeric(29).map(value => s"RU33$value")
+      case Country.BR => string.numeric(23).map(value => s"BR18$value")
       case _          => string.alphanumeric(20).map(value => s"${country.iso2}00${value.toUpperCase}")
     }
 
@@ -334,7 +433,10 @@ object Faker {
       finance.money(min, max, "USD")
   }
 
-  /** Phone generators. Country metadata is intentionally compact and will be expanded. */
+  /** Phone generators with configurable formatting for all supported countries.
+    *
+    * Supports 16 countries out of the box. Custom formats can be provided via `fromFormats` or `builder`.
+    */
   object phone {
     def mobile(country: Country, format: PhoneFormatMode = PhoneFormatMode.E164): Generator[String] =
       Generator.delay(RandomPhoneGenerator.randomPhone(countryFormats(country), toLegacyPhoneType(format)))
@@ -342,8 +444,13 @@ object Faker {
     def tollFree(country: Country = Country.US): Generator[String] =
       Generator.delay(RandomPhoneGenerator.randomPhone(countryFormats(country), TypePhone.TollFreePhoneNumber))
 
-    def fromFormats(format: PhoneFormatMode, formats: PhoneFormat*): Generator[String] =
+    def fromFormats(format: PhoneFormatMode, formats: PhoneFormat*): Generator[String] = {
+      require(formats.nonEmpty, "At least one phone format must be provided")
       Generator.delay(RandomPhoneGenerator.randomPhone(formats, toLegacyPhoneType(format)))
+    }
+
+    /** Fluent builder for custom phone number configuration. */
+    def builder: PhoneBuilder = PhoneBuilder()
 
     private def toLegacyPhoneType(format: PhoneFormatMode): TypePhone.TypePhone = format match {
       case PhoneFormatMode.E164          => TypePhone.E164PhoneNumber
@@ -352,8 +459,11 @@ object Faker {
       case PhoneFormatMode.TollFree      => TypePhone.TollFreePhoneNumber
     }
 
-    private def countryFormats(country: Country): Seq[PhoneFormat] =
-      FakerData.phoneFormatsByCountry.getOrElse(country, Seq.empty)
+    private[faker] def countryFormats(country: Country): Seq[PhoneFormat] = {
+      val formats = FakerData.phoneFormatsByCountry.getOrElse(country, Seq.empty)
+      require(formats.nonEmpty, s"No phone formats configured for country ${country.iso2}")
+      formats
+    }
   }
 
   /** Passport generators. */
@@ -410,6 +520,122 @@ object Faker {
       }
   }
 
+  /** Spanish identifiers. */
+  object es {
+
+    /** Generates a NIF (Número de Identificación Fiscal) with a valid check letter.
+      *
+      * Format: 8 digits + 1 letter. The letter is computed as `digits % 23` mapped to the standard NIF letter table.
+      */
+    def nif(): Generator[String] =
+      Generator.delay {
+        val digits  = ThreadLocalRandom.current().nextInt(10000000, 100000000)
+        val letters = "TRWAGMYFPDXBNJZSQVHLCKE"
+        f"$digits%08d${letters.charAt(digits % 23)}"
+      }
+  }
+
+  /** Italian identifiers. */
+  object it {
+
+    /** Generates a structurally valid Codice Fiscale (16 alphanumeric characters).
+      *
+      * The generated value follows the correct format (6 letters + 2 digits + 1 letter + 2 digits + 1 letter + 3 digits + 1
+      * letter) but uses random data rather than real name/date derivation. Suitable for load-test payloads where format matters
+      * more than semantic correctness.
+      */
+    def codiceFiscale(): Generator[String] =
+      for {
+        surname  <- string.alphabetic(3).map(_.toUpperCase)
+        name     <- string.alphabetic(3).map(_.toUpperCase)
+        year     <- string.numeric(2)
+        month    <- oneOf("A", "B", "C", "D", "E", "H", "L", "M", "P", "R", "S", "T")
+        day      <- number.int(1, 71).map(d => f"$d%02d")
+        town     <- string.alphabetic(1).map(_.toUpperCase)
+        townCode <- string.numeric(3)
+        check    <- string.alphabetic(1).map(_.toUpperCase)
+      } yield s"$surname$name$year$month$day$town$townCode$check"
+  }
+
+  /** German identifiers. */
+  object de {
+
+    /** Generates a Steuerliche Identifikationsnummer (11 digits). Uses a simplified generation that produces structurally
+      * valid-looking values — real TIN validation is more complex and not needed for load tests.
+      */
+    def steueridentifikationsnummer(): Generator[String] =
+      Generator.delay {
+        val first = ThreadLocalRandom.current().nextInt(1, 10)
+        val rest  = (1 to 10).map(_ => ThreadLocalRandom.current().nextInt(0, 10))
+        (first +: rest).mkString
+      }
+  }
+
+  /** United States identifiers. */
+  object us {
+
+    /** Generates a Social Security Number (SSN) in format XXX-XX-XXXX. Area numbers 000, 666, and 900-999 are excluded. */
+    def ssn(formatted: Boolean = true): Generator[String] =
+      Generator.delay {
+        val area   = {
+          var a = 0
+          while (a == 0 || a == 666 || a >= 900) a = ThreadLocalRandom.current().nextInt(1, 1000)
+          a
+        }
+        val group  = ThreadLocalRandom.current().nextInt(1, 100)
+        val serial = ThreadLocalRandom.current().nextInt(1, 10000)
+        if (formatted) f"$area%03d-$group%02d-$serial%04d" else f"$area%03d$group%02d$serial%04d"
+      }
+  }
+
+  /** United Kingdom identifiers. */
+  object gb {
+
+    /** Generates a National Insurance Number (NINO) in format AB123456C.
+      *
+      * Excludes disallowed prefix combinations (BG, GB, NK, KN, TN, NT, ZZ) and invalid first letters (D, F, I, Q, U, V).
+      */
+    def nino(): Generator[String] =
+      Generator.delay {
+        val disallowed    = Set("BG", "GB", "NK", "KN", "TN", "NT", "ZZ")
+        val invalidFirst  = "DFIQUV"
+        val invalidSecond = "DFIQUVO"
+        val letters       = ('A' to 'Z').filterNot(ch => invalidFirst.contains(ch))
+        val secondLetters = ('A' to 'Z').filterNot(ch => invalidSecond.contains(ch))
+        var prefix        = ""
+        do {
+          val first  = letters(ThreadLocalRandom.current().nextInt(letters.size))
+          val second = secondLetters(ThreadLocalRandom.current().nextInt(secondLetters.size))
+          prefix = s"$first$second"
+        } while (disallowed.contains(prefix))
+        val digits        = (1 to 6).map(_ => ThreadLocalRandom.current().nextInt(10)).mkString
+        val suffix        = ('A' to 'D')(ThreadLocalRandom.current().nextInt(4))
+        s"$prefix$digits$suffix"
+      }
+  }
+
+  /** French identifiers. */
+  object fr {
+
+    /** Generates a NIR (Numéro d'Inscription au Répertoire) — French social security number.
+      *
+      * Format: 1 digit sex + 2 digit year + 2 digit month + 5 digit department/commune + 3 digit order + 2 digit key. Key is
+      * computed as 97 - (first 13 digits mod 97).
+      */
+    def nir(): Generator[String] =
+      Generator.delay {
+        val sex        = ThreadLocalRandom.current().nextInt(1, 3)
+        val year       = ThreadLocalRandom.current().nextInt(0, 100)
+        val month      = ThreadLocalRandom.current().nextInt(1, 13)
+        val department = ThreadLocalRandom.current().nextInt(1, 96)
+        val commune    = ThreadLocalRandom.current().nextInt(1, 1000)
+        val order      = ThreadLocalRandom.current().nextInt(1, 1000)
+        val base       = f"$sex%01d$year%02d$month%02d$department%02d$commune%03d$order%03d"
+        val key        = 97 - (base.toLong % 97)
+        f"$base$key%02d"
+      }
+  }
+
   /** Weather values for synthetic telemetry and environment-like payloads. */
   object weather {
     def condition(): Generator[String] =
@@ -432,7 +658,8 @@ object Faker {
 
     def words(count: Int): Generator[String] = {
       require(count > 0, s"count must be > 0: $count")
-      Generator.delay(Vector.fill(count)(word().sample()).mkString(" "))
+      val data = FakerData.loremWords
+      Generator.delay(Vector.fill(count)(data(ThreadLocalRandom.current().nextInt(data.size))).mkString(" "))
     }
 
     def sentence(wordsCount: Int = 8): Generator[String] =

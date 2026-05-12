@@ -355,6 +355,10 @@ Startup output:
 
 ### feeders
 
+> **New Faker API** — a composable, domain-oriented data generation layer is now available.
+> See [docs/faker-api.md](docs/faker-api.md) for the full API reference, migration examples, and Gatling integration patterns.
+> The old `Random*Feeder` helpers still work but are deprecated in favor of `Faker.*` + `GeneratedFeeder`.
+
 This module contains vast number of random feeders. They could be used as regular feeders and realize common needs, i.e.
 random phone number or random digit. Now it supports feeders for dates, numbers and digits, strings, uuids, phones.
 Basic examples will be provided below. Other feeders can be used in a similar way.
@@ -434,6 +438,13 @@ Kotlin example:
 ```Kotlin
   val vaultFeeder = VaultFeeder(vaultUrl, secretPath, roleId, secretId, keys)
 ```
+
+Additional one-record data source helpers:
+
+- `VaultFeeder.withToken(vaultUrl, secretPath, vaultToken, keys)` reads Vault data when CI already provides a token.
+- `VaultFeeder.fromPaths(vaultUrl, roleId, secretId, paths)` merges selected keys from several Vault paths.
+- `EnvFeeder(keys, prefix)` reads selected environment variables into a feeder record.
+- `HttpJsonFeeder(url, keys, headers)` reads selected top-level string fields from a JSON HTTP endpoint.
 
 #### SeparatedValuesFeeder
 
