@@ -4,7 +4,7 @@ import io.gatling.core.Predef._
 import io.gatling.core.structure.ScenarioBuilder
 import org.galaxio.gatling.transactions.Predef._
 import org.galaxio.performance.picatinny.cases.PicatinnyCases
-import org.galaxio.performance.picatinny.feeders.PicatinnyFeeders
+import org.galaxio.performance.picatinny.feeders.{GeneratedPicatinnyFeeders, PicatinnyFeeders}
 
 object PicatinnyScenario {
   def apply(name: String, transactionName: String): ScenarioBuilder =
@@ -42,4 +42,8 @@ object PicatinnyScenario {
       .feed(PicatinnyFeeders.kpp)
       .feed(PicatinnyFeeders.snils)
       .feed(PicatinnyFeeders.passport)
+      .feed(GeneratedPicatinnyFeeders.generatedUsers)
+      .feed(GeneratedPicatinnyFeeders.governmentIds)
+      .feed(GeneratedPicatinnyFeeders.dates)
+      .feed(GeneratedPicatinnyFeeders.finance)
 }

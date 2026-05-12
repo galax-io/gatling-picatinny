@@ -59,6 +59,10 @@ object Syntax {
     def withGenerated[B](name: String, generator: Generator[B]): Feeder[Any] =
       GeneratedFeeder.withGenerated(feeder, name, generator)
 
+    /** Adds several generated fields to each record emitted by this feeder. */
+    def withGenerated(fields: Field[_]*): Feeder[Any] =
+      GeneratedFeeder.withGenerated(feeder, fields: _*)
+
     /** Renames a key in each feeder record when the key is present. */
     def rename(from: String, to: String): Feeder[Any] =
       feeder.map { record =>
@@ -66,9 +70,46 @@ object Syntax {
         asAny.get(from).fold(asAny)(value => asAny - from + (to -> value))
       }
 
+    /** Renames several keys in each feeder record when those keys are present. */
+    def renameKeys(mapping: Map[String, String]): Feeder[Any] =
+      feeder.map { record =>
+        mapping.foldLeft(record.asInstanceOf[Map[String, Any]]) { case (current, (from, to)) =>
+          current.get(from).fold(current)(value => current - from + (to -> value))
+        }
+      }
+
     /** Prefixes every key in every feeder record. */
     def prefixKeys(prefix: String): Feeder[Any] =
       feeder.map(record => record.asInstanceOf[Map[String, Any]].map { case (key, value) => s"$prefix$key" -> value })
+
+    /** Suffixes every key in every feeder record. */
+    def suffixKeys(suffix: String): Feeder[Any] =
+      feeder.map(record => record.asInstanceOf[Map[String, Any]].map { case (key, value) => s"$key$suffix" -> value })
+
+    /** Drops keys from each feeder record. */
+    def dropKeys(keys: String*): Feeder[Any] = {
+      val keySet = keys.toSet
+      feeder.map(record => record.asInstanceOf[Map[String, Any]] -- keySet)
+    }
+
+    /** Keeps only selected keys from each feeder record. */
+    def selectKeys(keys: String*): Feeder[Any] = {
+      val keySet = keys.toSet
+      feeder.map(record => record.asInstanceOf[Map[String, Any]].view.filterKeys(keySet.contains).toMap)
+    }
+
+    /** Adds default values when keys are missing from a feeder record. */
+    def withDefaults(defaults: (String, Any)*): Feeder[Any] =
+      feeder.map(record => defaults.toMap ++ record.asInstanceOf[Map[String, Any]])
+
+    /** Fails fast when a feeder record does not contain all required keys. */
+    def requireKeys(keys: String*): Feeder[A] =
+      feeder.map { record =>
+        val asAny   = record.asInstanceOf[Map[String, Any]]
+        val missing = keys.filterNot(asAny.contains)
+        require(missing.isEmpty, s"Feeder record is missing required keys: ${missing.mkString(", ")}")
+        record
+      }
 
     /** Applies a typed transformation at the record boundary. */
     def mapRecord(f: Map[String, Any] => Map[String, Any]): Feeder[Any] =

@@ -30,6 +30,12 @@ object Country {
   case object ES extends Country("ES", "Spain")
   case object IT extends Country("IT", "Italy")
   case object AE extends Country("AE", "United Arab Emirates")
+  case object JP extends Country("JP", "Japan")
+  case object CN extends Country("CN", "China")
+  case object IN extends Country("IN", "India")
+  case object CA extends Country("CA", "Canada")
+  case object AU extends Country("AU", "Australia")
+  case object MX extends Country("MX", "Mexico")
 
   final case class Custom private[faker] (override val iso2: String, override val displayName: String)
       extends Country(iso2, displayName)
@@ -58,6 +64,58 @@ object PhoneFormatMode {
   case object National      extends PhoneFormatMode
   case object International extends PhoneFormatMode
   case object TollFree      extends PhoneFormatMode
+}
+
+/** Fluent builder for constructing custom phone number generators. */
+final case class PhoneBuilder(
+    private val country: Option[Country] = None,
+    private val formatMode: PhoneFormatMode = PhoneFormatMode.E164,
+    private val customCountryCode: Option[String] = None,
+    private val customAreaCodes: Seq[String] = Seq.empty,
+    private val customLength: Option[Int] = None,
+    private val customFormat: Option[String] = None,
+) {
+  import org.galaxio.gatling.utils.phone.PhoneFormat
+
+  def forCountry(c: Country): PhoneBuilder         = copy(country = Some(c))
+  def withFormat(f: PhoneFormatMode): PhoneBuilder = copy(formatMode = f)
+  def withCountryCode(cc: String): PhoneBuilder    = copy(customCountryCode = Some(cc))
+  def withAreaCodes(codes: String*): PhoneBuilder  = copy(customAreaCodes = codes)
+  def withLength(len: Int): PhoneBuilder           = copy(customLength = Some(len))
+  def withTemplate(tmpl: String): PhoneBuilder     = copy(customFormat = Some(tmpl))
+
+  def build: Generator[String] = {
+    val formats = (country, customCountryCode) match {
+      case (Some(c), _)  =>
+        val base = Faker.phone.countryFormats(c)
+        applyOverrides(base)
+      case (_, Some(cc)) =>
+        Seq(PhoneFormat(cc, customLength.getOrElse(10), customAreaCodes, customFormat.getOrElse("+XXXXXXXXXXX")))
+      case _             =>
+        Seq(
+          PhoneFormat(
+            "+1",
+            customLength.getOrElse(10),
+            if (customAreaCodes.nonEmpty) customAreaCodes else Seq("201", "212"),
+            customFormat.getOrElse("+X XXX XXX-XXXX"),
+          ),
+        )
+    }
+    Faker.phone.fromFormats(formatMode, formats: _*)
+  }
+
+  private def applyOverrides(base: Seq[PhoneFormat]): Seq[PhoneFormat] = {
+    if (customAreaCodes.isEmpty && customLength.isEmpty && customFormat.isEmpty) base
+    else
+      base.map { pf =>
+        PhoneFormat(
+          pf.countryCode,
+          customLength.getOrElse(pf.length),
+          if (customAreaCodes.nonEmpty) customAreaCodes else pf.areaCodes,
+          customFormat.getOrElse(pf.format),
+        )
+      }
+  }
 }
 
 /** Generated money amount with explicit ISO currency. */
