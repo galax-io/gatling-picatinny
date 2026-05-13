@@ -32,8 +32,28 @@ public final class PicatinnyCases {
                     require(IntensityConverter.rpm(60.0) == SimulationConfig.intensity(), "intensity");
                     require(session.getString("uuid").length() == 36, "uuid");
                     require(session.getString("jwt").split("\\.").length == 3, "jwt");
-                    require(!session.getString("phoneFromJson").isBlank(), "phoneFromJson");
+                    require(!session.getString("formattedPhone").isBlank(), "formattedPhone");
                     require(session.getString("pan").length() >= 16, "pan");
+
+                    require(!session.getString("randomDate").isBlank(), "randomDate");
+                    require(!session.getString("rangeFrom").isBlank(), "rangeFrom");
+                    require(!session.getString("customValue").isBlank(), "customValue");
+                    require(!session.getString("phone").isBlank(), "phone");
+                    require(!session.getString("rangeString").isBlank(), "rangeString");
+                    require(!session.getString("regex").isBlank(), "regex");
+                    require(!session.getString("natItn").isBlank(), "natItn");
+                    require(!session.getString("passport").isBlank(), "passport");
+
+                    require(!session.getString("alphabeticStr").isBlank(), "alphabeticStr");
+                    require(!session.getString("firstName").isBlank(), "firstName");
+                    require(!session.getString("username").isBlank(), "username");
+                    require(session.getString("accountNumber").length() == 20, "accountNumber");
+                    require(!session.getString("productName").isBlank(), "productName");
+                    require(!session.getString("usSSN").isBlank(), "usSSN");
+                    require(!session.getString("phoneTollFree").isBlank(), "phoneTollFree");
+                    require(!session.getString("loremWord").isBlank(), "loremWord");
+                    require(!session.getString("createdAt").isBlank(), "createdAt");
+
                     return session;
                 });
     }
