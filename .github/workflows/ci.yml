@@ -102,13 +102,11 @@ jobs:
           gradle-version: '8.6'
 
       - name: Setup Go for galaxio CLI
-        if: matrix.template != 'kotlin-gradle'
         uses: actions/setup-go@v6
         with:
           go-version: stable
 
       - name: Install galaxio CLI from main
-        if: matrix.template != 'kotlin-gradle'
         run: go install github.com/galax-io/galaxio-cli/cmd/galaxio@main
 
       - name: Cache Coursier
@@ -180,9 +178,9 @@ jobs:
           mvn -B -f "$project_dir/pom.xml" clean test-compile
           mvn -B -f "$project_dir/pom.xml" gatling:test
 
-      - name: Kotlin Gradle Gatling Project
+      - name: Kotlin Gradle Gatling project from template main
         if: matrix.template == 'kotlin-gradle'
-        run: gradle -p examples/kotlin-gradle-example clean gatlingRun --all
+        run: scripts/test-kotlin-gradle-template.sh
 
       - name: Scala sbt Gatling project from template main
         if: matrix.template == 'scala-sbt'
