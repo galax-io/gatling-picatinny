@@ -173,6 +173,47 @@ Available catalogs include:
 - `FakerData.loremWords`
 - `FakerData.phoneFormatsByCountry`
 
+## Java and Kotlin
+
+`FakerApi` is a Scala bridge that exposes all `Faker.*` generators as flat static methods, accessible from Java and Kotlin without `MODULE$` boilerplate.
+
+Java:
+
+```java
+import static org.galaxio.gatling.javaapi.FakerApi.*;
+import static org.galaxio.gatling.javaapi.Feeders.GeneratedFeeder;
+
+var users = GeneratedFeeder(
+    field("email", email()),
+    field("phone", phoneMobile(countryRU(), phoneFormatE164())),
+    field("inn", innPerson()),
+    field("amount", amount(100, 5000))
+);
+```
+
+Kotlin:
+
+```kotlin
+import org.galaxio.gatling.javaapi.FakerApi.*
+import org.galaxio.gatling.javaapi.Feeders.GeneratedFeeder
+
+val users = GeneratedFeeder(
+    field("email", email()),
+    field("phone", phoneMobile(countryRU(), phoneFormatE164())),
+    field("inn", innPerson()),
+    field("amount", amount(100.0, 5000.0)),
+)
+```
+
+Country constants: `countryRU()`, `countryUS()`, `countryDE()`, etc.
+Phone formats: `phoneFormatE164()`, `phoneFormatNational()`, `phoneFormatInternational()`.
+
+Single-field feeder:
+
+```java
+var uuids = GeneratedFeeder("uuid", uuidString());
+```
+
 ## Migration Examples
 
 Old:
