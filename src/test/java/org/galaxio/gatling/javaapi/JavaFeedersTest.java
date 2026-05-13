@@ -1,6 +1,8 @@
 package org.galaxio.gatling.javaapi;
 
 import static org.galaxio.gatling.javaapi.Feeders.*;
+import static org.galaxio.gatling.javaapi.FakerApi.*;
+
 import org.galaxio.gatling.javaapi.utils.phone.TypePhone;
 
 import static io.gatling.javaapi.core.CoreDsl.*;
@@ -11,6 +13,7 @@ import org.galaxio.gatling.javaapi.utils.phone.PhoneFormatBuilder;
 import org.galaxio.gatling.utils.phone.PhoneFormat;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +22,9 @@ import java.util.*;
 
 
 public class JavaFeedersTest extends Simulation {
+
+    // --- Legacy feeders ---
+
     Iterator<Map<String, Object>> currentDateFeeder = CurrentDateFeeder("timeShort", DateTimeFormatter.ofPattern("MM:dd"));
     Iterator<Map<String, Object>> currentDateFeeder1 = CurrentDateFeeder("timeShort", DateTimeFormatter.ofPattern("MM:dd"), ZoneId.systemDefault());
 
@@ -91,6 +97,113 @@ public class JavaFeedersTest extends Simulation {
     private final List<String> keys = Arrays.asList("k1", "k2", "k3");
     Iterator<Map<String, Object>> vaultFeeder = VaultFeeder(vaultUrl, secretPath, roleId, secretId, keys);
 
+    // --- Generated feeders (Faker API) ---
+
+    Iterator<Map<String, Object>> generatedUsers = GeneratedFeeder(
+            field("userId", uuidString()),
+            field("email", email()),
+            field("phone", phoneMobile(countryRU(), phoneFormatE164())),
+            field("city", city(countryRU())),
+            field("jobTitle", jobTitle())
+    );
+
+    Iterator<Map<String, Object>> governmentIds = GeneratedFeeder(
+            field("inn", innPerson()),
+            field("kpp", kpp()),
+            field("ogrn", ogrn()),
+            field("snils", snils()),
+            field("cpf", cpf(true)),
+            field("dni", dni())
+    );
+
+    Iterator<Map<String, Object>> dates = GeneratedFeeder(
+            field("createdAt", formatDate(datePast(30), "yyyy-MM-dd")),
+            field("validFrom", formatDate(dateBetween(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30)), "yyyy-MM-dd")),
+            field("validTo", formatDate(dateFuture(90), "yyyy-MM-dd"))
+    );
+
+    Iterator<Map<String, Object>> finance = GeneratedFeeder(
+            field("pan", pan()),
+            field("amount", amount(100.0, 5000.0)),
+            field("currency", currency()),
+            field("iban", iban(countryDE())),
+            field("transactionId", transactionId())
+    );
+
+    Iterator<Map<String, Object>> numbers = GeneratedFeeder(
+            field("randomInt", intBetween(1, 1000)),
+            field("randomLong", longBetween(1L, 1000000L)),
+            field("randomDouble", doubleBetween(0.0, 100.0)),
+            field("randomBoolean", booleanValue())
+    );
+
+    Iterator<Map<String, Object>> strings = GeneratedFeeder(
+            field("alphabeticStr", alphabetic(10)),
+            field("alphanumericStr", alphanumeric(12)),
+            field("numericStr", numeric(8)),
+            field("hexStr", hex(16)),
+            field("cyrillicStr", cyrillic(6))
+    );
+
+    Iterator<Map<String, Object>> persons = GeneratedFeeder(
+            field("firstName", firstName()),
+            field("lastName", lastName()),
+            field("fullName", fullName())
+    );
+
+    Iterator<Map<String, Object>> internetData = GeneratedFeeder(
+            field("username", username()),
+            field("url", url()),
+            field("password", password(20)),
+            field("ipv4", ipv4()),
+            field("ipv6", ipv6())
+    );
+
+    Iterator<Map<String, Object>> locations = GeneratedFeeder(
+            field("postalCode", postalCode(countryUS())),
+            field("latitude", latitude()),
+            field("longitude", longitude())
+    );
+
+    Iterator<Map<String, Object>> extendedFinance = GeneratedFeeder(
+            field("accountNumber", accountNumber(20)),
+            field("bic", bic())
+    );
+
+    Iterator<Map<String, Object>> commerce = GeneratedFeeder(
+            field("productName", productName()),
+            field("category", category()),
+            field("sku", sku()),
+            field("orderId", orderId())
+    );
+
+    Iterator<Map<String, Object>> countrySpecificIds = GeneratedFeeder(
+            field("usSSN", ssn()),
+            field("gbNINO", nino()),
+            field("frNIR", nir()),
+            field("esNIF", nif()),
+            field("itCodiceFiscale", codiceFiscale()),
+            field("deTIN", steueridentifikationsnummer()),
+            field("ruInnCompany", innCompany()),
+            field("ruOgrnip", ogrnip()),
+            field("passportRU", passportRu()),
+            field("passportUS", passportNumber(countryUS()))
+    );
+
+    Iterator<Map<String, Object>> phones = GeneratedFeeder(
+            field("phoneTollFree", phoneTollFree(countryUS()))
+    );
+
+    Iterator<Map<String, Object>> loremText = GeneratedFeeder(
+            field("loremWord", loremWord()),
+            field("loremWords", loremWords(5)),
+            field("loremSentence", loremSentence(8))
+    );
+
+    Iterator<Map<String, Object>> singleFieldFeeder = GeneratedFeeder("singleInt", intBetween(1, 999));
+
+    // --- Scenario using all feeders ---
+
     private ScenarioBuilder scenario =
             scenario("scenario")
                     .feed(currentDateFeeder)
@@ -134,5 +247,20 @@ public class JavaFeedersTest extends Simulation {
                     .feed(separatedValuesFeeder11)
                     .feed(sequentialFeeder)
                     .feed(sequentialFeeder1)
-                    .feed(vaultFeeder);
+                    .feed(vaultFeeder)
+                    .feed(generatedUsers)
+                    .feed(governmentIds)
+                    .feed(dates)
+                    .feed(finance)
+                    .feed(numbers)
+                    .feed(strings)
+                    .feed(persons)
+                    .feed(internetData)
+                    .feed(locations)
+                    .feed(extendedFinance)
+                    .feed(commerce)
+                    .feed(countrySpecificIds)
+                    .feed(phones)
+                    .feed(loremText)
+                    .feed(singleFieldFeeder);
 }
