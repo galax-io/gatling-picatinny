@@ -24,13 +24,25 @@ public final class PicatinnyScenario {
 
     static ScenarioBuilder withFeeders(String name) {
         ScenarioBuilder builder = scenario(name);
-        for (Iterator<Map<String, Object>> feeder : PicatinnyFeeders.legacy()) {
+        for (Iterator<Map<String, Object>> feeder : PicatinnyFeeders.all()) {
             builder = builder.feed(feeder);
         }
         builder = builder
                 .feed(GeneratedPicatinnyFeeders.generatedUsers())
                 .feed(GeneratedPicatinnyFeeders.governmentIds())
-                .feed(GeneratedPicatinnyFeeders.finance());
+                .feed(GeneratedPicatinnyFeeders.dates())
+                .feed(GeneratedPicatinnyFeeders.finance())
+                .feed(GeneratedPicatinnyFeeders.numbers())
+                .feed(GeneratedPicatinnyFeeders.strings())
+                .feed(GeneratedPicatinnyFeeders.persons())
+                .feed(GeneratedPicatinnyFeeders.internetData())
+                .feed(GeneratedPicatinnyFeeders.locations())
+                .feed(GeneratedPicatinnyFeeders.extendedFinance())
+                .feed(GeneratedPicatinnyFeeders.commerce())
+                .feed(GeneratedPicatinnyFeeders.countrySpecificIds())
+                .feed(GeneratedPicatinnyFeeders.phones())
+                .feed(GeneratedPicatinnyFeeders.loremText())
+                .feed(GeneratedPicatinnyFeeders.singleFieldFeeder());
         return builder;
     }
 }
