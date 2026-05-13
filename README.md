@@ -14,7 +14,6 @@
         * [HC Vault feeder](#hc-vault-feeder)
         * [SeparatedValuesFeeder](#separatedvaluesfeeder)
         * [Phone Feeders](#phone-feeders)
-    * [influxdb](#influxdb)
     * [profile](#profile)
     * [redis](#redis)
     * [templates](#templates)
@@ -30,7 +29,7 @@
 
 ## General info
 
-A Scala toolkit that extends the Gatling DSL with production‑ready utilities (feeders, transactions, assertions, templates, config helpers, and integrations like InfluxDB and Redis) to build faster, more reliable performance tests.
+A Scala toolkit that extends the Gatling DSL with production‑ready utilities (feeders, transactions, assertions, templates, config helpers, and integrations like Redis) to build faster, more reliable performance tests.
 
 ## Installation
 
@@ -668,270 +667,6 @@ Kotlin example:
 ```Kotlin
 val phoneFormatsFromFile = "phoneTemplates/ru.json"
 val randomE164PhoneNumberFromJson = RandomPhoneFeeder("randomE164PhoneNumberFile", phoneFormatsFromFile, TypePhone.E164PhoneNumber())
-```
-
-### influxdb
-
-Removed: The InfluxDB annotations integration (including annotation helpers and related config) is no longer supported and has been effectively removed. Minimal stubs may remain only for binary compatibility but must not be used in new or existing code.
-
-This section is kept for historical reference only.
-
-#### Two kinds of usage
-
-* Write Start/Stop annotations before/after simulation run
-* Write custom points to InfluxDB
-
-##### First type denotes start and end of simulation and could be shown in Grafana for example.
-
-Scala example:
-
-Import:
-
-```scala
-import org.galaxio.gatling.influxdb.Annotations
-```
-
-For using you should simply add `with Annotations` for your simulation class:
-
-```scala
-class LoadTest extends Simulation with Annotations {
-  //some code
-}
-```
-
-Java example:
-
-Import:
-
-```java
-import org.galaxio.gatling.javaapi.influxdb.SimulationWithAnnotations;
-```
-
-For using you should extend your simulation class from `SimulationWithAnnotations`: 
-
-```java
-class LoadTest extends SimulationWithAnnotations {
-  //some code
-}
-```
-
-Kotlin example:
-
-Import:
-
-```text
-import org.galaxio.gatling.javaapi.influxdb.SimulationWithAnnotations
-```
-
-For using you should extend your simulation class from `SimulationWithAnnotations`:
-
-```kotlin
-class LoadTest : SimulationWithAnnotations(){
-  //some code
-}
-```
-
-To see annotations in Grafana you need this two queries, where `Perfix` is from `gatling.data.graphite.rootPathPrefix`
-in `gatling.conf`:
-
-```text
-SELECT "annotation_value"  FROM "${Prefix}" where "annotation" = 'Start'
-SELECT "annotation_value"  FROM "${Prefix}" where "annotation" = 'Stop'
-```
-
-##### Second type allows you to write various data points from your scenario or test plan
-
-**!DANGER!** Read before use:
-
-* Not intended for load testing of InfluxDB.
-* You can easily waste InfluxDB with junk data. Don't use frequently changing keys.
-* When recording points in the setUp simulation, a separate script will be created, which will be displayed in the test
-  status in the console and in the final Gatling data.
-* Depending on your settings, Gatling will write simulation data to InfluxDB in batches every n seconds. In this case,
-  the timestamp of the custom point will be taken during its recording, which may cause inaccuracies when displaying
-  data.
-
-Scala example:
-
-Import:
-
-```scala
-import org.galaxio.gatling.influxdb.Annotations._
-```
-
-Using:
-
-```scala
-//if default prepared Point doesn't suit you
-Point(configuration.data.graphite.rootPathPrefix, System.currentTimeMillis() * 1000000)
-  .addTag(tagName, tagValue)
-  .addField(fieldName, fieldValue)
-
-//prepare custom Point*
-
-import io.razem.influxdbclient.Point
-
-def customPoint(tag: String, value: String) = Point(configuration.data.graphite.rootPathPrefix, System.currentTimeMillis() * 1000000)
-  .addTag("myTag", tag)
-  .addField("myField", value) //value: Boolean | String | BigDecimal | Long | Double
-```
-
-_*_[_Custom Point
-reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.3/io/razem/influxdbclient/Point.html)
-
-```scala
-//write custom prepared Point from scenario
-.exec(
-...)
-.userDataPoint(customPoint("custom_tag", "inside_scenario"))
-  .exec(
-...)
-
-//write default prepared Point from scenario
-.exec(
-...)
-.userDataPoint("myTag", "tagValue", "myField", "fieldValue")
-  //also you can use gatling Expression language for values (could waste DB):
-  .userDataPoint("myTag", "#{variableFromGatlingSession}", "myField", "#{anotherVariableFromSession}")
-  .exec(
-...)
-
-//write Point from Simulation setUp
-setUp(
-  firstScenario.inject(atOnceUsers(1))
-    //write point after firstScenario execution
-    //"write_first_point" the name of the scenario, will be displayed in the simulation stats
-    .userDataPoint("write_first_point", customPoint("custom_tag", "between_scenarios"))
-    .andThen(
-      secondScenario.inject(atOnceUsers(1))
-        //similar to simple .userDataPoint, write point after secondScenario execution
-        .andThen(
-          userDataPoint("write_second_point", "custom_tag", "after_second", "custom_field", "end")
-        )
-    )
-)
-```
-
-Java example:
-
-Import:
-
-```java
-
-```
-
-Using:
-
-```text
-//if default prepared Point doesn't suit you
-Point(configuration.data.graphite.rootPathPrefix, System.currentTimeMillis() * 1000000)
-  .addTag(tagName, tagValue)
-  .addField(fieldName, fieldValue)
-
-//prepare custom Point*
-import io.razem.influxdbclient.Point;        
-
-static Point customPoint(tag: String, value: String){ return Point(configuration.data.graphite.rootPathPrefix,System.currentTimeMillis()*1000000)
-            .addTag("myTag",tag)
-            .addField("myField",value) //value: Boolean | String | BigDecimal | Long | Double
-        }
-```
-
-_*_[_Custom Point
-reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.3/io/razem/influxdbclient/Point.html)
-
-```text
-//write custom prepared Point from scenario
-.exec(
-...)
-.exec(userDataPoint(customPoint("custom_tag", "inside_scenario")))
-.exec(
-...)
-
-//write default prepared Point from scenario
-.exec(
-...)
-.exec(userDataPoint("myTag", "tagValue", "myField", "fieldValue"))
-  //also you can use gatling Expression language for values (could waste DB):
-.exec(userDataPoint("myTag", "${variableFromGatlingSession}", "myField", "${anotherVariableFromSession}"))
-.exec(
-...)
-
-//write Point from Simulation setUp
-setUp(
-  firstScenario.inject(atOnceUsers(1))
-    //write point after firstScenario execution
-    //"write_first_point" the name of the scenario, will be displayed in the simulation stats
-    .andThen(userDataPoint("write_first_point", customPoint("custom_tag", "between_scenarios")))
-    .andThen(
-      secondScenario.inject(atOnceUsers(1))
-        //similar to simple .userDataPoint, write point after secondScenario execution
-        .andThen(
-          userDataPoint("write_second_point", "custom_tag", "after_second", "custom_field", "end")
-        )
-    )
-)
-```
-
-Kotlin example:
-
-Import:
-
-```kotlin
-import org.galaxio.gatling.javaapi.influxdb.Annotations.*
-```
-
-Using:
-
-```kotlin
-//if default prepared Point doesn't suit you
-Point(configuration.data.graphite.rootPathPrefix, System.currentTimeMillis() * 1000000)
-  .addTag(tagName, tagValue)
-  .addField(fieldName, fieldValue)
-
-//prepare custom Point*
-import io.razem.influxdbclient.Point       
-
-fun customPoint(tag: String, value: String){ Point(configuration.data.graphite.rootPathPrefix,System.currentTimeMillis()*1000000)
-            .addTag("myTag",tag)
-            .addField("myField",value) //value: Boolean | String | BigDecimal | Long | Double
-        }
-```
-
-_*_[_Custom Point
-reference_](https://www.javadoc.io/doc/io.razem/scala-influxdb-client_2.13/0.6.3/io/razem/influxdbclient/Point.html)
-
-```scala
-//write custom prepared Point from scenario
-.exec(
-...)
-.exec(userDataPoint(customPoint("custom_tag", "inside_scenario")))
-.exec(
-...)
-
-//write default prepared Point from scenario
-.exec(
-...)
-.exec(userDataPoint("myTag", "tagValue", "myField", "fieldValue"))
-  //also you can use gatling Expression language for values (could waste DB):
-.exec(userDataPoint("myTag", "${variableFromGatlingSession}", "myField", "${anotherVariableFromSession}"))
-.exec(
-...)
-
-//write Point from Simulation setUp
-setUp(
-  firstScenario.inject(atOnceUsers(1))
-    //write point after firstScenario execution
-    //"write_first_point" the name of the scenario, will be displayed in the simulation stats
-    .andThen(userDataPoint("write_first_point", customPoint("custom_tag", "between_scenarios")))
-    .andThen(
-      secondScenario.inject(atOnceUsers(1))
-        //similar to simple .userDataPoint, write point after secondScenario execution
-        .andThen(
-          userDataPoint("write_second_point", "custom_tag", "after_second", "custom_field", "end")
-        )
-    )
-)
 ```
 
 ### profile
@@ -1637,7 +1372,6 @@ To test your changes use `sbt test`.
 * scalamock version: 5.2.0
 * generex version: 1.0.2
 * jwt-core version: 11.0.2
-* scala influxdb client 0.6.3
 
 ## Help
 
@@ -1654,7 +1388,7 @@ the [tags on this repository](https://github.com/galax-io/gatling-picatinny/tags
 
 * **Maksim Sitnikov** - *profile module* 
 
-* **Chepkasov Sergey** - *influxdb, feeders, config, utils modules* 
+* **Chepkasov Sergey** - *feeders, config, utils modules* 
 
 * **Kalyokin Vyacheslav** - *templates module* 
 
