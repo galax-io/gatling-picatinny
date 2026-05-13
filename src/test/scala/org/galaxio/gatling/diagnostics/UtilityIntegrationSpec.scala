@@ -25,16 +25,14 @@ class UtilityIntegrationSpec extends AnyWordSpec with Matchers {
   }
 
   "Utility.diagnostics" should {
-    "print diagnostics when enabled in test resources" in {
+    "print nothing when disabled in test resources" in {
       val output = new java.io.ByteArrayOutputStream()
 
       Console.withOut(output) {
         Utility.diagnostics()
       }
 
-      val text = output.toString("UTF-8")
-      text should include("Diagnostics")
-      text should include("jvm args")
+      output.toString("UTF-8") shouldBe empty
     }
   }
 

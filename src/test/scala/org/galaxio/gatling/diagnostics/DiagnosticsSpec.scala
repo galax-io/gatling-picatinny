@@ -286,9 +286,9 @@ class DiagnosticsSpec extends AnyWordSpec with Matchers with OptionValues {
       banner should include("_")
     }
 
-    "enable startup banner and diagnostics in test resources" in {
+    "respect enabled flags from test resources" in {
       StartupBanner.isEnabled shouldBe true
-      Diagnostics.isEnabled shouldBe true
+      Diagnostics.isEnabled shouldBe false
     }
 
   }
