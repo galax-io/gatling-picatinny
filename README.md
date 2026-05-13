@@ -9,6 +9,8 @@
     * [config](#config)
     * [startup banner and diagnostics](#startup-banner-and-diagnostics)
     * [feeders](#feeders)
+        * [Faker API](#faker-api)
+        * [Legacy feeders](#legacy-feeders)
         * [HC Vault feeder](#hc-vault-feeder)
         * [SeparatedValuesFeeder](#separatedvaluesfeeder)
         * [Phone Feeders](#phone-feeders)
@@ -355,58 +357,100 @@ Startup output:
 
 ### feeders
 
-> **New Faker API** — a composable, domain-oriented data generation layer is now available.
-> See [docs/faker-api.md](docs/faker-api.md) for the full API reference, migration examples, and Gatling integration patterns.
-> The old `Random*Feeder` helpers still work but are deprecated in favor of `Faker.*` + `GeneratedFeeder`.
+Picatinny provides two feeder APIs: the **Faker API** (composable, domain-oriented generators) and the **legacy `Random*Feeder` helpers** (simple one-liner feeders). Both produce standard Gatling feeders. See [docs/faker-api.md](docs/faker-api.md) for the full Faker API reference.
 
-This module contains vast number of random feeders. They could be used as regular feeders and realize common needs, i.e.
-random phone number or random digit. Now it supports feeders for dates, numbers and digits, strings, uuids, phones.
-Basic examples will be provided below. Other feeders can be used in a similar way.
+#### Faker API
 
-Scala example:
+Lazy `Generator[A]` values that compose with `map`/`flatMap` and plug into Gatling via `GeneratedFeeder`.
+
+Scala:
+
+```scala
+import org.galaxio.gatling.feeders.faker.Predef._
+import org.galaxio.gatling.feeders.faker._
+
+val users = GeneratedFeeder(
+  "email"  -> Faker.internet.email(),
+  "phone"  -> Faker.phone.mobile(Country.RU, PhoneFormatMode.E164),
+  "inn"    -> Faker.ru.inn.person(),
+  "amount" -> Faker.finance.amount(BigDecimal(100), BigDecimal(5000)),
+)
+```
+
+Java:
+
+```java
+import static org.galaxio.gatling.javaapi.FakerApi.*;
+import static org.galaxio.gatling.javaapi.Feeders.GeneratedFeeder;
+
+var users = GeneratedFeeder(
+    field("email", email()),
+    field("phone", phoneMobile(countryRU(), phoneFormatE164())),
+    field("inn", innPerson()),
+    field("amount", amount(100, 5000))
+);
+```
+
+Kotlin:
+
+```kotlin
+import org.galaxio.gatling.javaapi.FakerApi.*
+import org.galaxio.gatling.javaapi.Feeders.GeneratedFeeder
+
+val users = GeneratedFeeder(
+    field("email", email()),
+    field("phone", phoneMobile(countryRU(), phoneFormatE164())),
+    field("inn", innPerson()),
+    field("amount", amount(100.0, 5000.0)),
+)
+```
+
+Enrich existing Gatling feeders (Scala):
+
+```scala
+val enriched = csv("users.csv").circular
+  .withGenerated("traceId", Faker.uuid.string)
+  .withGenerated("sessionPhone", Faker.phone.mobile(Country.AR))
+```
+
+#### Legacy feeders
+
+> **Deprecated** — prefer the Faker API for new projects. Legacy feeders remain fully supported.
+
+Scala:
 
 ```scala
 import org.galaxio.gatling.feeders._
 
-//creates feeder with name 'randomString' that gets random string of length 10
+val uuidFeeder   = RandomUUIDFeeder("uuid")
+val phoneFeeder  = RandomPhoneFeeder("phone")
 val stringFeeder = RandomStringFeeder("randomString", 10)
-
-//creates feeder with name 'digit' that gets random Int digit
-val digitFeeder = RandomDigitFeeder("digit")
-
-//creates feeder with name 'uuid' that gets random uuid
-val uuidFeeder = RandomUUIDFeeder("uuid")
+val panFeeder    = RandomPANFeeder("pan", "421345")
+val innFeeder    = RandomNatITNFeeder("inn")
 ```
 
-Java example:
+Java:
 
 ```java
 import static org.galaxio.gatling.javaapi.Feeders.*;
 
-//creates feeder with name 'randomString' that gets random string of length 10
-Iterator<Map<String, Object>> stringFeeder = RandomStringFeeder("randomString", 10);
-
-//creates feeder with name 'digit' that gets random Int digit
-Iterator<Map<String, Object>> digitFeeder = RandomDigitFeeder("digit");
-
-//creates feeder with name 'uuid' that gets random uuid
-Iterator<Map<String, Object>> uuidFeeder = RandomUUIDFeeder("uuid");
-
+var uuidFeeder   = RandomUUIDFeeder("uuid");
+var phoneFeeder  = RandomPhoneFeeder("phone");
+var stringFeeder = RandomStringFeeder("randomString", 10);
+var panFeeder    = RandomPANFeeder("pan", "421345");
+var innFeeder    = RandomNatITNFeeder("inn");
 ```
 
-Kotlin example:
+Kotlin:
 
 ```kotlin
 import org.galaxio.gatling.javaapi.Feeders.*
 
-//creates feeder with name 'randomString' that gets random string of length 10
-val stringFeeder = RandomStringFeeder("string", 10)
-
-//creates feeder with name 'digit' that gets random Int digit
-val digitFeeder = RandomDigitFeeder("digit")
-
-//creates feeder with name 'uuid' that gets random uuid
-val uuidFeeder = RandomUUIDFeeder("uuid")
+val uuidFeeder   = RandomUUIDFeeder("uuid")
+val phoneFeeder  = RandomPhoneFeeder("phone")
+val stringFeeder = RandomStringFeeder("randomString", 10)
+val panFeeder    = RandomPANFeeder("pan", "421345")
+val innFeeder    = RandomNatITNFeeder("inn")
 ```
 
 #### HC Vault feeder
@@ -1557,12 +1601,15 @@ class DebugTest extends SimulationWithTransactions {
 
 ### examples
 
-See the standalone Gatling projects in the `examples/` directory:
+Standalone Gatling projects in the `examples/` directory:
 
-* `examples/java-maven-example`
-* `examples/kotlin-gradle-example`
+| Project | Language | Build tool | Feeder API |
+|---------|----------|------------|------------|
+| `examples/scala-sbt-example` | Scala | sbt | Faker API + legacy feeders |
+| `examples/java-maven-example` | Java | Maven | Faker API (`FakerApi`) + legacy feeders |
+| `examples/kotlin-gradle-example` | Kotlin | Gradle | Faker API (`FakerApi`) + legacy feeders |
 
-For a new Scala sbt project, prefer the Galaxio Gatling template and add Picatinny as a dependency:
+For a new Scala sbt project, prefer the Galaxio Gatling template:
 
 ```bash
 galaxio template init gatling/scala-sbt
@@ -1571,10 +1618,6 @@ galaxio template init gatling/scala-sbt
 ```scala
 libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<latest>"
 ```
-
-The Java and Kotlin examples show the Java API facade from Maven and Gradle projects. The Scala examples follow the
-same package layout as the Gatling template: protocols in a shared package object, request code in `cases`, feeder setup
-in `feeders`, business flows in `scenarios`, and injection/profile setup in simulations.
 
 ## Testing
 
