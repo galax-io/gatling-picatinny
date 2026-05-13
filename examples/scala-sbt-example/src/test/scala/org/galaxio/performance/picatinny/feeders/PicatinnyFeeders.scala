@@ -28,16 +28,16 @@ object PicatinnyFeeders {
   val digit: Feeder[Int]          = RandomDigitFeeder("digit")
   val customValue: Feeder[String] = CustomFeeder("customValue", s"custom-${Random.nextInt(1000)}")
 
-  val phone: Feeder[String]              = RandomPhoneFeeder("phone")
-  val e164Phone: Feeder[String]          = RandomPhoneFeeder("e164Phone", TypePhone.E164PhoneNumber, ruMobileFormat)
-  val formattedPhone: Feeder[String]     = RandomPhoneFeeder("formattedPhone", TypePhone.PhoneNumber, ruMobileFormat)
-  val tollFreePhone: Feeder[String]      = RandomPhoneFeeder("tollFreePhone", TypePhone.TollFreePhoneNumber)
+  val phone: Feeder[String]          = RandomPhoneFeeder("phone")
+  val e164Phone: Feeder[String]      = RandomPhoneFeeder("e164Phone", TypePhone.E164PhoneNumber, ruMobileFormat)
+  val formattedPhone: Feeder[String] = RandomPhoneFeeder("formattedPhone", TypePhone.PhoneNumber, ruMobileFormat)
+  val tollFreePhone: Feeder[String]  = RandomPhoneFeeder("tollFreePhone", TypePhone.TollFreePhoneNumber)
 
-  val randomString: Feeder[String]       = RandomStringFeeder("randomString", 12)
-  val rangeString: Feeder[String]        = RandomRangeStringFeeder("rangeString", 4, 8, "abc123")
-  val uuid: Feeder[String]               = RandomUUIDFeeder("uuid")
-  val sequence: Feeder[Long]             = SequentialFeeder("sequence", 100, 5)
-  val regex: Feeder[String]              = RegexFeeder("regex", "[A-Z]{2}[0-9]{4}")
+  val randomString: Feeder[String] = RandomStringFeeder("randomString", 12)
+  val rangeString: Feeder[String]  = RandomRangeStringFeeder("rangeString", 4, 8, "abc123")
+  val uuid: Feeder[String]         = RandomUUIDFeeder("uuid")
+  val sequence: Feeder[Long]       = SequentialFeeder("sequence", 100, 5)
+  val regex: Feeder[String]        = RegexFeeder("regex", "[A-Z]{2}[0-9]{4}")
 
   val csvValue: FeederBuilderBase[String]    = SeparatedValuesFeeder.csv("csvValue", "alpha,beta,gamma").circular
   val splitValues: FeederBuilderBase[String] =
@@ -51,4 +51,10 @@ object PicatinnyFeeders {
   val kpp: Feeder[String]      = RandomKPPFeeder("kpp")
   val snils: Feeder[String]    = RandomSNILSFeeder("snils")
   val passport: Feeder[String] = RandomRusPassportFeeder("passport")
+
+  // --- Package-level utilities ---
+
+  val lambdaFeeder: Feeder[String]                   = feeder("lambdaValue")(java.util.UUID.randomUUID().toString.take(8))
+  val zippedFeeder: Feeder[Any]                      = uuid ** digit
+  val finiteRecords: IndexedSeq[Map[String, String]] = Seq("alpha", "beta", "gamma").toFeeder("greekLetter")
 }
