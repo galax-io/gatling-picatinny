@@ -7,8 +7,8 @@ import org.galaxio.gatling.feeders.faker._
 
 /** Java/Kotlin facade for the Faker data generation API.
   *
-  * Scala users should use [[org.galaxio.gatling.feeders.faker.Faker]] directly.
-  * This object bridges nested Scala objects into flat static methods accessible from Java and Kotlin.
+  * Scala users should use [[org.galaxio.gatling.feeders.faker.Faker]] directly. This object bridges nested Scala objects into
+  * flat static methods accessible from Java and Kotlin.
   *
   * {{{
   * // Java
@@ -36,10 +36,10 @@ object FakerApi {
   // --- String ---
 
   def alphabetic(length: Int): Generator[String]   = Faker.string.alphabetic(length)
-  def alphanumeric(length: Int): Generator[String]  = Faker.string.alphanumeric(length)
-  def numeric(length: Int): Generator[String]       = Faker.string.numeric(length)
-  def hex(length: Int): Generator[String]           = Faker.string.hex(length)
-  def cyrillic(length: Int): Generator[String]      = Faker.string.cyrillic(length)
+  def alphanumeric(length: Int): Generator[String] = Faker.string.alphanumeric(length)
+  def numeric(length: Int): Generator[String]      = Faker.string.numeric(length)
+  def hex(length: Int): Generator[String]          = Faker.string.hex(length)
+  def cyrillic(length: Int): Generator[String]     = Faker.string.cyrillic(length)
 
   // --- Number ---
 
@@ -57,13 +57,13 @@ object FakerApi {
 
   // --- Internet ---
 
-  def email(): Generator[String]                = Faker.internet.email()
-  def email(domain: String): Generator[String]  = Faker.internet.email(domain)
-  def username(): Generator[String]             = Faker.internet.username()
-  def url(): Generator[String]                  = Faker.internet.url()
-  def password(length: Int): Generator[String]  = Faker.internet.password(length)
-  def ipv4(): Generator[String]                 = Faker.internet.ipv4()
-  def ipv6(): Generator[String]                 = Faker.internet.ipv6()
+  def email(): Generator[String]               = Faker.internet.email()
+  def email(domain: String): Generator[String] = Faker.internet.email(domain)
+  def username(): Generator[String]            = Faker.internet.username()
+  def url(): Generator[String]                 = Faker.internet.url()
+  def password(length: Int): Generator[String] = Faker.internet.password(length)
+  def ipv4(): Generator[String]                = Faker.internet.ipv4()
+  def ipv6(): Generator[String]                = Faker.internet.ipv6()
 
   // --- Phone ---
 
@@ -88,7 +88,8 @@ object FakerApi {
   def dateBetween(from: LocalDate, to: LocalDate): Generator[LocalDate] = Faker.date.between(from, to)
 
   def formatDate(gen: Generator[LocalDate], pattern: String): Generator[String]         = Faker.date.formatDate(gen, pattern)
-  def formatDateTime(gen: Generator[LocalDateTime], pattern: String): Generator[String] = Faker.date.formatDateTime(gen, pattern)
+  def formatDateTime(gen: Generator[LocalDateTime], pattern: String): Generator[String] =
+    Faker.date.formatDateTime(gen, pattern)
 
   // --- Finance ---
 
@@ -180,7 +181,7 @@ object FakerApi {
 
   // --- Gender constants ---
 
-  def genderMale: Gender       = Gender.Male
-  def genderFemale: Gender     = Gender.Female
+  def genderMale: Gender        = Gender.Male
+  def genderFemale: Gender      = Gender.Female
   def genderUnspecified: Gender = Gender.Unspecified
 }
