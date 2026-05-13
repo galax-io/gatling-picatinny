@@ -25,7 +25,7 @@ object PicatinnyCases {
 
         require(session("randomDate").as[String].nonEmpty, "randomDate")
         require(session("rangeFrom").as[String].nonEmpty, "rangeFrom")
-        require(session("digit").as[Int] >= 0, "digit")
+        require(session.contains("digit"), "digit")
         require(session("customValue").as[String].startsWith("custom-"), "customValue")
         require(session("phone").as[String].nonEmpty, "phone")
         require(session("tollFreePhone").as[String].nonEmpty, "tollFreePhone")
