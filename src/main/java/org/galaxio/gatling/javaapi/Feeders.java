@@ -8,6 +8,8 @@ import java.time.format.DateTimeFormatter;
 
 import static scala.jdk.javaapi.CollectionConverters.asScala;
 
+import org.galaxio.gatling.feeders.faker.Field;
+import org.galaxio.gatling.feeders.faker.Generator;
 import org.galaxio.gatling.utils.phone.PhoneFormat;
 import org.galaxio.gatling.utils.phone.TypePhone;
 import scala.Function0;
@@ -246,5 +248,14 @@ public final class Feeders {
             List<String> keys
     ) {
         return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.apply(vaultUrl, secretPath, roleId, secretId, asScala(keys).toList()));
+    }
+
+    @SafeVarargs
+    public static Iterator<Map<String, Object>> GeneratedFeeder(Field<?>... fields) {
+        return generatedFeeder(Arrays.asList(fields));
+    }
+
+    public static <A> Iterator<Map<String, Object>> GeneratedFeeder(String name, Generator<A> generator) {
+        return generatedFeederSingle(name, generator);
     }
 }
