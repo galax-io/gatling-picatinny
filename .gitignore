@@ -2,20 +2,10 @@
 /.settings
 /.classpath
 /.idea
+/.vscode
 /.project
 /project/project/
 /project/target/
+/report/
 *.log
-*.html
-/example/target/
-/example/example.iml
-/examples/**/.gradle/
-/examples/**/build/
-/examples/**/target/
-/examples/**/project/project/
-/examples/**/project/target/
-*.sc
-/.bsp
-# coursier cache
-/null
-/results
+/results/
