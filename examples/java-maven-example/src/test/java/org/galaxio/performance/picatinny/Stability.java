@@ -2,14 +2,14 @@ package org.galaxio.performance.picatinny;
 
 import org.galaxio.gatling.javaapi.SimulationConfig;
 import org.galaxio.gatling.javaapi.Utility;
-import org.galaxio.gatling.transactions.Predef;
+import org.galaxio.gatling.javaapi.SimulationWithTransactions;
 import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario;
 import io.gatling.javaapi.core.OpenInjectionStep;
 
 import static io.gatling.javaapi.core.CoreDsl.constantUsersPerSec;
 import static io.gatling.javaapi.core.CoreDsl.rampUsersPerSec;
 
-public final class Stability extends Predef.SimulationWithTransactions {
+public final class Stability extends SimulationWithTransactions {
     {
         OpenInjectionStep[] injectionProfile = {
                 rampUsersPerSec(0).to(SimulationConfig.intensity()).during(SimulationConfig.rampDuration()),

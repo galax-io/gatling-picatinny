@@ -22,7 +22,7 @@ public final class Transactions {
         return new builders.EndTransactionActionBuilderWithoutTime(Expressions.toStringExpression(tname));
     }
 
-    public static scala.collection.immutable.List<ActionBuilder> getCollection(ActionBuilder myAction) {
+    private static scala.collection.immutable.List<ActionBuilder> getCollection(ActionBuilder myAction) {
 
         java.util.Collection<ActionBuilder> collection = new ArrayList<>();
         collection.add(myAction);

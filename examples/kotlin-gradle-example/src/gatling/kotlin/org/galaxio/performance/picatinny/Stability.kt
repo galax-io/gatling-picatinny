@@ -5,10 +5,10 @@ import io.gatling.javaapi.core.CoreDsl.rampUsersPerSec
 import io.gatling.javaapi.core.OpenInjectionStep
 import org.galaxio.gatling.javaapi.SimulationConfig
 import org.galaxio.gatling.javaapi.Utility
-import org.galaxio.gatling.transactions.Predef
+import org.galaxio.gatling.javaapi.SimulationWithTransactions
 import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario
 
-class Stability : Predef.SimulationWithTransactions() {
+class Stability : SimulationWithTransactions() {
     init {
         val injectionProfile = arrayOf<OpenInjectionStep>(
             rampUsersPerSec(0.0).to(SimulationConfig.intensity()).during(SimulationConfig.rampDuration()),

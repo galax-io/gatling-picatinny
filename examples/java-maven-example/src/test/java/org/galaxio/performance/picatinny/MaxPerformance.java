@@ -2,13 +2,13 @@ package org.galaxio.performance.picatinny;
 
 import org.galaxio.gatling.javaapi.SimulationConfig;
 import org.galaxio.gatling.javaapi.Utility;
-import org.galaxio.gatling.transactions.Predef;
+import org.galaxio.gatling.javaapi.SimulationWithTransactions;
 import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario;
 import io.gatling.javaapi.core.OpenInjectionStep;
 
 import static io.gatling.javaapi.core.CoreDsl.incrementUsersPerSec;
 
-public final class MaxPerformance extends Predef.SimulationWithTransactions {
+public final class MaxPerformance extends SimulationWithTransactions {
     {
         OpenInjectionStep[] injectionProfile = {
                 incrementUsersPerSec(SimulationConfig.intensity() / SimulationConfig.stagesNumber())

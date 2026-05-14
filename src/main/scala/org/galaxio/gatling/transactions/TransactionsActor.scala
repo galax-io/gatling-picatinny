@@ -59,13 +59,13 @@ class TransactionsActor(statsEngine: StatsEngine) extends Actor with LazyLogging
 
         case started :: newStack =>
           if (started.timestamp > timestamp) {
-            crash(s"Transaction '$name' illegal state", s"transaction not be able end before they started", session, next)
+            crash(s"Transaction '$name' illegal state", s"transaction cannot end before it started", session, next)
           } else if (started.name == name) {
             executeNext(name, started.timestamp, timestamp, session, next)
+            context.become(onTransaction(newStack))
           } else {
             crash(s"Transaction '$name' close error", s"has unclosed transaction ${started.name}", session, next)
           }
-          context.become(onTransaction(newStack))
       }
   }
 
