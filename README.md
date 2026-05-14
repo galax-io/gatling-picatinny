@@ -846,35 +846,37 @@ class Debug : Simulation() {
 
 ### redis
 
-This module allows you to use Redis commands.
+This module allows you to use Redis commands as Gatling scenario actions.
 
 #### Features:
 
-- Support Redis commands: SADD, DEL, SREM
-- Support Gatling EL
+- Support for 27 Redis commands across 6 data types (Strings, Hashes, Lists, Sets, Keys, Counters)
+- Save command results to Gatling session with `.saveAs("variable")`
+- Custom request names for statistics with `.requestName("name")`
+- Support Gatling EL expressions in keys and values
 
 #### Read before use:
 
-- Мethods are not taken into account in statistics Gatling.
+- Methods are not taken into account in Gatling statistics by default. Use `.requestName("name")` to track them.
 - Not intended for load testing of Redis.
 
 #### Import:
 
-Scala example:
+Scala:
 
 ```scala
 import com.redis.RedisClientPool
 import org.galaxio.gatling.redis.RedisActionBuilder._
 ```
 
-Java example:
+Java:
 
 ```java
-
-
+import io.gatling.javaapi.redis.RedisClientPool;
+import org.galaxio.gatling.javaapi.redis.RedisClientPoolJava;
 ```
 
-Kotlin  example:
+Kotlin:
 
 ```kotlin
 import io.gatling.javaapi.redis.RedisClientPool
@@ -885,55 +887,62 @@ import org.galaxio.gatling.javaapi.redis.RedisClientPoolJava
 
 First you need to prepare RedisClientPool:
 
-Scala example:
+Scala:
 
 ```scala
-val redisPool = new RedisClientPool(redisUrl, 6379)
+val redisPool = new RedisClientPool("localhost", 6379)
 ```
 
-Java example:
+Java:
 
 ```java
-static RedisClientPool redisClientPool = new RedisClientPool("localhost", 6379);
-static RedisClientPoolJava redisClientPoolJava = new RedisClientPoolJava(redisClientPool);
-//or
-static RedisClientPoolJava redisClientPoolJava = new RedisClientPoolJava("localhost", 6379);
+RedisClientPoolJava redisPool = new RedisClientPoolJava("localhost", 6379);
 ```
 
-Kotlin  example:
+Kotlin:
 
 ```kotlin
-val redisClientPool = RedisClientPool("localhost", 6379)
-val redisClientPoolJava = RedisClientPoolJava(redisClientPool)
-//or
-val redisClientPoolJava = RedisClientPoolJava("localhost", 6379)
+val redisPool = RedisClientPoolJava("localhost", 6379)
 ```
 
-Add the Redis commands to your scenario chain:
+Add Redis commands to your scenario chain:
 
-Scala example:
+Scala:
 
 ```scala
-.exec(redisPool.SADD("key", "values", "values")) //add the specified members to the set stored at key
-  .exec(redisPool.DEL("key", "keys")) //removes the specified keys
-  .exec(redisPool.SREM("key", "values", "values")) //remove the specified members from the set stored at key
+.exec(redisPool.SET("key", "value"))
+.exec(redisPool.GET("key").saveAs("result"))
+.exec(redisPool.DEL("key"))
 ```
 
-Java example:
+Java:
 
 ```java
-.exec(redisClientPoolJava.SADD("key", "values", "values")) //add the specified members to the set stored at key
-  .exec(redisClientPoolJava.DEL("key", "keys")) //removes the specified keys
-  .exec(redisClientPoolJava.SREM("key", "values", "values")) //remove the specified members from the set stored at key
+.exec(redisPool.SET("key", "value"))
+.exec(redisPool.GET("key").saveAs("result"))
+.exec(redisPool.DEL("key"))
 ```
 
-Kotlin  example:
+Kotlin:
 
 ```kotlin
-.exec(redisClientPoolJava.SADD("key", "values", "values")) //add the specified members to the set stored at key
-  .exec(redisClientPoolJava.DEL("key", "keys")) //removes the specified keys
-  .exec(redisClientPoolJava.SREM("key", "values", "values")) //remove the specified members from the set stored at key
+.exec(redisPool.SET("key", "value"))
+.exec(redisPool.GET("key").saveAs("result"))
+.exec(redisPool.DEL("key"))
 ```
+
+#### Available commands:
+
+| Category | Commands |
+|----------|----------|
+| Strings  | `GET`, `SET`, `GETSET`, `SETNX`, `SETEX`, `MGET`, `MSET`* |
+| Counters | `INCR`, `INCRBY`, `DECR`, `DECRBY` |
+| Hashes   | `HGET`, `HSET`, `HDEL`, `HGETALL`, `HMSET`*, `HMGET` |
+| Lists    | `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LLEN` |
+| Sets     | `SADD`, `SREM`, `SMEMBERS`, `SISMEMBER`, `SCARD` |
+| Keys     | `EXISTS`, `EXPIRE`, `TTL`, `KEYS`, `DEL` |
+
+\* `MSET` and `HMSET` are available only in the Scala API.
 
 ### templates
 
