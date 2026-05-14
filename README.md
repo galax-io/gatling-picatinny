@@ -1048,7 +1048,13 @@ from `example_template2.json` to route `$baseUrl/post_route`. In template files 
 
 #### Features:
 
-* Generates a JWT token using a json template and stores it in a Gatling session, then you can use it to sign requests.
+* Generate JWT tokens and store them in Gatling sessions for signing requests
+* HMAC (HS256/384/512) and RSA/EC (RS256, ES256, etc.) algorithms
+* Standard claims DSL (iss, sub, aud, exp, iat, nbf) with automatic time-based claims
+* Gatling EL expression support (`#{varName}`) for dynamic per-user claims
+* Claim merging — combine base payload from resource with dynamic claims
+* Bearer token helper (`setJwtAsBearer`)
+* PEM key loading utilities
 
 #### Import:
 
@@ -1058,22 +1064,22 @@ import org.galaxio.gatling.utils.jwt._
 ```
 
 Java:
-
 ```java
-
-
+import org.galaxio.gatling.javaapi.utils.Jwt;
+import org.galaxio.gatling.javaapi.utils.JwtKeysJ;
+import org.galaxio.gatling.utils.jwt.JwtGeneratorBuilder;
+import org.galaxio.gatling.utils.jwt.ClaimsBuilder;
 ```
 
-Kotlin
+Kotlin:
 ```kotlin
 import org.galaxio.gatling.javaapi.utils.Jwt.*
+import org.galaxio.gatling.javaapi.utils.JwtKeysJ
 ```
 
-#### Using:
+#### Basic usage (payload from template):
 
-First you need to prepare jwt generator. For example
-
-Scala
+Scala:
 ```scala
 val jwtGenerator = jwt("HS256", jwtSecretToken)
   .defaultHeader
@@ -1082,29 +1088,19 @@ val jwtGenerator = jwt("HS256", jwtSecretToken)
 
 Java:
 ```java
-static JwtGeneratorBuilder jwtGenerator = jwt("HS256", "jwtSecretToken")  
-        .defaultHeader
+JwtGeneratorBuilder jwtGenerator = Jwt.jwt("HS256", "jwtSecretToken")
+        .defaultHeader()
         .payloadFromResource("jwtTemplates/payload.json");
 ```
 
-Kotlin
+Kotlin:
 ```kotlin
 val jwtGenerator = jwt("HS256", jwtSecretToken)
-  .defaultHeader
-  .payloadFromResource("jwtTemplates/payload.json")
+    .defaultHeader()
+    .payloadFromResource("jwtTemplates/payload.json")
 ```
 
-This will generate tokens with headers:
-
-```json
-{
-  "alg": "HS256",
-  "typ": "JWT"
-}
-```
-
-Payload will be generated from json template, templating is done
-using [Gatling EL](https://gatling.io/docs/gatling/reference/current/session/expression_el/)
+Payload templates support [Gatling EL](https://gatling.io/docs/gatling/reference/current/session/expression_el/) expressions:
 
 ```json
 {
@@ -1114,35 +1110,142 @@ using [Gatling EL](https://gatling.io/docs/gatling/reference/current/session/exp
 }
 ```
 
-Also, the JWT generator has a DSL allowing you to (for java and kotlin similarly):
+#### Standard claims with ClaimsBuilder:
 
+Scala:
 ```scala
-jwt("HS256", secret)
-  .header("""{"alg": "HS256","typ": "JWT", "customField": "customData"}""") //use custom headers from string, it must be valid json
-  .headerFromResource("jwtTemplates/header.json") //use src/test/resources/jwtTemplates/header.json as header template
-  .defaultHeader //use default jwt header, algorithm from jwt("HS256", secret), template: {"alg": "$algorithm","typ": "JWT"}
-  .payload("""{"userName": "#{randomString}","date": "#{simpleDate}","phone": "#{randomPhone}"}""") //use custom payload from string, it must be valid json
-  .payloadFromResource("jwtTemplates/payload.json") //use src/test/resources/jwtTemplates/payload.json as payload template
-```
-
-For sign requests add this to your scenario chain:
-
-```scala
-    .exec(_.setJwt(jwtGenerator, "jwtToken")) //generates token and save it to gatling session as "jwtToken"
-  .exec(addCookie(Cookie("JWT_TOKEN", "#{jwtToken}").withDomain(jwtCookieDomain).withPath("/"))) //set JWT_TOKEN cookie for subsequent requests
+val jwtGenerator = jwt("HS256", secret).defaultHeader
+  .claims(ClaimsBuilder()
+    .issuer("my-service")
+    .subject("#{userId}")
+    .audience("https://api.example.com")
+    .expiresIn(5.minutes)
+    .issuedAtNow
+    .notBeforeNow
+    .claim("role", "admin")
+    .claimFromSession("tenantId", "#{tenantId}"))
 ```
 
 Java:
 ```java
-.exec(setJwt(jwtGenerator, "jwtToken"))  //generates token and save it to gatling session as "jwtToken"
-    .exec(addCookie(Cookie("JWT_TOKEN", "#{jwtToken}").withDomain("jwtCookieDomain").withPath("/"))) //set JWT_TOKEN cookie for subsequent requests
+JwtGeneratorBuilder jwtGenerator = Jwt.jwt("HS256", secret).defaultHeader()
+    .claims(Jwt.claims()
+        .issuer("my-service")
+        .subject("#{userId}")
+        .audience("https://api.example.com")
+        .expiresIn(Duration.ofMinutes(5))
+        .issuedAtNow()
+        .notBeforeNow()
+        .claim("role", "admin")
+        .claimFromSession("tenantId", "#{tenantId}"));
 ```
 
-Kotlin
+Kotlin:
 ```kotlin
-.exec(setJwt(jwtGenerator, "jwtToken"))  //generates token and save it to gatling session as "jwtToken"
-  .exec(addCookie(Cookie("JWT_TOKEN", "#{jwtToken}").withDomain("jwtCookieDomain").withPath("/"))) //set JWT_TOKEN cookie for subsequent requests
+val jwtGenerator = jwt("HS256", secret).defaultHeader()
+    .claims(claims()
+        .issuer("my-service")
+        .subject("#{userId}")
+        .audience("https://api.example.com")
+        .expiresIn(Duration.ofMinutes(5))
+        .issuedAtNow()
+        .notBeforeNow()
+        .claim("role", "admin")
+        .claimFromSession("tenantId", "#{tenantId}"))
 ```
+
+#### Claim merging:
+
+You can combine a base payload from a resource file with dynamic claims.
+ClaimsBuilder fields take precedence on conflict:
+
+```scala
+val gen = jwt("HS256", secret).defaultHeader
+  .payloadFromResource("jwtTemplates/baseClaims.json")
+  .claims(ClaimsBuilder().subject("#{userId}").expiresIn(5.minutes))
+```
+
+#### RSA/EC signing:
+
+Scala:
+```scala
+val privateKey = JwtKeys.rsaPrivateKeyFromResource("keys/private.pem")
+val jwtGenerator = jwt("RS256", privateKey).defaultHeader
+  .claims(ClaimsBuilder().issuer("auth-service").expiresIn(1.hour))
+```
+
+Java:
+```java
+PrivateKey privateKey = JwtKeysJ.rsaPrivateKeyFromResource("keys/private.pem");
+JwtGeneratorBuilder jwtGenerator = Jwt.jwt("RS256", privateKey).defaultHeader()
+    .claims(Jwt.claims().issuer("auth-service").expiresIn(Duration.ofHours(1)));
+```
+
+Kotlin:
+```kotlin
+val privateKey = JwtKeysJ.rsaPrivateKeyFromResource("keys/private.pem")
+val jwtGenerator = jwt("RS256", privateKey).defaultHeader()
+    .claims(claims().issuer("auth-service").expiresIn(Duration.ofHours(1)))
+```
+
+Available key loading methods:
+- `rsaPrivateKeyFromResource` / `rsaPrivateKeyFromFile`
+- `ecPrivateKeyFromResource` / `ecPrivateKeyFromFile`
+- `rsaPublicKeyFromResource` / `rsaPublicKeyFromFile` (for verification)
+- `ecPublicKeyFromResource` / `ecPublicKeyFromFile` (for verification)
+
+#### Header/payload DSL:
+
+```scala
+jwt("HS256", secret)
+  .header("""{"alg": "HS256","typ": "JWT", "customField": "customData"}""")
+  .headerFromResource("jwtTemplates/header.json")
+  .defaultHeader
+  .payload("""{"sub": "#{userId}","scope": "api"}""")
+  .payloadFromResource("jwtTemplates/payload.json")
+```
+
+#### Signing requests:
+
+Scala:
+```scala
+.exec(_.setJwt(jwtGenerator, "jwtToken"))
+.exec(addCookie(Cookie("JWT_TOKEN", "#{jwtToken}").withDomain(jwtCookieDomain).withPath("/")))
+```
+
+Java:
+```java
+.exec(Jwt.setJwt(jwtGenerator, "jwtToken"))
+.exec(addCookie(Cookie("JWT_TOKEN", "#{jwtToken}").withDomain("jwtCookieDomain").withPath("/")))
+```
+
+Kotlin:
+```kotlin
+.exec(setJwt(jwtGenerator, "jwtToken"))
+.exec(addCookie(Cookie("JWT_TOKEN", "#{jwtToken}").withDomain("jwtCookieDomain").withPath("/")))
+```
+
+#### Bearer token (Authorization header):
+
+Scala:
+```scala
+.exec(_.setJwtAsBearer(jwtGenerator))
+.exec(http("request").get("/api").header("Authorization", "#{Authorization}"))
+```
+
+Java:
+```java
+.exec(Jwt.setJwtAsBearer(jwtGenerator))
+.exec(http("request").get("/api").header("Authorization", "#{Authorization}"))
+```
+
+Kotlin:
+```kotlin
+.exec(setJwtAsBearer(jwtGenerator))
+.exec(http("request").get("/api").header("Authorization", "#{Authorization}"))
+```
+
+You can also specify a custom session key: `setJwtAsBearer(jwtGenerator, "X-Auth")`
 
 ### assertion
 
