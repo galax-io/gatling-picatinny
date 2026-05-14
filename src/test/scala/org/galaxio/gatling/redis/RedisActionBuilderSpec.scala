@@ -16,7 +16,7 @@ class RedisActionBuilderSpec extends AnyWordSpec with Matchers {
   private val redisValue: Expression[String]       = "value"
   private val redisValues: Seq[Expression[String]] = Seq("values")
 
-  "RedisActionBuilder syntax" should {
+  "Legacy RedisActionBuilder syntax" should {
     "add DEL builders to Gatling chains" in {
       exec(redisPool.DEL(redisKey, redisKeys: _*)).actionBuilders should contain(
         RedisDelActionBuilder(redisPool, redisKey, redisKeys),
@@ -33,6 +33,190 @@ class RedisActionBuilderSpec extends AnyWordSpec with Matchers {
       exec(redisPool.SADD(redisKey, redisValue, redisValues: _*)).actionBuilders should contain(
         RedisSaddActionBuilder(redisPool, redisKey, redisValue, redisValues),
       )
+    }
+  }
+
+  "String operations" should {
+    "add GET builder to Gatling chains" in {
+      val chain = exec(redisPool.GET(redisKey))
+      chain.actionBuilders should have size 1
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add SET builder to Gatling chains" in {
+      val chain = exec(redisPool.SET(redisKey, redisValue))
+      chain.actionBuilders should have size 1
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add GETSET builder to Gatling chains" in {
+      val chain = exec(redisPool.GETSET(redisKey, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add SETNX builder to Gatling chains" in {
+      val chain = exec(redisPool.SETNX(redisKey, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add SETEX builder to Gatling chains" in {
+      val expiry: Expression[Any] = "60"
+      val chain                   = exec(redisPool.SETEX(redisKey, expiry, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add MGET builder to Gatling chains" in {
+      val chain = exec(redisPool.MGET(redisKey, redisKeys: _*))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add INCR builder to Gatling chains" in {
+      val chain = exec(redisPool.INCR(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add DECR builder to Gatling chains" in {
+      val chain = exec(redisPool.DECR(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add INCRBY builder to Gatling chains" in {
+      val increment: Expression[Any] = "5"
+      val chain                      = exec(redisPool.INCRBY(redisKey, increment))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add DECRBY builder to Gatling chains" in {
+      val decrement: Expression[Any] = "3"
+      val chain                      = exec(redisPool.DECRBY(redisKey, decrement))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+  }
+
+  "Hash operations" should {
+    "add HGET builder to Gatling chains" in {
+      val field: Expression[Any] = "field1"
+      val chain                  = exec(redisPool.HGET(redisKey, field))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add HSET builder to Gatling chains" in {
+      val field: Expression[Any] = "field1"
+      val chain                  = exec(redisPool.HSET(redisKey, field, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add HDEL builder to Gatling chains" in {
+      val field: Expression[Any] = "field1"
+      val chain                  = exec(redisPool.HDEL(redisKey, field))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add HGETALL builder to Gatling chains" in {
+      val chain = exec(redisPool.HGETALL(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add HMGET builder to Gatling chains" in {
+      val field1: Expression[Any] = "f1"
+      val field2: Expression[Any] = "f2"
+      val chain                   = exec(redisPool.HMGET(redisKey, field1, field2))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+  }
+
+  "List operations" should {
+    "add LPUSH builder to Gatling chains" in {
+      val chain = exec(redisPool.LPUSH(redisKey, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add RPUSH builder to Gatling chains" in {
+      val chain = exec(redisPool.RPUSH(redisKey, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add LPOP builder to Gatling chains" in {
+      val chain = exec(redisPool.LPOP(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add RPOP builder to Gatling chains" in {
+      val chain = exec(redisPool.RPOP(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add LRANGE builder to Gatling chains" in {
+      val start: Expression[Any] = "0"
+      val end: Expression[Any]   = "10"
+      val chain                  = exec(redisPool.LRANGE(redisKey, start, end))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add LLEN builder to Gatling chains" in {
+      val chain = exec(redisPool.LLEN(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+  }
+
+  "Key operations" should {
+    "add EXISTS builder to Gatling chains" in {
+      val chain = exec(redisPool.EXISTS(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add EXPIRE builder to Gatling chains" in {
+      val ttl: Expression[Any] = "300"
+      val chain                = exec(redisPool.EXPIRE(redisKey, ttl))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add TTL builder to Gatling chains" in {
+      val chain = exec(redisPool.TTL(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add KEYS builder to Gatling chains" in {
+      val pattern: Expression[Any] = "user:*"
+      val chain                    = exec(redisPool.KEYS(pattern))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+  }
+
+  "Set operations" should {
+    "add SMEMBERS builder to Gatling chains" in {
+      val chain = exec(redisPool.SMEMBERS(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add SISMEMBER builder to Gatling chains" in {
+      val chain = exec(redisPool.SISMEMBER(redisKey, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add SCARD builder to Gatling chains" in {
+      val chain = exec(redisPool.SCARD(redisKey))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+  }
+
+  "GenericRedisActionBuilder" should {
+    "support saveAs chaining" in {
+      val builder = redisPool.GET(redisKey).saveAs("result")
+      builder shouldBe a[GenericRedisActionBuilder]
+      builder.saveAsVar shouldBe Some("result")
+    }
+
+    "support requestName chaining" in {
+      val builder = redisPool.GET(redisKey).requestName("redis-get")
+      builder shouldBe a[GenericRedisActionBuilder]
+      builder.reqName shouldBe Some("redis-get")
+    }
+
+    "support combined saveAs and requestName chaining" in {
+      val builder = redisPool.GET(redisKey).saveAs("result").requestName("redis-get")
+      builder.saveAsVar shouldBe Some("result")
+      builder.reqName shouldBe Some("redis-get")
     }
   }
 }
