@@ -43,6 +43,14 @@ object TransactionsSpec {
       .endTransaction("t1")
       .endTransaction("t2")
 
+  val nestedTransactionScenario: ScenarioBuilder =
+    scenario("Nested transaction scenario")
+      .startTransaction("outer")
+      .startTransaction("inner")
+      .exec(s => s)
+      .endTransaction("inner")
+      .endTransaction("outer")
+
   final class OverrideHookSimulation(hooks: scala.collection.mutable.ArrayBuffer[String]) extends SimulationWithTransactions {
     setUp(scenario("Override hook scenario").exec(s => s).inject(atOnceUsers(1)))
 
@@ -153,7 +161,28 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
         name("Transaction 't1' illegal state"),
         status("KO"),
       )
-      errorRecord.value.errorMsg.value shouldBe "transaction not be able end before they started"
+      errorRecord.value.errorMsg.value shouldBe "transaction cannot end before it started"
+    }
+
+    "write nested transactions with correct timestamps" in new MockedGatlingCtx {
+      (statsEngine.logResponse _)
+        .when(*, *, *, *, *, *, *, *)
+        .onCall { (_, _, c, d, e, f, _, h) => events.add(Evt("REQUEST", c, d, e, f.name, h)) }
+        .repeat(2)
+
+      runScenario(nestedTransactionScenario, testContext)
+
+      val requests = getEvents.filter(_.evtType == "REQUEST")
+
+      requests should have size 2
+      requests.map(_.name) should contain allOf ("inner", "outer")
+
+      val inner = requests.find(_.name == "inner").value
+      val outer = requests.find(_.name == "outer").value
+      inner should have(status("OK"))
+      outer should have(status("OK"))
+      inner.startTimestamp should be >= outer.startTimestamp
+      inner.endTimestamp should be <= outer.endTimestamp
     }
 
     "fail with transaction close error when transaction sequence is incorrect" in new MockedGatlingCtx {
