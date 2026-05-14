@@ -41,10 +41,10 @@ class SessionStorageSpec extends AnyWordSpec with Matchers {
     }
 
     "handle concurrent writes from multiple threads" in {
-      val storage    = SessionStorage()
+      val storage     = SessionStorage()
       val threadCount = 100
-      val latch      = new CountDownLatch(threadCount)
-      val executor   = Executors.newFixedThreadPool(threadCount)
+      val latch       = new CountDownLatch(threadCount)
+      val executor    = Executors.newFixedThreadPool(threadCount)
 
       (0 until threadCount).foreach { i =>
         executor.submit(new Runnable {
@@ -75,7 +75,7 @@ class SessionStorageSpec extends AnyWordSpec with Matchers {
 
       val storage2 = SessionStorage(backend).load()
       storage2.size shouldBe 2
-      val feeder = storage2.toFeeder
+      val feeder   = storage2.toFeeder
       feeder(0)("user") shouldBe "alice"
       feeder(1)("token") shouldBe "t2"
     }
@@ -86,7 +86,7 @@ class SessionStorageSpec extends AnyWordSpec with Matchers {
 
       val tmpFile = java.io.File.createTempFile("storage-test2", ".json")
       tmpFile.deleteOnExit()
-      val withBe = storage.withBackend(JsonFileBackend(tmpFile.getAbsolutePath))
+      val withBe  = storage.withBackend(JsonFileBackend(tmpFile.getAbsolutePath))
       withBe.size shouldBe 1
       withBe.toFeeder.head("key") shouldBe "value"
     }

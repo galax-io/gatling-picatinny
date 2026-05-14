@@ -16,7 +16,7 @@ class StorageBackendSpec extends AnyWordSpec with Matchers {
 
       val records = Seq(
         Map[String, Any]("user" -> "alice", "token" -> "t1"),
-        Map[String, Any]("user" -> "bob", "token" -> "t2"),
+        Map[String, Any]("user" -> "bob", "token"   -> "t2"),
       )
       backend.save(records)
 

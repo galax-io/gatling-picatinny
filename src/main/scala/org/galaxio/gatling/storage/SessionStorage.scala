@@ -65,13 +65,13 @@ final class SessionStorage(
         parsed.foldLeft(session) { (s, cookie) =>
           s.set(cookie.name, cookie.value)
         }
-      case _ => session
+      case _                       => session
     }
   }
 
 }
 
 object SessionStorage {
-  def apply(): SessionStorage                       = new SessionStorage()
+  def apply(): SessionStorage                        = new SessionStorage()
   def apply(backend: StorageBackend): SessionStorage = new SessionStorage(Some(backend))
 }
