@@ -8,8 +8,8 @@ lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(inConfig(IntegrationTest)(Defaults.testSettings))
   .settings(
-    name                     := "gatling-picatinny",
-    scalaVersion             := "2.13.18",
+    name                                := "gatling-picatinny",
+    scalaVersion                        := "2.13.18",
     libraryDependencies ++= gatlingCore,
     libraryDependencies ++= gatling,
     libraryDependencies ++= fastUUID,
@@ -21,13 +21,13 @@ lazy val root = (project in file("."))
     libraryDependencies ++= jwt,
     libraryDependencies ++= circeDeps,
     libraryDependencies ++= junit,
-    coverageMinimumStmtTotal := 45,
-    coverageFailOnMinimum    := true,
+    coverageMinimumStmtTotal            := 45,
+    coverageFailOnMinimum               := true,
     Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-l", "org.galaxio.gatling.tags.DockerTest"),
     IntegrationTest / parallelExecution := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
     javacOptions ++= Seq("--release", "17"),
-    scalacOptions            := Seq(
+    scalacOptions                       := Seq(
       "-encoding",
       "UTF-8",
       "-release:17",
