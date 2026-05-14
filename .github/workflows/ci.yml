@@ -19,6 +19,9 @@ env:
   SBT_OPTS: -Dsbt.color=true -Dsbt.log.noformat=false -Dsbt.supershell=false
   JAVA_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
   JVM_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
+  JMH_WARMUP_ITERATIONS: "3"
+  JMH_MEASUREMENT_ITERATIONS: "5"
+  JMH_FORKS: "1"
   FORCE_COLOR: "1"
   TERM: xterm-256color
 
@@ -97,7 +100,7 @@ jobs:
           restore-keys: sbt-${{ runner.os }}-
 
       - name: Test
-        run: sbt clean test
+        run: sbt test
 
   template-tests:
     name: Template / ${{ matrix.template }} (Java ${{ matrix.java-version }})
@@ -314,7 +317,7 @@ jobs:
       - name: Run JMH benchmarks
         run: |
           mkdir -p .ci-artifacts/jmh/current
-          sbt clean 'Test / compile' 'Jmh / run -wi 2 -i 3 -f 1 -rf json -rff .ci-artifacts/jmh/current/results.json .*'
+          sbt "Test / compile" "Jmh / run -wi ${JMH_WARMUP_ITERATIONS} -i ${JMH_MEASUREMENT_ITERATIONS} -f ${JMH_FORKS} -rf json -rff .ci-artifacts/jmh/current/results.json .*"
 
       - name: Build benchmark report
         shell: bash
@@ -347,10 +350,77 @@ jobs:
             .ci-artifacts/jmh/current
           if-no-files-found: error
 
+  benchmarks-base:
+    name: JMH Benchmarks / base branch
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Checkout base branch for comparison
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base-branch
+
+      - name: Setup Java (Temurin 21) with sbt cache
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Cache Coursier
+        uses: coursier/cache-action@v8
+
+      - name: Cache Ivy/SBT
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.ivy2/cache
+            ~/.sbt
+            ~/.cache/coursier
+          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
+          restore-keys: sbt-${{ runner.os }}-
+
+      - name: Copy benchmark sources to base branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          find src/main/scala -name '*Benchmark.scala' -print0 | while IFS= read -r -d '' benchmark; do
+            target="base-branch/$benchmark"
+            mkdir -p "$(dirname "$target")"
+            cp "$benchmark" "$target"
+          done
+
+      - name: Run base branch JMH benchmarks
+        working-directory: base-branch
+        run: |
+          mkdir -p ../.ci-artifacts/jmh/base
+          sbt "Test / compile" "Jmh / run -wi ${JMH_WARMUP_ITERATIONS} -i ${JMH_MEASUREMENT_ITERATIONS} -f ${JMH_FORKS} -rf json -rff base-jmh-results.json .*"
+          cp base-jmh-results.json ../.ci-artifacts/jmh/base/results.json
+
+      - name: Upload base benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmh-benchmark-base
+          path: |
+            .ci-artifacts/jmh/base
+          if-no-files-found: error
+
   benchmarks-report:
     name: JMH Benchmarks / report
-    needs: [benchmarks-current]
-    if: always() && needs.benchmarks-current.result == 'success'
+    needs: [benchmarks-current, benchmarks-base]
+    if: always() && needs.benchmarks-current.result == 'success' && (needs.benchmarks-base.result == 'success' || needs.benchmarks-base.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -363,8 +433,80 @@ jobs:
           name: jmh-benchmark-current
           path: .ci-artifacts/jmh/current
 
+      - name: Download base benchmark artifacts
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@v5
+        with:
+          name: jmh-benchmark-base
+          path: .ci-artifacts/jmh/base
+
       - name: Publish current benchmark report
         run: cat .ci-artifacts/jmh/current/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build benchmark comparison report
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_results=".ci-artifacts/jmh/current/results.json"
+          base_results=".ci-artifacts/jmh/base/results.json"
+          compare_file=".ci-artifacts/jmh/current/compare.md"
+
+          jq -n \
+            --slurpfile base "$base_results" \
+            --slurpfile current "$current_results" '
+            def normalize:
+              map({
+                key: (.benchmark + "|" + .mode),
+                value: {
+                  benchmark: .benchmark,
+                  shortName: (.benchmark | split(".") | last),
+                  mode: .mode,
+                  unit: .primaryMetric.scoreUnit,
+                  score: .primaryMetric.score,
+                  error: (.primaryMetric.scoreError // 0)
+                }
+              }) | from_entries;
+            ($base[0] | normalize) as $b
+            | ($current[0] | normalize) as $c
+            | ($b + $c | to_entries | map(.key) | unique | sort) as $keys
+            | $keys
+            | map({ key: ., base: $b[.], current: $c[.] })
+            | map(select(.base != null and .current != null))
+            | map(
+                . + {
+                  delta: (.current.score - .base.score),
+                  pct: (if .base.score == 0 then null else ((.current.score - .base.score) / .base.score * 100) end),
+                  status: (
+                    if (.current.mode | ascii_downcase) == "thrpt" then
+                      if .current.score > .base.score then "improved"
+                      elif .current.score < .base.score then "regressed"
+                      else "unchanged" end
+                    else
+                      if .current.score < .base.score then "improved"
+                      elif .current.score > .base.score then "regressed"
+                      else "unchanged" end
+                    end
+                  )
+                }
+              )
+          ' > .ci-artifacts/jmh/current/compare.json
+
+          {
+            echo "# Benchmark comparison vs base branch"
+            echo
+            echo "| Benchmark | Mode | Base | PR | Delta | Change | Status |"
+            echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
+            jq -r '
+              .[] |
+              "| `\(.current.shortName)` | \(.current.mode) | \(.base.score | tostring) \(.base.unit) | \(.current.score | tostring) \(.current.unit) | \(.delta | tostring) | " +
+              (if .pct == null then "n/a" else ((if .pct > 0 then "+" else "" end) + ((.pct * 100 | round) / 100 | tostring) + "%") end) +
+              " | \(.status) |"
+            ' .ci-artifacts/jmh/current/compare.json
+          } > "$compare_file"
+
+          cat "$compare_file" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upsert PR benchmark comment
         if: github.event_name == 'pull_request'
@@ -372,7 +514,10 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const body = fs.readFileSync('.ci-artifacts/jmh/current/report.md', 'utf8');
+            const reportPath = fs.existsSync('.ci-artifacts/jmh/current/compare.md')
+              ? '.ci-artifacts/jmh/current/compare.md'
+              : '.ci-artifacts/jmh/current/report.md';
+            const body = fs.readFileSync(reportPath, 'utf8');
             const marker = '<!-- jmh-benchmark-report -->';
             const commentBody = `${marker}\n${body}`;
             const { owner, repo } = context.repo;
