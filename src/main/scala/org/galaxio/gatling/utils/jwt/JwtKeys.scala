@@ -60,8 +60,8 @@ object JwtKeys {
       .replaceAll("-----BEGIN .*-----", "")
       .replaceAll("-----END .*-----", "")
       .replaceAll("\\s", "")
-    val bytes = Base64.getDecoder.decode(stripped)
-    val spec  = new PKCS8EncodedKeySpec(bytes)
+    val bytes    = Base64.getDecoder.decode(stripped)
+    val spec     = new PKCS8EncodedKeySpec(bytes)
     KeyFactory.getInstance(algorithm).generatePrivate(spec)
   }
 
@@ -70,13 +70,13 @@ object JwtKeys {
       .replaceAll("-----BEGIN .*-----", "")
       .replaceAll("-----END .*-----", "")
       .replaceAll("\\s", "")
-    val bytes = Base64.getDecoder.decode(stripped)
-    val spec  = new X509EncodedKeySpec(bytes)
+    val bytes    = Base64.getDecoder.decode(stripped)
+    val spec     = new X509EncodedKeySpec(bytes)
     KeyFactory.getInstance(algorithm).generatePublic(spec)
   }
 
   private def readResourceString(path: String): String = {
-    val url = getClass.getClassLoader.getResource(path)
+    val url    = getClass.getClassLoader.getResource(path)
     if (url == null) throw new IllegalArgumentException(s"Resource not found: $path")
     val source = Source.fromURL(url)
     try source.mkString

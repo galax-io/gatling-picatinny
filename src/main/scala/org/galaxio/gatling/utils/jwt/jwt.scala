@@ -68,7 +68,8 @@ package object jwt {
       }
 
     /** Generate a JWT token and store `"Bearer <token>"` in the session.
-      * @param tokenName session attribute name, defaults to `"Authorization"`
+      * @param tokenName
+      *   session attribute name, defaults to `"Authorization"`
       */
     def setJwtAsBearer(generator: JwtGeneratorBuilder, tokenName: String = "Authorization"): Session =
       resolveAndEncode(generator) match {
@@ -85,10 +86,11 @@ package object jwt {
     private def resolvePayload(generator: JwtGeneratorBuilder): io.gatling.commons.validation.Validation[String] =
       generator.claimsBuilder match {
         case Some(cb) =>
-          val basePayloadValidation = if (generator.payload.json.nonEmpty)
-            generator.payload.json.el[String].apply(s)
-          else
-            Success("{}")
+          val basePayloadValidation =
+            if (generator.payload.json.nonEmpty)
+              generator.payload.json.el[String].apply(s)
+            else
+              Success("{}")
 
           basePayloadValidation.flatMap { baseJson =>
             cb.resolve(s).map { claimsJson =>

@@ -13,8 +13,8 @@ import scala.concurrent.duration.DurationInt
 
 class JwtSpec extends AnyWordSpec with Matchers {
 
-  private implicit val configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
-  private val fakeEventLoop = new FakeEventLoop
+  private implicit val configuration: GatlingConfiguration  = GatlingConfiguration.loadForTest()
+  private val fakeEventLoop                                 = new FakeEventLoop
   private val emptySession: io.gatling.core.session.Session =
     io.gatling.core.session.Session("test", 1L, fakeEventLoop)
 
@@ -85,7 +85,8 @@ class JwtSpec extends AnyWordSpec with Matchers {
     }
 
     "accept ClaimsBuilder" in {
-      val gen = jwtPkg.jwt("HS256", "secret")
+      val gen = jwtPkg
+        .jwt("HS256", "secret")
         .defaultHeader
         .claims(ClaimsBuilder().issuer("test"))
       gen.claimsBuilder shouldBe defined
@@ -94,7 +95,9 @@ class JwtSpec extends AnyWordSpec with Matchers {
 
   "setJwt" should {
     "produce valid JWT with HMAC" in {
-      val gen = jwtPkg.jwt("HS256", "my-secret").defaultHeader
+      val gen = jwtPkg
+        .jwt("HS256", "my-secret")
+        .defaultHeader
         .payload("""{"sub":"user1","scope":"test"}""")
 
       val session = emptySession.setJwt(gen, "jwt")
@@ -124,11 +127,13 @@ class JwtSpec extends AnyWordSpec with Matchers {
 
     "resolve EL expressions in payload" in {
       val sessionWithUser = emptySession.set("userId", "user-42")
-      val gen = jwtPkg.jwt("HS256", "secret").defaultHeader
+      val gen             = jwtPkg
+        .jwt("HS256", "secret")
+        .defaultHeader
         .payload("""{"sub":"#{userId}"}""")
 
-      val result = sessionWithUser.setJwt(gen, "jwt")
-      val token  = result("jwt").as[String]
+      val result  = sessionWithUser.setJwt(gen, "jwt")
+      val token   = result("jwt").as[String]
       val decoded = PdiJwt.decode(token, "secret", Seq(JwtAlgorithm.HS256))
 
       decoded.isSuccess shouldBe true
@@ -195,7 +200,9 @@ class JwtSpec extends AnyWordSpec with Matchers {
 
   "claim merging" should {
     "merge base payload with claims builder" in {
-      val gen = jwtPkg.jwt("HS256", "secret").defaultHeader
+      val gen = jwtPkg
+        .jwt("HS256", "secret")
+        .defaultHeader
         .payload("""{"scope":"base","data":"keep"}""")
         .claims(ClaimsBuilder().issuer("merged-app"))
 
@@ -211,7 +218,9 @@ class JwtSpec extends AnyWordSpec with Matchers {
     }
 
     "claims builder overrides base payload on conflict" in {
-      val gen = jwtPkg.jwt("HS256", "secret").defaultHeader
+      val gen = jwtPkg
+        .jwt("HS256", "secret")
+        .defaultHeader
         .payload("""{"scope":"original"}""")
         .claims(ClaimsBuilder().claim("scope", "overridden"))
 

@@ -24,11 +24,16 @@ import scala.io.Source
   *   .claims(ClaimsBuilder().issuer("my-service").expiresIn(5.minutes))
   * }}}
   *
-  * @param header     JWT header (JSON string)
-  * @param payload    JWT payload (JSON string), resolved via Gatling EL at generation time
-  * @param algorithm  JWT algorithm name (e.g. "HS256", "RS256", "ES256")
-  * @param signingKey signing credential — string secret or asymmetric private key
-  * @param claimsBuilder optional claims builder for standard/dynamic claims
+  * @param header
+  *   JWT header (JSON string)
+  * @param payload
+  *   JWT payload (JSON string), resolved via Gatling EL at generation time
+  * @param algorithm
+  *   JWT algorithm name (e.g. "HS256", "RS256", "ES256")
+  * @param signingKey
+  *   signing credential — string secret or asymmetric private key
+  * @param claimsBuilder
+  *   optional claims builder for standard/dynamic claims
   */
 final case class JwtGeneratorBuilder(
     header: Header,
@@ -46,7 +51,7 @@ final case class JwtGeneratorBuilder(
     }
 
   private def readResource(path: String): String = {
-    val url = getClass.getClassLoader.getResource(path)
+    val url    = getClass.getClassLoader.getResource(path)
     if (url == null) throw new IllegalArgumentException(s"Resource not found: $path")
     val source = Source.fromURL(url)
     try validateJson(source.mkString)
@@ -67,21 +72,19 @@ final case class JwtGeneratorBuilder(
     copy(header = Header(compact(render(body))))
   }
 
-  /** Load JWT payload from a classpath resource (must be valid JSON).
-    * Supports Gatling EL expressions (`#&#123;varName&#125;`) resolved at generation time.
+  /** Load JWT payload from a classpath resource (must be valid JSON). Supports Gatling EL expressions (`#&#123;varName&#125;`)
+    * resolved at generation time.
     */
   def payloadFromResource(path: String): JwtGeneratorBuilder =
     copy(payload = Payload(readResource(path)))
 
-  /** Set JWT payload from a JSON string.
-    * Supports Gatling EL expressions (`#&#123;varName&#125;`) resolved at generation time.
+  /** Set JWT payload from a JSON string. Supports Gatling EL expressions (`#&#123;varName&#125;`) resolved at generation time.
     */
   def payload(p: String): JwtGeneratorBuilder =
     copy(payload = Payload(validateJson(p)))
 
-  /** Attach a [[ClaimsBuilder]] for standard JWT claims and dynamic session-based claims.
-    * When both `payload`/`payloadFromResource` and `claims` are used,
-    * they are merged with claims taking precedence on conflict.
+  /** Attach a [[ClaimsBuilder]] for standard JWT claims and dynamic session-based claims. When both
+    * `payload`/`payloadFromResource` and `claims` are used, they are merged with claims taking precedence on conflict.
     */
   def claims(builder: ClaimsBuilder): JwtGeneratorBuilder =
     copy(claimsBuilder = Some(builder))
@@ -91,7 +94,7 @@ final case class JwtGeneratorBuilder(
     alg match {
       case _: JwtUnknownAlgorithm =>
         throw new IllegalArgumentException(s"Unsupported JWT algorithm: $algorithm")
-      case _ => alg
+      case _                      => alg
     }
   }
 

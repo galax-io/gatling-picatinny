@@ -9,8 +9,8 @@ import org.json4s.jackson.JsonMethods._
 
 import scala.concurrent.duration.FiniteDuration
 
-/** Builder for JWT claims with support for standard registered claims (RFC 7519),
-  * custom claims, Gatling EL expressions, and time-based claims.
+/** Builder for JWT claims with support for standard registered claims (RFC 7519), custom claims, Gatling EL expressions, and
+  * time-based claims.
   *
   * EL expressions use Gatling's `#&#123;varName&#125;` syntax and are resolved per virtual user from the Gatling session.
   *
@@ -51,8 +51,8 @@ final case class ClaimsBuilder(
   /** Set the `aud` (audience) claim. Supports Gatling EL: `"#{varName}"`. */
   def audience(aud: String): ClaimsBuilder = withClaim("aud", aud)
 
-  /** Set token TTL. The `exp` claim will be set to `now + duration` at generation time.
-    * Scala: use `scala.concurrent.duration` literals like `5.minutes`.
+  /** Set token TTL. The `exp` claim will be set to `now + duration` at generation time. Scala: use `scala.concurrent.duration`
+    * literals like `5.minutes`.
     */
   def expiresIn(duration: FiniteDuration): ClaimsBuilder = copy(ttl = Some(duration))
 
@@ -79,8 +79,10 @@ final case class ClaimsBuilder(
     copy(staticClaims = staticClaims + (name -> JBool(value)))
 
   /** Add a claim resolved from the Gatling session via EL expression.
-    * @param name claim name in the JWT payload
-    * @param el Gatling EL expression, e.g. `"#{userId}"`
+    * @param name
+    *   claim name in the JWT payload
+    * @param el
+    *   Gatling EL expression, e.g. `"#{userId}"`
     */
   def claimFromSession(name: String, el: String): ClaimsBuilder =
     copy(elClaims = elClaims + (name -> el))
@@ -108,7 +110,7 @@ final case class ClaimsBuilder(
           case Success(v)   => Success(acc + (name -> JString(v)))
           case Failure(msg) => Failure(msg)
         }
-      case (f @ Failure(_), _) => f
+      case (f @ Failure(_), _)            => f
     }
 
     resolvedEl.map { resolved =>
