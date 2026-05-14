@@ -946,25 +946,28 @@ Kotlin:
 
 ### templates
 
-This module contains some syntax extensions for http requests with json body. It allows embed json-body in request
-with `jsonBody` method for `HttpRequestBuilder`. And this module is provided ability to send request body templates from
-files in resource subfolder `resources/templates` by filename. Sending of templates may be done with
-method `postTemplate` from trait `Templates`
+A DSL for building JSON and XML request bodies with Gatling EL expression support, plus file-based template loading. String values are automatically escaped for JSON (`"`, `\`, newlines) and XML (`&`, `<`, `>`) special characters. `jsonBody` sets `Content-Type: application/json`, `xmlBody` sets `Content-Type: application/xml`.
+
+#### DSL Operator Reference
+
+| Operator | Description | JSON Output |
+|----------|-------------|-------------|
+| `"field" - "value"` | Literal string | `"field": "value"` |
+| `"field" - 42` | Literal number/boolean | `"field": 42` |
+| `"field" ~ "var"` | Session variable reference | `"field": "#{var}"` |
+| `"field"` (implicit) | Session variable with same name | `"field": "#{field}"` |
+| `"field" > (1, 2, 3)` | Array | `"field": [1,2,3]` |
+| `"field" - ("a" - 1)` | Nested object | `"field": {"a": 1}` |
+| `"field" - nullVal` | Null value | `"field": null` |
 
 #### jsonBody
 
-This part contains http request Json body DSL.
-
-For use this you need import this:
+Scala example:
 
 ```scala
 import org.galaxio.gatling.templates.HttpBodyExt._
 import org.galaxio.gatling.templates.Syntax._
-```
 
-Then use described later constructions for embed jsonBody in http requests. For example, you write something like this:
-
-```scala
 class SampleScenario {
   val sendJson: ScenarioBuilder =
     scenario("Post some")
@@ -972,71 +975,117 @@ class SampleScenario {
         http("PostData")
           .post(url)
           .jsonBody(
-            "id" - 23, // in json - "id" : 23 
-            "name", // in json it interpreted as - "name" : get value from session variable #{name}
-            "project" - ( // in json - "project" : { ... }
-              "id" ~ "projectId", // in json - "id" : value from session var #{projectId}
-              "name" - "Super Project", // in json - "name": "Super Project"
-              "sub" > (1, 2, 3, 4, 5, 6) // in json - "sub" : [ 1,2,3,4,5,6 ]
-            )
+            "id" - 23,
+            "name",                       // session variable #{name}
+            "project" - (
+              "id" ~ "projectId",         // session variable #{projectId}
+              "name" - "Super Project",
+              "sub" > (1, 2, 3, 4, 5, 6),
+            ),
+            "deleted" - nullVal,          // null value
           )
       )
 }
 ```
 
-As result this scenario sent POST request with body:
+Java example:
+
+```java
+import static org.galaxio.gatling.javaapi.TemplateSyntax.*;
+
+String json = makeJson(
+    field("id", 23),
+    sessionVar("name", "name"),
+    fieldObj("project",
+        sessionVar("id", "projectId"),
+        field("name", "Super Project"),
+        fieldArr("sub", 1, 2, 3, 4, 5, 6)
+    ),
+    fieldNull("deleted")
+);
+
+// Use with Gatling: .body(StringBody(json)).asJson
+```
+
+Kotlin example:
+
+```kotlin
+import org.galaxio.gatling.javaapi.TemplateSyntax.*
+
+val json = makeJson(
+    field("id", 23),
+    sessionVar("name", "name"),
+    fieldObj("project",
+        sessionVar("id", "projectId"),
+        field("name", "Super Project"),
+        fieldArr("sub", 1, 2, 3, 4, 5, 6)
+    ),
+    fieldNull("deleted")
+)
+```
+
+The resulting JSON:
 
 ```json
 {
   "id": 23,
-  "name": "Test",
+  "name": "#{name}",
   "project": {
-    "id": 23421,
+    "id": "#{projectId}",
     "name": "Super Project",
-    "sub": [
-      1,
-      2,
-      3,
-      4,
-      5,
-      6
-    ]
-  }
+    "sub": [1, 2, 3, 4, 5, 6]
+  },
+  "deleted": null
 }
 ```
 
-As you can see in the example:
+#### xmlBody
 
-- construction `"some_name" - <val>` map to `"some_name": <val>` in json;
-- construction `"varName"` map to `"varName" : <get value from session variable #{varName}>` in json;
-- construction `"some_name" ~ "sesVar"` map to `"some_name" : <value from session var #{sesVar}>` in json;
-- `"some_name" > (<...items>)` map to array field `"some_name": [ ...items ]` in json;
-- `"some_name" - (<...fields>)` map to object field `"some_name": { ...fields }` in json;
+Scala example:
+
+```scala
+import org.galaxio.gatling.templates.HttpBodyExt._
+import org.galaxio.gatling.templates.Syntax._
+
+http("PostXml")
+  .post(url)
+  .xmlBody(
+    "id" - 23,
+    "name" ~ "userName",
+    "tags" > ("alpha", "beta"),
+  )
+```
+
+Java example:
+
+```java
+import static org.galaxio.gatling.javaapi.TemplateSyntax.*;
+
+String xml = makeXml(
+    field("id", 23),
+    sessionVar("name", "userName"),
+    fieldArr("tags", "alpha", "beta")
+);
+```
+
+Produces: `<id>23</id><name>#{userName}</name><tags><item>alpha</item><item>beta</item></tags>`
 
 #### postTemplate
 
-Suppose in folder resources/templates contains this:
+Loads template files from `resources/templates` and sends them as POST request bodies. Template files support [Gatling EL expressions](https://gatling.io/docs/gatling/reference/current/session/expression_el/). Templates are lazily loaded on first access.
 
 ```shell
 $ tree resources/
 .
 ├── gatling.conf
 ├── logback.xml
-├── pools
-│   └── example_pool.csv
 ├── simulation.conf
 └── templates
     └── example_template1.json
     └── example_template2.json
 ```
 
-For use templates in `resources/templates` you need import trait `Templates`.
-
-```scala
-import org.galaxio.gatling.templates.Templates._
-```
-
-Then add this trait to your Scenario and use `postTemplate` method like show later:
+Scala example:
 
 ```scala
 class SampleScenario extends Templates {
@@ -1047,9 +1096,7 @@ class SampleScenario extends Templates {
 }
 ```
 
-This Scenario will send 2 post requests one with body from `example_template1.json`, second with body
-from `example_template2.json` to route `$baseUrl/post_route`. In template files you may use
-[gatling expression syntax](https://gatling.io/docs/gatling/reference/current/session/expression_el/).
+This sends 2 POST requests: one with body from `example_template1.json`, second from `example_template2.json` to `$baseUrl/post_route`. If a template name is not found, a `NoSuchElementException` is thrown listing available templates.
 
 ### utils
 

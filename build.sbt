@@ -3,7 +3,7 @@ import Dependencies.*
 def UtilsModule(id: String) = Project(id, file(id))
 
 lazy val root = (project in file("."))
-  .enablePlugins(GitVersioning)
+  .enablePlugins(GitVersioning, JmhPlugin)
   .settings(
     name                     := "gatling-picatinny",
     scalaVersion             := "2.13.18",
