@@ -19,7 +19,7 @@ class CookieParserSpec extends AnyWordSpec with Matchers {
       val raw    = "token=xyz; Path=/api; Domain=.example.com; Max-Age=3600; Secure; HttpOnly"
       val result = CookieParser.parse(raw, "fallback.com")
       result should have size 1
-      val c = result.head
+      val c      = result.head
       c.name shouldBe "token"
       c.value shouldBe "xyz"
       c.domain shouldBe Some(".example.com")
