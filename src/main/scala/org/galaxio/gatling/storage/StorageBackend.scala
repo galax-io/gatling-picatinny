@@ -80,13 +80,14 @@ final case class JdbcStorageBackend(
 
   private def ensureTable(conn: Connection): Unit = {
     val stmt = conn.createStatement()
-    try stmt.execute(
-      s"""CREATE TABLE IF NOT EXISTS $tableName (
+    try
+      stmt.execute(
+        s"""CREATE TABLE IF NOT EXISTS $tableName (
          |  id BIGINT AUTO_INCREMENT PRIMARY KEY,
          |  record_data TEXT NOT NULL,
          |  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
          |)""".stripMargin,
-    )
+      )
     finally stmt.close()
   }
 
