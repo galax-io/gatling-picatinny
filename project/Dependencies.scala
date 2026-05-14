@@ -67,7 +67,11 @@ object Dependencies {
     "io.circe" %% "circe-yaml"    % "1.15.0",
   )
 
-  lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus
+  lazy val testcontainers: Seq[ModuleID] = Seq(
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % Test,
+  )
+
+  lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus ++ testcontainers
 
   lazy val junit: Seq[ModuleID] = Seq(
     "org.junit.jupiter"    % "junit-jupiter"     % "6.0.2"  % Test,
