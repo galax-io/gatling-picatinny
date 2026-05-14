@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: ['**']
   push:
-    branches: ['**']
+    branches: ['main']
     tags: ['v*']
   workflow_dispatch:
 
@@ -23,8 +23,44 @@ env:
   TERM: xterm-256color
 
 jobs:
+  format:
+    name: Formatting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java (Temurin 21) with sbt cache
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Cache Coursier
+        uses: coursier/cache-action@v8
+
+      - name: Cache Ivy/SBT
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.ivy2/cache
+            ~/.sbt
+            ~/.cache/coursier
+          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
+          restore-keys: sbt-${{ runner.os }}-
+
+      - name: Check Formatting
+        run: sbt scalafmtCheckAll scalafmtSbtCheck
+
   test:
-    name: Lint, Compile & Test (Java ${{ matrix.java-version }})
+    name: Test (Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -60,18 +96,11 @@ jobs:
           key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
           restore-keys: sbt-${{ runner.os }}-
 
-      - name: Check Formatting
-        run: sbt scalafmtCheckAll scalafmtSbtCheck
-
-      - name: Compile
-        run: sbt clean compile
-
       - name: Test
-        run: sbt test
+        run: sbt clean test
 
   template-tests:
     name: Template / ${{ matrix.template }} (Java ${{ matrix.java-version }})
-    needs: test
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -121,6 +150,14 @@ jobs:
             ~/.cache/coursier
           key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
           restore-keys: sbt-${{ runner.os }}-
+
+      - name: Cache Maven repository
+        if: matrix.template == 'java-maven'
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('examples/java-maven-example/pom.xml') }}
+          restore-keys: m2-${{ runner.os }}-
 
       - name: Publish local Picatinny artifact
         run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishLocal publishM2
@@ -175,8 +212,23 @@ jobs:
           rm -rf "$project_dir/src/test/resources"
           cp -R examples/java-maven-example/src/test/resources "$project_dir/src/test/resources"
 
-          mvn -B -f "$project_dir/pom.xml" clean test-compile
-          mvn -B -f "$project_dir/pom.xml" gatling:test
+          run_maven() {
+            local attempt=1
+            local max_attempts=3
+            while true; do
+              if mvn -B -f "$project_dir/pom.xml" "$@"; then
+                return 0
+              fi
+              if [[ "$attempt" -ge "$max_attempts" ]]; then
+                return 1
+              fi
+              attempt=$((attempt + 1))
+              sleep 5
+            done
+          }
+
+          run_maven clean test-compile
+          run_maven gatling:test
 
       - name: Kotlin Gradle Gatling project from template main
         if: matrix.template == 'kotlin-gradle'
@@ -226,9 +278,145 @@ jobs:
         if: always()
         uses: codecov/codecov-action@v6
 
+  benchmarks-current:
+    name: JMH Benchmarks / current
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java (Temurin 21) with sbt cache
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Cache Coursier
+        uses: coursier/cache-action@v8
+
+      - name: Cache Ivy/SBT
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.ivy2/cache
+            ~/.sbt
+            ~/.cache/coursier
+          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
+          restore-keys: sbt-${{ runner.os }}-
+
+      - name: Run JMH benchmarks
+        run: |
+          mkdir -p .ci-artifacts/jmh/current
+          sbt clean 'Test / compile' 'Jmh / run -wi 2 -i 3 -f 1 -rf json -rff .ci-artifacts/jmh/current/results.json .*'
+
+      - name: Build benchmark report
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          report_dir=".ci-artifacts/jmh/current"
+          results_file="$report_dir/results.json"
+          report_file="$report_dir/report.md"
+
+          {
+            echo "# JMH benchmark report"
+            echo
+            echo "| Benchmark | Mode | Score | Error | Unit |"
+            echo "| --- | --- | ---: | ---: | --- |"
+            jq -r '
+              sort_by(.benchmark)[] |
+              "| `\(.benchmark | split(".") | last)` | \(.mode) | \(.primaryMetric.score | tostring) | \(.primaryMetric.scoreError // 0 | tostring) | \(.primaryMetric.scoreUnit) |"
+            ' "$results_file"
+          } > "$report_file"
+
+          cat "$report_file" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload current benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmh-benchmark-current
+          path: |
+            .ci-artifacts/jmh/current
+          if-no-files-found: error
+
+  benchmarks-report:
+    name: JMH Benchmarks / report
+    needs: [benchmarks-current]
+    if: always() && needs.benchmarks-current.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download current benchmark artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: jmh-benchmark-current
+          path: .ci-artifacts/jmh/current
+
+      - name: Publish current benchmark report
+        run: cat .ci-artifacts/jmh/current/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert PR benchmark comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('.ci-artifacts/jmh/current/report.md', 'utf8');
+            const marker = '<!-- jmh-benchmark-report -->';
+            const commentBody = `${marker}\n${body}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(comment =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: commentBody,
+              });
+            }
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmh-benchmark-report
+          path: |
+            .ci-artifacts/jmh
+          if-no-files-found: error
+
   release:
     name: Release (tag-driven)
-    needs: [test, template-tests, coverage]
+    needs: [format, test, template-tests, coverage, benchmarks-current, benchmarks-report]
     runs-on: ubuntu-24.04
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     permissions:
