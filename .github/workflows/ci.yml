@@ -281,6 +281,42 @@ jobs:
         if: always()
         uses: codecov/codecov-action@v6
 
+  redis-integration:
+    name: Redis Integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java (Temurin 21) with sbt cache
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Cache Coursier
+        uses: coursier/cache-action@v8
+
+      - name: Cache Ivy/SBT
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.ivy2/cache
+            ~/.sbt
+            ~/.cache/coursier
+          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
+          restore-keys: sbt-${{ runner.os }}-
+
+      - name: Run Redis integration tests
+        run: sbt "IntegrationTest / test"
+
   benchmarks-current:
     name: JMH Benchmarks / current
     runs-on: ubuntu-24.04
@@ -561,7 +597,7 @@ jobs:
 
   release:
     name: Release (tag-driven)
-    needs: [format, test, template-tests, coverage, benchmarks-current, benchmarks-report]
+    needs: [format, test, template-tests, coverage, redis-integration, benchmarks-current, benchmarks-report]
     runs-on: ubuntu-24.04
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     permissions:

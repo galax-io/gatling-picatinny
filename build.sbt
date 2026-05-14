@@ -1,9 +1,12 @@
 import Dependencies.*
 
 def UtilsModule(id: String) = Project(id, file(id))
+lazy val IntegrationTest    = config("it") extend Test
 
 lazy val root = (project in file("."))
   .enablePlugins(GitVersioning, JmhPlugin)
+  .configs(IntegrationTest)
+  .settings(inConfig(IntegrationTest)(Defaults.testSettings))
   .settings(
     name                     := "gatling-picatinny",
     scalaVersion             := "2.13.18",
@@ -20,6 +23,9 @@ lazy val root = (project in file("."))
     libraryDependencies ++= junit,
     coverageMinimumStmtTotal := 45,
     coverageFailOnMinimum    := true,
+    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-l", "org.galaxio.gatling.tags.DockerTest"),
+    IntegrationTest / parallelExecution := false,
+    IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
     javacOptions ++= Seq("--release", "17"),
     scalacOptions            := Seq(
       "-encoding",
