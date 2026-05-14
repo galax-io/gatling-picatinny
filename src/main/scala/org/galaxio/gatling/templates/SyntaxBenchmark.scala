@@ -1,16 +1,10 @@
 package org.galaxio.gatling.templates
 
-import org.openjdk.jmh.annotations._
-import java.util.concurrent.TimeUnit
+import org.galaxio.gatling.jmh.JmhBenchmark
 import org.galaxio.gatling.templates.Syntax._
+import org.openjdk.jmh.annotations.Benchmark
 
-@BenchmarkMode(Array(Mode.Throughput, Mode.AverageTime))
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 5, time = 1)
-@Measurement(iterations = 10, time = 1)
-@Fork(2)
-@State(Scope.Benchmark)
-class SyntaxBenchmark {
+class SyntaxBenchmark extends JmhBenchmark {
 
   private val flatFields: List[Field] = List(
     "id" - 42,
