@@ -8,6 +8,7 @@ import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
 import io.gatling.core.util.NameGen
 
+@deprecated("Use GenericRedisActionBuilder with RedisCommand.Keys.Del instead", "picatinny 0.x")
 case class RedisDelAction(
     ctx: ScenarioContext,
     next: Action,

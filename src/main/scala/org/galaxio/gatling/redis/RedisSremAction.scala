@@ -8,6 +8,7 @@ import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
 import io.gatling.core.util.NameGen
 
+@deprecated("Use GenericRedisActionBuilder with RedisCommand.Sets.SRem instead", "picatinny 0.x")
 case class RedisSremAction(
     ctx: ScenarioContext,
     next: Action,
