@@ -137,6 +137,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: stable
+          cache: false
 
       - name: Install galaxio CLI from main
         run: go install github.com/galax-io/galaxio-cli/cmd/galaxio@main
@@ -163,7 +164,7 @@ jobs:
           restore-keys: m2-${{ runner.os }}-
 
       - name: Publish local Picatinny artifact
-        run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' publishLocal publishM2
+        run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' 'set ThisBuild / publishM2Configuration := publishM2Configuration.value.withOverwrite(true)' publishLocal publishM2
 
       - name: Java Maven Gatling project from template main
         if: matrix.template == 'java-maven'
