@@ -5,26 +5,42 @@ import io.gatling.core.session.el._
 import io.gatling.http.request.builder.HttpRequestBuilder
 import org.galaxio.gatling.templates.Syntax._
 
-/** This extension gives the ability to write something like this
+/** Extension methods for [[io.gatling.http.request.builder.HttpRequestBuilder]] that add `jsonBody` and `xmlBody` DSL support.
   *
   * {{{
+  * import org.galaxio.gatling.templates.HttpBodyExt._
+  * import org.galaxio.gatling.templates.Syntax._
+  *
   * http("PostData")
-  * .post(url)
-  * .jsonBody(
-  *   "id" - 23,                    // in json - "id" : 23
-  *   "name",                       // in json it is interpreted as - "name" : value from session variable "name"
-  *   "project" - (                 // in json - "project" : { ... }
-  *     "id" ~ "projectId",         // in json - "id" : value from session variable "projectId"
-  *     "name" - "Super Project",   // in json - "name": "Super Project"
-  *     "sub" > ( 1,2,3,4,5,6)      // in json - "sub" : [ 1,2,3,4,5,6 ]
-  *     )
+  *   .post(url)
+  *   .jsonBody(
+  *     "id" - 23,
+  *     "name",                       // session variable #{name}
+  *     "project" - (
+  *       "id" ~ "projectId",         // session variable #{projectId}
+  *       "name" - "Super Project",
+  *       "sub" > (1, 2, 3, 4, 5, 6),
+  *     ),
   *   )
   * }}}
   */
 object HttpBodyExt {
+
+  /** Enriches [[HttpRequestBuilder]] with template body methods.
+    *
+    * @param httpRequestBuilder
+    *   the builder to extend
+    */
   implicit class BodyOps(val httpRequestBuilder: HttpRequestBuilder) extends AnyVal {
+
+    /** Sets a raw string as the request body with EL interpolation. */
     def body(string: String): HttpRequestBuilder = httpRequestBuilder.body(StringBody(string.el[String]))
 
+    /** Builds a JSON request body from DSL fields and sets `Content-Type: application/json`.
+      *
+      * @param fs
+      *   fields defined using the [[Syntax]] DSL
+      */
     def jsonBody(fs: Field*): HttpRequestBuilder =
       httpRequestBuilder
         .body(
@@ -32,6 +48,11 @@ object HttpBodyExt {
         )
         .asJson
 
+    /** Builds an XML request body from DSL fields and sets `Content-Type: application/xml`.
+      *
+      * @param fs
+      *   fields defined using the [[Syntax]] DSL
+      */
     def xmlBody(fs: Field*): HttpRequestBuilder =
       httpRequestBuilder
         .body(

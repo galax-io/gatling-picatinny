@@ -4,8 +4,11 @@
 /.idea
 /.vscode
 /.project
+/\.bsp/
 /project/project/
 /project/target/
 /report/
 *.log
 /results/
+**/.gradle/
+**/build/
