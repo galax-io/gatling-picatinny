@@ -37,19 +37,19 @@ object Dependencies {
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
-    "org.scalatest" %% "scalatest" % "3.2.19" % "test",
+    "org.scalatest" %% "scalatest" % "3.2.19" % "test,it",
   )
 
   lazy val scalaCheck: Seq[ModuleID] = Seq(
-    "org.scalacheck" %% "scalacheck" % "1.19.0" % "test",
+    "org.scalacheck" %% "scalacheck" % "1.19.0" % "test,it",
   )
 
   lazy val scalaTestPlus: Seq[ModuleID] = Seq(
-    "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % Test,
+    "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % "test,it",
   )
 
   lazy val scalaMock: Seq[ModuleID] = Seq(
-    "org.scalamock" %% "scalamock" % "7.5.5" % "test",
+    "org.scalamock" %% "scalamock" % "7.5.5" % "test,it",
   )
 
   lazy val generex: Seq[ModuleID] = Seq(
@@ -68,15 +68,15 @@ object Dependencies {
   )
 
   lazy val testcontainers: Seq[ModuleID] = Seq(
-    "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % Test,
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % "test,it",
   )
 
   lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus ++ testcontainers
 
   lazy val junit: Seq[ModuleID] = Seq(
-    "org.junit.jupiter"    % "junit-jupiter"     % "6.0.2"  % Test,
-    "com.github.sbt.junit" % "jupiter-interface" % "0.17.0" % Test,
-    "org.assertj"          % "assertj-core"      % "3.27.6" % Test,
+    "org.junit.jupiter"    % "junit-jupiter"     % "6.0.2"  % "test,it",
+    "com.github.sbt.junit" % "jupiter-interface" % "0.17.0" % "test,it",
+    "org.assertj"          % "assertj-core"      % "3.27.6" % "test,it",
   )
 
 }
