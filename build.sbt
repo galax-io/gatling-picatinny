@@ -1,7 +1,7 @@
 import Dependencies.*
 
 def UtilsModule(id: String) = Project(id, file(id))
-lazy val IntegrationTest    = config("it") extend Test
+lazy val IntegrationTest    = config("it") extend Runtime
 
 lazy val root = (project in file("."))
   .enablePlugins(GitVersioning, JmhPlugin)
@@ -23,7 +23,6 @@ lazy val root = (project in file("."))
     libraryDependencies ++= junit,
     coverageMinimumStmtTotal            := 45,
     coverageFailOnMinimum               := true,
-    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-l", "org.galaxio.gatling.tags.DockerTest"),
     IntegrationTest / parallelExecution := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
     javacOptions ++= Seq("--release", "17"),
