@@ -8,7 +8,6 @@ object Dependencies {
     "io.gatling" % "gatling-http",
     "io.gatling" % "gatling-http-java",
     "io.gatling" % "gatling-redis",
-    "io.gatling" % "gatling-core-java",
     "io.gatling" % "gatling-redis-java",
   ).map(_ % GatlingVersion % Provided)
 
