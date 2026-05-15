@@ -598,7 +598,7 @@ jobs:
 
   release:
     name: Release
-    needs: [format, test, template-tests, coverage, redis-integration, benchmarks-current, benchmarks-report]
+    needs: [format, test, template-tests, coverage, redis-integration]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
