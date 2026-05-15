@@ -1,7 +1,6 @@
 package org.galaxio.gatling.feeders
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import org.galaxio.gatling.tags.DockerTest
 import org.galaxio.gatling.utils.THttpClient
 import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods
@@ -12,6 +11,7 @@ import org.testcontainers.containers.wait.strategy.Wait
 class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestContainer {
 
   private val rootToken = "test-root-token"
+  private val kvMount   = "picatinny"
 
   override val container: GenericContainer = GenericContainer(
     dockerImage = "hashicorp/vault:1.17",
@@ -25,6 +25,11 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
 
   private def vaultUrl: String = s"http://localhost:${container.mappedPort(8200)}"
 
+  private lazy val kvV1MountReady: Unit = {
+    vaultExec("POST", s"sys/mounts/$kvMount", """{"type":"kv","options":{"version":"1"}}""")
+    ()
+  }
+
   private def vaultExec(method: String, path: String, body: String = ""): String = {
     val client  = THttpClient()
     val headers = Seq("X-Vault-Token", rootToken)
@@ -36,14 +41,20 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
   }
 
   private def writeSecret(path: String, data: Map[String, String]): Unit = {
+    kvV1MountReady
     val json = data.map { case (k, v) => s""""$k":"$v"""" }.mkString("{", ",", "}")
     vaultExec("POST", path, json)
   }
 
   private lazy val (appRoleId, appSecretId) = {
+    kvV1MountReady
     vaultExec("POST", "sys/auth/approle", """{"type":"approle"}""")
     vaultExec("POST", "auth/approle/role/test-role", """{"policies":"default","token_ttl":"1h"}""")
-    vaultExec("POST", "sys/policy/default", """{"policy":"path \"secret/*\" { capabilities = [\"read\",\"list\"] }"}""")
+    vaultExec(
+      "POST",
+      "sys/policy/default",
+      s"""{"policy":"path \\"$kvMount/*\\" { capabilities = [\\"read\\",\\"list\\"] }"}""",
+    )
 
     val roleResp                         = vaultExec("GET", "auth/approle/role/test-role/role-id")
     implicit val formats: DefaultFormats = DefaultFormats
@@ -56,27 +67,27 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
   }
 
   "VaultFeeder.withToken" should {
-    "read secrets with token auth" taggedAs DockerTest in {
-      writeSecret("secret/test/creds", Map("username" -> "admin", "password" -> "s3cret", "host" -> "db.local"))
+    "read secrets with token auth" in {
+      writeSecret(s"$kvMount/test/creds", Map("username" -> "admin", "password" -> "s3cret", "host" -> "db.local"))
 
-      val result = VaultFeeder.withToken(vaultUrl, "secret/test/creds", rootToken, List("username", "password"))
+      val result = VaultFeeder.withToken(vaultUrl, s"$kvMount/test/creds", rootToken, List("username", "password"))
 
       result should have size 1
       result.head shouldBe Map("username" -> "admin", "password" -> "s3cret")
     }
 
-    "filter keys from response" taggedAs DockerTest in {
-      writeSecret("secret/test/multi", Map("a" -> "1", "b" -> "2", "c" -> "3", "d" -> "4"))
+    "filter keys from response" in {
+      writeSecret(s"$kvMount/test/multi", Map("a" -> "1", "b" -> "2", "c" -> "3", "d" -> "4"))
 
-      val result = VaultFeeder.withToken(vaultUrl, "secret/test/multi", rootToken, List("b", "d"))
+      val result = VaultFeeder.withToken(vaultUrl, s"$kvMount/test/multi", rootToken, List("b", "d"))
 
       result.head shouldBe Map("b" -> "2", "d" -> "4")
     }
 
-    "return empty map when no keys match" taggedAs DockerTest in {
-      writeSecret("secret/test/nomatch", Map("x" -> "1"))
+    "return empty map when no keys match" in {
+      writeSecret(s"$kvMount/test/nomatch", Map("x" -> "1"))
 
-      val result = VaultFeeder.withToken(vaultUrl, "secret/test/nomatch", rootToken, List("nonexistent"))
+      val result = VaultFeeder.withToken(vaultUrl, s"$kvMount/test/nomatch", rootToken, List("nonexistent"))
 
       result should have size 1
       result.head shouldBe empty
@@ -84,32 +95,32 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
   }
 
   "VaultFeeder.apply (AppRole)" should {
-    "authenticate and read secrets" taggedAs DockerTest in {
-      writeSecret("secret/test/approle-data", Map("key1" -> "val1", "key2" -> "val2"))
+    "authenticate and read secrets" in {
+      writeSecret(s"$kvMount/test/approle-data", Map("key1" -> "val1", "key2" -> "val2"))
 
-      val result = VaultFeeder(vaultUrl, "secret/test/approle-data", appRoleId, appSecretId, List("key1", "key2"))
+      val result = VaultFeeder(vaultUrl, s"$kvMount/test/approle-data", appRoleId, appSecretId, List("key1", "key2"))
 
       result should have size 1
       result.head shouldBe Map("key1" -> "val1", "key2" -> "val2")
     }
 
-    "filter keys with AppRole auth" taggedAs DockerTest in {
-      writeSecret("secret/test/approle-filter", Map("keep" -> "yes", "drop" -> "no"))
+    "filter keys with AppRole auth" in {
+      writeSecret(s"$kvMount/test/approle-filter", Map("keep" -> "yes", "drop" -> "no"))
 
-      val result = VaultFeeder(vaultUrl, "secret/test/approle-filter", appRoleId, appSecretId, List("keep"))
+      val result = VaultFeeder(vaultUrl, s"$kvMount/test/approle-filter", appRoleId, appSecretId, List("keep"))
 
       result.head shouldBe Map("keep" -> "yes")
     }
   }
 
   "VaultFeeder.fromPaths" should {
-    "merge secrets from multiple paths" taggedAs DockerTest in {
-      writeSecret("secret/test/path-a", Map("db_host" -> "localhost", "db_port" -> "5432"))
-      writeSecret("secret/test/path-b", Map("api_key" -> "abc123", "api_url" -> "http://api"))
+    "merge secrets from multiple paths" in {
+      writeSecret(s"$kvMount/test/path-a", Map("db_host" -> "localhost", "db_port" -> "5432"))
+      writeSecret(s"$kvMount/test/path-b", Map("api_key" -> "abc123", "api_url" -> "http://api"))
 
       val paths = List(
-        ("secret/test/path-a", List("db_host", "db_port")),
-        ("secret/test/path-b", List("api_key")),
+        (s"$kvMount/test/path-a", List("db_host", "db_port")),
+        (s"$kvMount/test/path-b", List("api_key")),
       )
 
       val result = VaultFeeder.fromPaths(vaultUrl, appRoleId, appSecretId, paths)
