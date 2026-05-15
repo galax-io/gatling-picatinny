@@ -597,10 +597,11 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Release (tag-driven)
+    name: Release
     needs: [format, test, template-tests, coverage, redis-integration, benchmarks-current, benchmarks-report]
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 20
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: write
     steps:
@@ -632,7 +633,71 @@ jobs:
           key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
           restore-keys: sbt-${{ runner.os }}-
 
+      - name: Compute next version & create tag on main
+        id: bump
+        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force --prune
+
+          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" --first-parent 2>/dev/null || echo "")
+          echo "last_tag=${LAST_TAG}" >> "$GITHUB_OUTPUT"
+          RANGE="${LAST_TAG:+${LAST_TAG}..HEAD}"
+
+          BUMP="patch"
+          COMMITS=$(git log --pretty=format:%s ${RANGE})
+          if echo "$COMMITS" | grep -Eiq 'BREAKING CHANGE|!:'; then
+            BUMP="major"
+          elif echo "$COMMITS" | grep -Eiq '^feat(\(.+\))?:'; then
+            BUMP="minor"
+          fi
+
+          if [ -z "$LAST_TAG" ]; then
+            MAJOR=0; MINOR=0; PATCH=0
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
+          fi
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH+1)) ;;
+          esac
+
+          NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+
+          if git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; then
+            TAG_COMMIT=$(git rev-list -n 1 "${NEXT_TAG}")
+            HEAD_COMMIT=$(git rev-parse HEAD)
+            if [ "${TAG_COMMIT}" = "${HEAD_COMMIT}" ]; then
+              SKIP_TAG_CREATE=1
+            else
+              while git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; do
+                IFS='.' read -r MAJOR MINOR PATCH <<< "${NEXT_TAG#v}"
+                PATCH=$((PATCH+1))
+                NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+              done
+            fi
+          fi
+
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+          if [ "${SKIP_TAG_CREATE:-0}" != "1" ]; then
+            git tag -a "$NEXT_TAG" -m "Release $NEXT_TAG"
+            git push origin "$NEXT_TAG"
+          fi
+
       - name: Publish to Sonatype via sbt-ci-release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
@@ -642,7 +707,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          TAG="${GITHUB_REF##*/}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF##*/}"
+          else
+            TAG="${{ steps.bump.outputs.tag }}"
+            export GITHUB_REF="refs/tags/${TAG}"
+            export GITHUB_REF_NAME="${TAG}"
+          fi
+
           VERSION="${TAG#v}"
           echo "Publishing version $VERSION (tag $TAG)"
 
@@ -659,16 +731,20 @@ jobs:
       - name: Generate Changelog
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v6
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
         with:
           mode: "COMMIT"
+          fromTag: ${{ github.ref == 'refs/heads/main' && steps.bump.outputs.last_tag || '' }}
+          toTag:   ${{ github.ref == 'refs/heads/main' && steps.bump.outputs.tag || '' }}
           configuration: .github/changelog/release-changelog-builder.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref == 'refs/heads/main' && steps.bump.outputs.tag || '' }}
           body: ${{ steps.changelog.outputs.changelog }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

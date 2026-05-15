@@ -1519,18 +1519,17 @@ To test your changes use `sbt test`.
 
 ## Built with
 
-* Scala version: 2.13.16
-* SBT version: 1.11.4
+* Scala version: 2.13.18
 * Gatling version: 3.11.5
-* SBT Gatling plugin version: 4.13.3
-* SBT CI release plugin version: 1.11.1
+* SBT Gatling plugin version: 4.18.0
+* SBT CI release plugin version: 1.11.2
 * json4s version: 4.1.0-M8
-* pureconfig version: 0.17.9
+* pureconfig version: 0.17.10
 * scalatest version: 3.2.19
-* scalacheck version: 1.18.1
-* scalamock version: 5.2.0
+* scalacheck version: 1.19.0
+* scalamock version: 7.5.5
 * generex version: 1.0.2
-* jwt-core version: 11.0.2
+* jwt-core version: 11.0.3
 
 ## Help
 
