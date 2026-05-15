@@ -24,6 +24,7 @@ lazy val root = (project in file("."))
     coverageMinimumStmtTotal            := 45,
     coverageFailOnMinimum               := true,
     Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-l", "org.galaxio.gatling.tags.DockerTest"),
+    IntegrationTest / testOptions       := Seq.empty,
     IntegrationTest / parallelExecution := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
     javacOptions ++= Seq("--release", "17"),
