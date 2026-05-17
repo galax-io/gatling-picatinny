@@ -12,8 +12,8 @@ Gatling DSL extensions library — production-ready utilities for feeders, trans
 
 | Plugin Version | Gatling | Scala | Java |
 |---|---|---|---|
-| 0.40.0+ | 3.13.x | 2.13 | 17+ |
-| 0.30.0 — 0.39.x | 3.11.x | 2.13 | 17+ |
+| x.y.z-latest | 3.13.x | 2.13 | 17+ |
+| x.y.z | 3.11.x | 2.13 | 17+ |
 
 > **Branch strategy:** `main` targets Gatling 3.11.x, `latest/gatling` targets Gatling 3.13.x.
 
