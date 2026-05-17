@@ -1,52 +1,70 @@
 # Gatling Picatinny
 
-![CI](https://github.com/galax-io/gatling-picatinny/actions/workflows/ci.yml/badge.svg?branch=main) [![Maven Central](https://img.shields.io/maven-central/v/org.galaxio/gatling-picatinny_2.13.svg?color=success)](https://search.maven.org/search?q=org.galaxio.gatling-picatinny) [![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
-## Table of contents
+[![CI](https://github.com/galax-io/gatling-picatinny/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/galax-io/gatling-picatinny/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/org.galaxio/gatling-picatinny_2.13.svg?color=success)](https://search.maven.org/search?q=org.galaxio.gatling-picatinny)
+[![codecov](https://codecov.io/github/galax-io/gatling-picatinny/coverage.svg?branch=main)](https://codecov.io/github/galax-io/gatling-picatinny?branch=main)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Scala Steward badge](https://img.shields.io/badge/Scala_Steward-helping-blue.svg?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAQCAMAAAARSr4IAAAAVFBMVEUAAACHjojlOy5NWlrKzcYRKjGFjIbp293YycuLa3pYY2LSqql4f3pCUFTgSjNodYRmcXUsPD/NTTbjRS+2jomhgnzNc223cGvZS0HaSD0XLjbaSjElhIr+AAAAAXRSTlMAQObYZgAAAHlJREFUCNdNyosOwyAIhWHAQS1Vt7a77/3fcxxdmv0xwmckutAR1nkm4ggbyEcg/wWmlGLDAA3oL50xi6fk5ffZ3E2E3QfZDCcCN2YtbEWZt+Drc6u6rlqv7Uk0LdKqqr5rk2UCRXOk0vmQKGfc94nOJyQjouF9H/wCc9gECEYfONoAAAAASUVORK5CYII=)](https://scala-steward.org)
 
-* [General info](#general-info)
-* [Installation](#installation)
-* [Usage](#usage)
-    * [config](#config)
-    * [startup banner and diagnostics](#startup-banner-and-diagnostics)
-    * [feeders](#feeders)
-        * [Faker API](#faker-api)
-        * [Legacy feeders](#legacy-feeders)
-        * [HC Vault feeder](#hc-vault-feeder)
-        * [SeparatedValuesFeeder](#separatedvaluesfeeder)
-        * [Phone Feeders](#phone-feeders)
-    * [profile](#profile)
-    * [redis](#redis)
-    * [templates](#templates)
-    * [utils](#utils)
-    * [assertion](#assertion)
-    * [transactions](#transactions)
-    * [example](#example)
-* [Built with](#built-with)
-* [Help](#help)
-* [License](#license)
-* [Authors](#authors)
-* [Acknowledgments](#acknowledgments)
+Gatling DSL extensions library — production-ready utilities for feeders, transactions, assertions, templates, config management, JWT generation, Redis integration, and more. Build faster, more reliable performance tests.
 
-## General info
+## Compatibility
 
-A Scala toolkit that extends the Gatling DSL with production‑ready utilities (feeders, transactions, assertions, templates, config helpers, and integrations like Redis) to build faster, more reliable performance tests.
+| Plugin Version | Gatling | Scala | Java |
+|---|---|---|---|
+| 0.40.0+ | 3.13.x | 2.13 | 17+ |
+| 0.30.0 — 0.39.x | 3.11.x | 2.13 | 17+ |
+
+> **Branch strategy:** `main` targets Gatling 3.11.x, `latest/gatling` targets Gatling 3.13.x.
 
 ## Installation
 
-### Using Gatling Template Project
-
-If you are using galax-io/gatling-template.g8, you already have all dependencies in
-it. [Gatling Template Project](https://github.com/galax-io/gatling-template.g8.git)
-
-### Install manually
-
-Add the dependency and pick the latest version (see the Maven Central badge at the top of this README):
+### Scala (sbt)
 
 ```scala
-libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<latest>"
+libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<version>" % Test
 ```
 
-## Usage
+### Java / Kotlin (Gradle Kotlin DSL)
+
+```kotlin
+gatling("org.galaxio:gatling-picatinny_2.13:<version>")
+```
+
+### Maven
+
+```xml
+<dependency>
+  <groupId>org.galaxio</groupId>
+  <artifactId>gatling-picatinny_2.13</artifactId>
+  <version>${version}</version>
+  <scope>test</scope>
+</dependency>
+```
+
+## Table of Contents
+
+- [Compatibility](#compatibility)
+- [Installation](#installation)
+- [Config](#config)
+- [Startup Banner and Diagnostics](#startup-banner-and-diagnostics)
+- [Feeders](#feeders)
+  - [Faker API](#faker-api)
+  - [Legacy Feeders](#legacy-feeders)
+  - [HC Vault Feeder](#hc-vault-feeder)
+  - [SeparatedValuesFeeder](#separatedvaluesfeeder)
+  - [Phone Feeders](#phone-feeders)
+- [Profile](#profile)
+- [Redis](#redis)
+- [Templates](#templates)
+- [JWT](#jwt)
+- [Assertions](#assertion)
+- [Transactions](#transactions)
+- [Examples](#examples)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ### config
 
@@ -1517,48 +1535,26 @@ libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<latest>"
 
 To test your changes use `sbt test`.
 
-## Built with
 
-* Scala version: 2.13.18
-* Gatling version: 3.11.5
-* SBT Gatling plugin version: 4.18.0
-* SBT CI release plugin version: 1.11.2
-* json4s version: 4.1.0-M8
-* pureconfig version: 0.17.10
-* scalatest version: 3.2.19
-* scalacheck version: 1.19.0
-* scalamock version: 7.5.5
-* generex version: 1.0.2
-* jwt-core version: 11.0.3
+## Contributing
 
-## Help
+```bash
+# Build
+sbt compile
 
-telegram: @qa_load
+# Run unit tests
+sbt test
 
-Gatling docs: https://gatling.io/docs/gatling/reference/current/general/
+# Run integration tests
+sbt IntegrationTest/test
 
-## Versioning
+# Check formatting
+sbt scalafmtCheckAll
 
-We use [SemVer](https://semver.org/) for versioning. For the versions available, see
-the [tags on this repository](https://github.com/galax-io/gatling-picatinny/tags).
-
-## Authors
-
-* **Maksim Sitnikov** - *profile module* 
-
-* **Chepkasov Sergey** - *feeders, config, utils modules* 
-
-* **Kalyokin Vyacheslav** - *templates module* 
-
-* **Akhaltsev Ioann** - *founder and spiritual guidance*
-
-See also the list of [contributors](https://github.com/galax-io/gatling-picatinny/graphs/contributors) who
-participated in this project.
+# Format code
+sbt scalafmtAll
+```
 
 ## License
 
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details
-
-## Acknowledgments
-
-TBD
+Apache License 2.0. See [LICENSE](LICENSE) for details.
