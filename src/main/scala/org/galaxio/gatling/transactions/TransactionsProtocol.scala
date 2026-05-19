@@ -13,8 +13,7 @@ object TransactionsProtocol {
 
       override def newComponents(coreComponents: CoreComponents): TransactionsProtocol => TransactionsComponents =
         _ => {
-          val transactionsActor =
-            coreComponents.actorSystem.actorOf(new TransactionsActor("transactionsActor", coreComponents.statsEngine))
+          val transactionsActor = coreComponents.actorSystem.actorOf(TransactionsActor.props(coreComponents.statsEngine))
           new TransactionsComponents(new TransactionTracker(transactionsActor))
         }
     }

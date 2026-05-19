@@ -1,7 +1,6 @@
 package org.galaxio.gatling.transactions.actions
 
 import io.gatling.core.action.{Action, ChainableAction}
-import io.gatling.core.actor.ActorRef
 import io.gatling.core.controller.throttle.Throttler
 import io.gatling.core.session.{Expression, Session}
 import io.gatling.core.stats.StatsEngine
@@ -18,16 +17,18 @@ class EndTransactionAction(
 
   override def name: String                = genName("endTransactionAction")
   private val components                   = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
-  private val throttler: Option[ActorRef[Throttler.Command]] = ctx.coreComponents.throttler
+  private val throttler: Option[Throttler] = ctx.coreComponents.throttler
 
   override protected def execute(session: Session): Unit =
     for {
       resolvedName  <- transactionName(session)
       stopTimestamp <- stopTime(session)
     } yield throttler.fold(components.transactionTracker.endTransaction(resolvedName, stopTimestamp, session, next))(
-      _ ! Throttler.Command.ThrottledRequest(
+      _.throttle(
         session.scenario,
-        () => components.transactionTracker.endTransaction(resolvedName, stopTimestamp, session, next),
+        () => {
+          components.transactionTracker.endTransaction(resolvedName, stopTimestamp, session, next)
+        },
       ),
     )
 

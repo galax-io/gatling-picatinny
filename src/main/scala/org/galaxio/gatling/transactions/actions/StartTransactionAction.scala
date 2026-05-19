@@ -2,7 +2,6 @@ package org.galaxio.gatling.transactions.actions
 
 import io.gatling.commons.validation._
 import io.gatling.core.action.{Action, ChainableAction}
-import io.gatling.core.actor.ActorRef
 import io.gatling.core.controller.throttle.Throttler
 import io.gatling.core.session.{Expression, Session}
 import io.gatling.core.stats.StatsEngine
@@ -15,7 +14,7 @@ class StartTransactionAction(transactionName: Expression[String], ctx: ScenarioC
 
   override def name: String                = genName("startTransactionAction")
   private val components                   = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
-  private val throttler: Option[ActorRef[Throttler.Command]] = ctx.coreComponents.throttler
+  private val throttler: Option[Throttler] = ctx.coreComponents.throttler
 
   private def startAndNext(tName: String, startTimestamp: Long, session: Session): Unit = {
     components.transactionTracker.startTransaction(tName, startTimestamp)
@@ -27,7 +26,12 @@ class StartTransactionAction(transactionName: Expression[String], ctx: ScenarioC
       resolvedName   <- transactionName(session)
       startTimestamp <- ctx.coreComponents.clock.nowMillis.success
     } yield throttler.fold(startAndNext(resolvedName, startTimestamp, session))(
-      _ ! Throttler.Command.ThrottledRequest(session.scenario, () => startAndNext(resolvedName, startTimestamp, session)),
+      _.throttle(
+        session.scenario,
+        () => {
+          startAndNext(resolvedName, startTimestamp, session)
+        },
+      ),
     )
 
   override def statsEngine: StatsEngine = ctx.coreComponents.statsEngine
