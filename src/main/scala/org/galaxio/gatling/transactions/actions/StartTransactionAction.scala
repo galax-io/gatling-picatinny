@@ -13,8 +13,8 @@ import org.galaxio.gatling.transactions.TransactionsProtocol
 class StartTransactionAction(transactionName: Expression[String], ctx: ScenarioContext, val next: Action)
     extends ChainableAction with NameGen {
 
-  override def name: String                = genName("startTransactionAction")
-  private val components                   = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
+  override def name: String                                  = genName("startTransactionAction")
+  private val components                                     = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
   private val throttler: Option[ActorRef[Throttler.Command]] = ctx.coreComponents.throttler
 
   private def startAndNext(tName: String, startTimestamp: Long, session: Session): Unit = {

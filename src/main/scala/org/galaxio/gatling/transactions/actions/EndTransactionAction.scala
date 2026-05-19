@@ -16,8 +16,8 @@ class EndTransactionAction(
     val next: Action,
 ) extends ChainableAction with NameGen {
 
-  override def name: String                = genName("endTransactionAction")
-  private val components                   = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
+  override def name: String                                  = genName("endTransactionAction")
+  private val components                                     = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
   private val throttler: Option[ActorRef[Throttler.Command]] = ctx.coreComponents.throttler
 
   override protected def execute(session: Session): Unit =

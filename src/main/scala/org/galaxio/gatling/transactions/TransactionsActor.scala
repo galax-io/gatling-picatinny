@@ -8,12 +8,11 @@ import io.gatling.core.stats.StatsEngine
 object TransactionsActor {
   sealed trait TransactionMessage
 
-  final case class TransactionStarted(name: String, timestamp: Long) extends TransactionMessage
+  final case class TransactionStarted(name: String, timestamp: Long)                               extends TransactionMessage
   final case class TransactionEnded(name: String, timestamp: Long, session: Session, next: Action) extends TransactionMessage
 }
 
-class TransactionsActor(name: String, statsEngine: StatsEngine)
-    extends Actor[TransactionsActor.TransactionMessage](name) {
+class TransactionsActor(name: String, statsEngine: StatsEngine) extends Actor[TransactionsActor.TransactionMessage](name) {
 
   private def crash(prefix: String, errorMsg: String, session: Session, next: Action): Unit = {
     statsEngine.logRequestCrash(session.scenario, session.groups, prefix, errorMsg)
@@ -37,7 +36,7 @@ class TransactionsActor(name: String, statsEngine: StatsEngine)
   private def onTransaction(
       transactionsStack: List[TransactionsActor.TransactionStarted],
   ): Behavior[TransactionsActor.TransactionMessage] = {
-    case t: TransactionsActor.TransactionStarted =>
+    case t: TransactionsActor.TransactionStarted                            =>
       become(onTransaction(t :: transactionsStack))
     case TransactionsActor.TransactionEnded(name, timestamp, session, next) =>
       transactionsStack match {
