@@ -140,7 +140,7 @@ object FakerData {
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
     "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36",
-    "Gatling/3.11.5",
+    "Gatling/3.12.0",
     "Apache-HttpClient/5.3",
     "okhttp/4.12.0",
   )

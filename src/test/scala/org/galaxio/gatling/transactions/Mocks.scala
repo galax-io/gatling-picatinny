@@ -1,25 +1,23 @@
 package org.galaxio.gatling.transactions
-import akka.actor.{ActorRef, ActorSystem, Terminated}
 import io.gatling.commons.util.DefaultClock
 import io.gatling.core.CoreComponents
+import io.gatling.core.actor.ActorSystem
 import io.gatling.core.pause.Disabled
 import io.gatling.core.protocol.{Protocol, ProtocolComponents, ProtocolComponentsRegistry, ProtocolKey}
-import io.gatling.core.stats.StatsEngine
+import io.gatling.core.stats.{NoOpStatsEngine, StatsEngine}
 import io.gatling.core.structure.ScenarioContext
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{BeforeAndAfterAll, Suite, TestSuite, stats}
+import org.scalatest.{BeforeAndAfterAll, Suite, TestSuite}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.duration.DurationInt
 import scala.jdk.CollectionConverters._
 
 trait Mocks extends MockFactory with BeforeAndAfterAll {
   this: Suite with TestSuite =>
 
   trait MockedGatlingCtx {
-    private val testActorSystem: ActorSystem = ActorSystem("TestSystem")
+    private val testActorSystem = new ActorSystem()
 
     val events: ConcurrentLinkedQueue[Evt] = new ConcurrentLinkedQueue()
 
@@ -29,9 +27,9 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
     private val componentsFactoryCache    = mutable.Map.empty[ProtocolKey[_, _], Protocol => ProtocolComponents]
     private val defaultProtocolValueCache = mutable.Map.empty[ProtocolKey[_, _], Protocol]
 
-    val statsEngine: StatsEngine = stub[StatsEngine]
+    val statsEngine: StatsEngine = new NoOpStatsEngine
 
-    val testTransactionsActor: ActorRef = testActorSystem.actorOf(TransactionsActor.props(statsEngine))
+    val testTransactionsActor = testActorSystem.actorOf(new TransactionsActor("test-transactions-actor", statsEngine))
 
     private val protoComponents: TransactionsComponents = new TransactionsComponents(
       new TransactionTracker(testTransactionsActor),
@@ -66,7 +64,7 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
       false,
     )
 
-    def stop: Terminated = Await.result(testActorSystem.terminate(), 10.seconds)
+    def stop(): Unit = testActorSystem.close()
   }
 
   override protected def afterAll(): Unit = {
