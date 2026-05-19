@@ -106,11 +106,6 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
 
   "Transaction scenario execution" should {
     "write request with correct start/stop timestamps and name" in new MockedGatlingCtx {
-      (statsEngine.logResponse _)
-        .when(*, *, *, *, *, *, *, *)
-        .onCall { (_, _, c, d, e, f, _, h) => events.add(Evt("REQUEST", c, d, e, f.name, h)) }
-        .once()
-
       runScenario(transactionScenarioWithDefaultEndTime, testContext)
 
       val requestRecord = getEvents.find(_.evtType == "REQUEST")
@@ -121,13 +116,6 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
     }
 
     "fail with transaction close error when closing a not opened transaction" in new MockedGatlingCtx {
-      (statsEngine.logRequestCrash _)
-        .when(*, *, *, *)
-        .onCall { (_, _, c, d) =>
-          events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
-        }
-        .once()
-
       runScenario(notOpenedTransactionScenario, testContext)
 
       val errorRecord   = getEvents.find(_.evtType == "ERROR")
@@ -143,13 +131,6 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
     }
 
     "fail with illegal state error when a transaction ended before it started" in new MockedGatlingCtx {
-      (statsEngine.logRequestCrash _)
-        .when(*, *, *, *)
-        .onCall { (_, _, c, d) =>
-          events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
-        }
-        .once()
-
       runScenario(incorrectEndTimeTransactionScenario, testContext)
 
       val errorRecord   = getEvents.find(_.evtType == "ERROR")
@@ -165,11 +146,6 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
     }
 
     "write nested transactions with correct timestamps" in new MockedGatlingCtx {
-      (statsEngine.logResponse _)
-        .when(*, *, *, *, *, *, *, *)
-        .onCall { (_, _, c, d, e, f, _, h) => events.add(Evt("REQUEST", c, d, e, f.name, h)) }
-        .repeat(2)
-
       runScenario(nestedTransactionScenario, testContext)
 
       val requests = getEvents.filter(_.evtType == "REQUEST")
@@ -186,17 +162,11 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
     }
 
     "fail with transaction close error when transaction sequence is incorrect" in new MockedGatlingCtx {
-      (statsEngine.logRequestCrash _)
-        .when(*, *, *, *)
-        .onCall { (_, _, c, d) =>
-          events.add(Evt("ERROR", c, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(d)))
-        }
-        .once()
-
       runScenario(incorrectTransactionSequenceScenario, testContext)
 
       val errorRecord   = getEvents.find(_.evtType == "ERROR")
-      val requestRecord = getEvents.find(_.evtType == "REQUEST")
+      val requestRecord = getEvents.find(evt => evt.evtType == "REQUEST" && evt.name == "t1")
+      val recoveryRecord = getEvents.find(evt => evt.evtType == "REQUEST" && evt.name == "t2")
 
       requestRecord should not be defined
       errorRecord shouldBe defined
@@ -205,6 +175,7 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
         status("KO"),
       )
       errorRecord.value.errorMsg.value shouldBe "has unclosed transaction t2"
+      recoveryRecord.value should have(status("KO"))
     }
   }
 

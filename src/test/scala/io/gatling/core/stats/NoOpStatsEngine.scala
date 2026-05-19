@@ -4,6 +4,9 @@ import io.gatling.commons.stats.Status
 import io.gatling.core.actor.ActorRef
 import io.gatling.core.controller.Controller
 import io.gatling.core.session.GroupBlock
+import org.galaxio.gatling.transactions.Evt
+
+import java.util.concurrent.ConcurrentLinkedQueue
 
 final class NoOpStatsEngine extends StatsEngine {
   override def start(): Unit = ()
@@ -37,4 +40,40 @@ final class NoOpStatsEngine extends StatsEngine {
       requestName: String,
       error: String,
   ): Unit = ()
+}
+
+final class RecordingStatsEngine(events: ConcurrentLinkedQueue[Evt]) extends StatsEngine {
+  override def start(): Unit = ()
+
+  override private[gatling] def stop(controller: ActorRef[Controller.Command], exception: Option[Exception]): Unit = ()
+
+  override def logUserStart(scenario: String): Unit = ()
+
+  override def logUserEnd(scenario: String): Unit = ()
+
+  override def logResponse(
+      scenario: String,
+      groups: List[String],
+      requestName: String,
+      startTimestamp: Long,
+      endTimestamp: Long,
+      status: Status,
+      responseCode: Option[String],
+      message: Option[String],
+  ): Unit =
+    events.add(Evt("REQUEST", requestName, startTimestamp, endTimestamp, status.name, message))
+
+  override def logGroupEnd(
+      scenario: String,
+      groupBlock: GroupBlock,
+      exitTimestamp: Long,
+  ): Unit = ()
+
+  override def logRequestCrash(
+      scenario: String,
+      groups: List[String],
+      requestName: String,
+      error: String,
+  ): Unit =
+    events.add(Evt("ERROR", requestName, System.currentTimeMillis(), System.currentTimeMillis(), "KO", Some(error)))
 }
