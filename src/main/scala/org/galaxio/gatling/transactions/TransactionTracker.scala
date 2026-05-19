@@ -1,10 +1,10 @@
 package org.galaxio.gatling.transactions
 
-import akka.actor.ActorRef
 import io.gatling.core.action.Action
+import io.gatling.core.actor.ActorRef
 import io.gatling.core.session.Session
 
-class TransactionTracker(transactionActor: ActorRef) {
+class TransactionTracker(transactionActor: ActorRef[TransactionsActor.TransactionMessage]) {
   def startTransaction(name: String, timestamp: Long): Unit                               =
     transactionActor ! TransactionsActor.TransactionStarted(name, timestamp)
   def endTransaction(name: String, timestamp: Long, session: Session, next: Action): Unit =
