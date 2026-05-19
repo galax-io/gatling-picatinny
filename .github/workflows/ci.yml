@@ -380,7 +380,7 @@ jobs:
 
       - name: Upload current benchmark artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: jmh-benchmark-current
           path: |
@@ -447,7 +447,7 @@ jobs:
 
       - name: Upload base benchmark artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: jmh-benchmark-base
           path: |
@@ -465,14 +465,14 @@ jobs:
       pull-requests: write
     steps:
       - name: Download current benchmark artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v5
         with:
           name: jmh-benchmark-current
           path: .ci-artifacts/jmh/current
 
       - name: Download base benchmark artifacts
         if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v5
         with:
           name: jmh-benchmark-base
           path: .ci-artifacts/jmh/base
@@ -547,7 +547,7 @@ jobs:
 
       - name: Upsert PR benchmark comment
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -589,7 +589,7 @@ jobs:
 
       - name: Upload benchmark artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: jmh-benchmark-report
           path: |
