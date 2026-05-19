@@ -4,7 +4,7 @@ import io.gatling.core.CoreComponents
 import io.gatling.core.actor.ActorSystem
 import io.gatling.core.pause.Disabled
 import io.gatling.core.protocol.{Protocol, ProtocolComponents, ProtocolComponentsRegistry, ProtocolKey}
-import io.gatling.core.stats.{NoOpStatsEngine, StatsEngine}
+import io.gatling.core.stats.{RecordingStatsEngine, StatsEngine}
 import io.gatling.core.structure.ScenarioContext
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{BeforeAndAfterAll, Suite, TestSuite}
@@ -27,7 +27,7 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
     private val componentsFactoryCache    = mutable.Map.empty[ProtocolKey[_, _], Protocol => ProtocolComponents]
     private val defaultProtocolValueCache = mutable.Map.empty[ProtocolKey[_, _], Protocol]
 
-    val statsEngine: StatsEngine = new NoOpStatsEngine
+    val statsEngine: StatsEngine = new RecordingStatsEngine(events)
 
     val testTransactionsActor = testActorSystem.actorOf(new TransactionsActor("test-transactions-actor", statsEngine))
 
