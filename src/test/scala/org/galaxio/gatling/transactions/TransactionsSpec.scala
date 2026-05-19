@@ -164,8 +164,8 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
     "fail with transaction close error when transaction sequence is incorrect" in new MockedGatlingCtx {
       runScenario(incorrectTransactionSequenceScenario, testContext)
 
-      val errorRecord   = getEvents.find(_.evtType == "ERROR")
-      val requestRecord = getEvents.find(evt => evt.evtType == "REQUEST" && evt.name == "t1")
+      val errorRecord    = getEvents.find(_.evtType == "ERROR")
+      val requestRecord  = getEvents.find(evt => evt.evtType == "REQUEST" && evt.name == "t1")
       val recoveryRecord = getEvents.find(evt => evt.evtType == "REQUEST" && evt.name == "t2")
 
       requestRecord should not be defined
