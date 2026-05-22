@@ -102,9 +102,6 @@ jobs:
       - name: Test
         run: sbt test
 
-      - name: Compile example projects (drift check)
-        run: sbt "exampleScala / Test / compile" "exampleJava / Test / compile"
-
   template-tests:
     name: Template / ${{ matrix.template }} (Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04

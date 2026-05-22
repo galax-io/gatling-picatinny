@@ -7,7 +7,6 @@
 /\.bsp/
 /project/project/
 /project/target/
-/examples/*/target/
 /report/
 *.log
 /results/
