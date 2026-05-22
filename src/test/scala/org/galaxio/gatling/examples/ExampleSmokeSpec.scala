@@ -10,6 +10,7 @@ import org.galaxio.gatling.utils.IntensityConverter._
 import org.galaxio.gatling.utils.jwt._
 import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.wordspec.AnyWordSpec
 import pdi.jwt.{Jwt => PdiJwt, JwtAlgorithm}
 
@@ -18,7 +19,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDateTime, ZoneId}
 
-class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl {
+class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl with TableDrivenPropertyChecks {
 
   override implicit def configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
 
@@ -52,28 +53,27 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl {
       val record = f.next()
       val from   = LocalDate.parse(record("from").toString)
       val to     = LocalDate.parse(record("to").toString)
-      from should not be null
-      to should not be null
       from.isBefore(to) || from.isEqual(to) shouldBe true
     }
 
     "produce random digit as Integer" in {
-      val digit = RandomDigitFeeder("digit").next()("digit")
-      digit shouldBe a[java.lang.Integer]
+      RandomDigitFeeder("digit").next()("digit") shouldBe a[java.lang.Integer]
     }
 
     "produce custom feeder with exact constant value" in {
       CustomFeeder("custom", "hello-world").next()("custom") shouldBe "hello-world"
     }
 
-    "produce phone in E.164-like format" in {
-      val phone = RandomPhoneFeeder("phone").next()("phone").toString
-      phone should fullyMatch regex """\+?\d{6,15}"""
-    }
+    val phoneVariants = Table(
+      ("label", "feeder", "regex"),
+      ("E.164-like", () => RandomPhoneFeeder("phone").next()("phone").toString, """\+?\d{6,15}"""),
+      ("toll-free", () => RandomPhoneFeeder("toll", TypePhone.TollFreePhoneNumber).next()("toll").toString, TollFreeRegex),
+    )
 
-    "produce toll-free phone matching (8xx) xxx-xxxx" in {
-      val toll = RandomPhoneFeeder("toll", TypePhone.TollFreePhoneNumber).next()("toll").toString
-      toll should fullyMatch regex TollFreeRegex
+    forAll(phoneVariants) { (label, feederFn, regex) =>
+      s"produce $label phone matching $regex" in {
+        feederFn() should fullyMatch regex regex
+      }
     }
 
     "produce formatted phone with +7 country code" in {
@@ -119,47 +119,24 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl {
       pan should startWith("421345")
     }
 
-    "produce NatITN with 10 digits" in {
-      val itn = RandomNatITNFeeder("itn").next()("itn").toString
-      itn should have length 10
-      itn should fullyMatch regex AllDigitsRegex
-    }
+    val govIdFeeders = Table(
+      ("name", "feeder", "length", "prefix"),
+      ("NatITN", () => RandomNatITNFeeder("v").next()("v").toString, 10, ""),
+      ("JurITN", () => RandomJurITNFeeder("v").next()("v").toString, 12, ""),
+      ("OGRN", () => RandomOGRNFeeder("v").next()("v").toString, 13, ""),
+      ("PSRNSP", () => RandomPSRNSPFeeder("v").next()("v").toString, 15, "3"),
+      ("KPP", () => RandomKPPFeeder("v").next()("v").toString, 9, ""),
+      ("SNILS", () => RandomSNILSFeeder("v").next()("v").toString, 11, ""),
+      ("RusPassport", () => RandomRusPassportFeeder("v").next()("v").toString, 10, ""),
+    )
 
-    "produce JurITN with 12 digits" in {
-      val jitn = RandomJurITNFeeder("jitn").next()("jitn").toString
-      jitn should have length 12
-      jitn should fullyMatch regex AllDigitsRegex
-    }
-
-    "produce OGRN with 13 digits" in {
-      val ogrn = RandomOGRNFeeder("ogrn").next()("ogrn").toString
-      ogrn should have length 13
-      ogrn should fullyMatch regex AllDigitsRegex
-    }
-
-    "produce PSRNSP with 15 digits starting with 3" in {
-      val psrnsp = RandomPSRNSPFeeder("psrnsp").next()("psrnsp").toString
-      psrnsp should have length 15
-      psrnsp should fullyMatch regex AllDigitsRegex
-      psrnsp should startWith("3")
-    }
-
-    "produce KPP with 9 digits" in {
-      val kpp = RandomKPPFeeder("kpp").next()("kpp").toString
-      kpp should have length 9
-      kpp should fullyMatch regex AllDigitsRegex
-    }
-
-    "produce SNILS with 11 digits" in {
-      val snils = RandomSNILSFeeder("snils").next()("snils").toString
-      snils should have length 11
-      snils should fullyMatch regex AllDigitsRegex
-    }
-
-    "produce Russian passport with 10 digits" in {
-      val passport = RandomRusPassportFeeder("pass").next()("pass").toString
-      passport should have length 10
-      passport should fullyMatch regex AllDigitsRegex
+    forAll(govIdFeeders) { (name, feederFn, expectedLength, prefix) =>
+      s"produce $name with $expectedLength digits${if (prefix.nonEmpty) s" starting with $prefix" else ""}" in {
+        val value = feederFn()
+        value should have length expectedLength.toLong
+        value should fullyMatch regex AllDigitsRegex
+        if (prefix.nonEmpty) value should startWith(prefix)
+      }
     }
 
     "support feeder lambda syntax producing 8-char string" in {
@@ -199,17 +176,20 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl {
       record("phone").toString should fullyMatch regex E164PhoneRegex
     }
 
-    "produce government IDs with correct format" in {
-      val f      = GeneratedFeeder(
-        "inn"   -> Faker.ru.inn.person(),
-        "snils" -> Faker.ru.snils(),
-        "cpf"   -> Faker.br.cpf(formatted = true),
-      )
-      val record = f.next()
-      record("inn").toString should have length 10
-      record("inn").toString should fullyMatch regex AllDigitsRegex
-      record("snils").toString should have length 11
-      record("cpf").toString should fullyMatch regex """\d{3}\.\d{3}\.\d{3}-\d{2}"""
+    val govIds = Table(
+      ("field", "generator", "length", "regex"),
+      ("inn", Faker.ru.inn.person(), 10, AllDigitsRegex),
+      ("snils", Faker.ru.snils(), 11, AllDigitsRegex),
+      ("cpf", Faker.br.cpf(formatted = true), -1, """\d{3}\.\d{3}\.\d{3}-\d{2}"""),
+    )
+
+    forAll(govIds) { (field, gen, expectedLen, regex) =>
+      s"produce $field with correct format" in {
+        val record = GeneratedFeeder(field -> gen).next()
+        val value  = record(field).toString
+        if (expectedLen > 0) value should have length expectedLen.toLong
+        value should fullyMatch regex regex
+      }
     }
 
     "produce dates in yyyy-MM-dd with correct temporal ordering" in {
@@ -257,21 +237,20 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl {
       record("boolean") shouldBe a[java.lang.Boolean]
     }
 
-    "produce strings with exact requested lengths" in {
-      val f      = GeneratedFeeder(
-        "alpha"    -> Faker.string.alphabetic(10),
-        "alphanum" -> Faker.string.alphanumeric(12),
-        "hex"      -> Faker.string.hex(16),
-        "cyrillic" -> Faker.string.cyrillic(6),
-      )
-      val record = f.next()
-      record("alpha").toString should have length 10
-      record("alpha").toString should fullyMatch regex "[a-zA-Z]{10}"
-      record("alphanum").toString should have length 12
-      record("alphanum").toString should fullyMatch regex "[a-zA-Z0-9]{12}"
-      record("hex").toString should have length 16
-      record("hex").toString should fullyMatch regex "[0-9a-f]{16}"
-      record("cyrillic").toString should have length 6
+    val stringGenerators = Table(
+      ("field", "generator", "length", "regex"),
+      ("alpha", Faker.string.alphabetic(10), 10, "[a-zA-Z]{10}"),
+      ("alphanum", Faker.string.alphanumeric(12), 12, "[a-zA-Z0-9]{12}"),
+      ("hex", Faker.string.hex(16), 16, "[0-9a-f]{16}"),
+      ("cyrillic", Faker.string.cyrillic(6), 6, ".*"),
+    )
+
+    forAll(stringGenerators) { (field, gen, expectedLen, regex) =>
+      s"produce $field string with length $expectedLen" in {
+        val value = GeneratedFeeder(field -> gen).next()(field).toString
+        value should have length expectedLen.toLong
+        value should fullyMatch regex regex
+      }
     }
 
     "produce person names with at least 2 characters" in {
@@ -347,16 +326,21 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl {
       record("sentence").toString.split("\\s+").length should be >= 6
     }
 
-    "produce country-specific IDs with format validation" in {
-      val f      = GeneratedFeeder(
-        "usSSN"  -> Faker.us.ssn(),
-        "gbNINO" -> Faker.gb.nino(),
-        "esNIF"  -> Faker.es.nif(),
-      )
-      val record = f.next()
-      record("usSSN").toString should fullyMatch regex """\d{3}-\d{2}-\d{4}"""
-      record("gbNINO").toString should fullyMatch regex """[A-Z]{2}\d{6}[A-D]"""
-      record("esNIF").toString.length should (be >= 8 and be <= 9)
+    val countryIds = Table(
+      ("field", "generator", "regex"),
+      ("usSSN", Faker.us.ssn(), """\d{3}-\d{2}-\d{4}"""),
+      ("gbNINO", Faker.gb.nino(), """[A-Z]{2}\d{6}[A-D]"""),
+    )
+
+    forAll(countryIds) { (field, gen, regex) =>
+      s"produce $field with correct format" in {
+        GeneratedFeeder(field -> gen).next()(field).toString should fullyMatch regex regex
+      }
+    }
+
+    "produce esNIF with 8-9 character length" in {
+      val nif = GeneratedFeeder("nif" -> Faker.es.nif()).next()("nif").toString
+      nif.length should (be >= 8 and be <= 9)
     }
 
     "produce generator combinators with correct structure" in {
@@ -490,14 +474,21 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl {
   }
 
   "IntensityConverter from examples" should {
-    "convert RPM to RPS" in {
-      60.rpm shouldBe 1.0
-      120.rpm shouldBe 2.0
-    }
+    val conversions = Table(
+      ("input", "unit", "expected"),
+      (60, "rpm", 1.0),
+      (120, "rpm", 2.0),
+      (3600, "rph", 1.0),
+      (7200, "rph", 2.0),
+    )
 
-    "convert RPH to RPS" in {
-      3600.rph shouldBe 1.0
-      7200.rph shouldBe 2.0
+    forAll(conversions) { (input, unit, expected) =>
+      s"convert $input $unit to $expected RPS" in {
+        unit match {
+          case "rpm" => input.rpm shouldBe expected
+          case "rph" => input.rph shouldBe expected
+        }
+      }
     }
   }
 

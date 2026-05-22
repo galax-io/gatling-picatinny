@@ -8,10 +8,15 @@ import org.galaxio.gatling.utils.jwt.JwtGeneratorBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.galaxio.gatling.javaapi.FakerApi.*;
@@ -123,15 +128,28 @@ class JavaApiExampleSmokeTest {
             assertThat(pan).hasSize(16).matches("\\d+");
         }
 
+        static Stream<Arguments> govIdFeeders() {
+            return Stream.of(
+                    Arguments.of("NatITN", RandomNatITNFeeder("v"), 10),
+                    Arguments.of("JurITN", RandomJurITNFeeder("v"), 12),
+                    Arguments.of("OGRN", RandomOGRNFeeder("v"), 13),
+                    Arguments.of("KPP", RandomKPPFeeder("v"), 9),
+                    Arguments.of("SNILS", RandomSNILSFeeder("v"), 11),
+                    Arguments.of("RusPassport", RandomRusPassportFeeder("v"), 10)
+            );
+        }
+
+        @ParameterizedTest(name = "{0} has {2} digits")
+        @MethodSource("govIdFeeders")
+        void governmentIdFeederProducesCorrectLength(String name, Iterator<Map<String, Object>> feeder, int length) {
+            var value = next(feeder).get("v").toString();
+            assertThat(value).hasSize(length).matches("\\d+");
+        }
+
         @Test
-        void governmentIdFeedersProduceCorrectLengths() {
-            assertThat(next(RandomNatITNFeeder("itn")).get("itn").toString()).hasSize(10).matches("\\d+");
-            assertThat(next(RandomJurITNFeeder("jitn")).get("jitn").toString()).hasSize(12).matches("\\d+");
-            assertThat(next(RandomOGRNFeeder("ogrn")).get("ogrn").toString()).hasSize(13).matches("\\d+");
-            assertThat(next(RandomPSRNSPFeeder("psrnsp")).get("psrnsp").toString()).hasSize(15).startsWith("3");
-            assertThat(next(RandomKPPFeeder("kpp")).get("kpp").toString()).hasSize(9).matches("\\d+");
-            assertThat(next(RandomSNILSFeeder("snils")).get("snils").toString()).hasSize(11).matches("\\d+");
-            assertThat(next(RandomRusPassportFeeder("pass")).get("pass").toString()).hasSize(10).matches("\\d+");
+        void psrnspFeederProduces15DigitsStartingWith3() {
+            var value = next(RandomPSRNSPFeeder("v")).get("v").toString();
+            assertThat(value).hasSize(15).startsWith("3").matches("\\d+");
         }
 
         @Test
@@ -160,21 +178,28 @@ class JavaApiExampleSmokeTest {
             assertThat(record.get("phone").toString()).matches("\\+\\d{10,15}");
         }
 
-        @Test
-        void governmentIdsHaveCorrectFormat() {
-            var record = next(GeneratedFeeder(
-                    field("inn", innPerson()),
-                    field("kpp", kpp()),
-                    field("ogrn", ogrn()),
-                    field("snils", snils()),
-                    field("cpf", cpf(true)),
-                    field("dni", dni())
-            ));
-            assertThat(record.get("inn").toString()).hasSize(10).matches("\\d+");
-            assertThat(record.get("kpp").toString()).hasSize(9).matches("\\d+");
-            assertThat(record.get("ogrn").toString()).hasSize(13).matches("\\d+");
-            assertThat(record.get("snils").toString()).hasSize(11).matches("\\d+");
-            assertThat(record.get("cpf").toString()).matches("\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}");
+        static Stream<Arguments> govIdGenerators() {
+            return Stream.of(
+                    Arguments.of("innPerson", innPerson(), 10, "\\d+"),
+                    Arguments.of("innCompany", innCompany(), 12, "\\d+"),
+                    Arguments.of("kpp", kpp(), 9, "\\d+"),
+                    Arguments.of("ogrn", ogrn(), 13, "\\d+"),
+                    Arguments.of("snils", snils(), 11, "\\d+"),
+                    Arguments.of("passportRu", passportRu(), 10, "\\d+"),
+                    Arguments.of("cpf", cpf(true), -1, "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"),
+                    Arguments.of("ssn", ssn(), -1, "\\d{3}-\\d{2}-\\d{4}"),
+                    Arguments.of("nino", nino(), -1, "[A-Z]{2}\\d{6}[A-D]")
+            );
+        }
+
+        @SuppressWarnings("unchecked")
+        @ParameterizedTest(name = "{0} matches expected format")
+        @MethodSource("govIdGenerators")
+        void governmentIdHasCorrectFormat(String name, org.galaxio.gatling.feeders.faker.Generator<?> generator, int length, String regex) {
+            var record = next(GeneratedFeeder(field("v", (org.galaxio.gatling.feeders.faker.Generator<Object>) generator)));
+            var value = record.get("v").toString();
+            if (length > 0) assertThat(value).hasSize(length);
+            assertThat(value).matches(regex);
         }
 
         @Test
@@ -219,20 +244,22 @@ class JavaApiExampleSmokeTest {
             assertThat(record.get("bool")).isInstanceOf(Boolean.class);
         }
 
-        @Test
-        void stringGeneratorsHaveExactLengths() {
-            var record = next(GeneratedFeeder(
-                    field("alpha", alphabetic(10)),
-                    field("alphanum", alphanumeric(12)),
-                    field("num", numeric(8)),
-                    field("hex", hex(16)),
-                    field("cyr", cyrillic(6))
-            ));
-            assertThat(record.get("alpha").toString()).hasSize(10).matches("[a-zA-Z]+");
-            assertThat(record.get("alphanum").toString()).hasSize(12).matches("[a-zA-Z0-9]+");
-            assertThat(record.get("num").toString()).hasSize(8).matches("\\d+");
-            assertThat(record.get("hex").toString()).hasSize(16).matches("[0-9a-f]+");
-            assertThat(record.get("cyr").toString()).hasSize(6);
+        static Stream<Arguments> stringGenerators() {
+            return Stream.of(
+                    Arguments.of("alpha", alphabetic(10), 10, "[a-zA-Z]+"),
+                    Arguments.of("alphanum", alphanumeric(12), 12, "[a-zA-Z0-9]+"),
+                    Arguments.of("num", numeric(8), 8, "\\d+"),
+                    Arguments.of("hex", hex(16), 16, "[0-9a-f]+"),
+                    Arguments.of("cyr", cyrillic(6), 6, ".+")
+            );
+        }
+
+        @SuppressWarnings("unchecked")
+        @ParameterizedTest(name = "{0} has length {2}")
+        @MethodSource("stringGenerators")
+        void stringGeneratorHasExactLength(String name, org.galaxio.gatling.feeders.faker.Generator<?> generator, int length, String regex) {
+            var value = next(GeneratedFeeder(field("v", (org.galaxio.gatling.feeders.faker.Generator<Object>) generator))).get("v").toString();
+            assertThat(value).hasSize(length).matches(regex);
         }
 
         @Test
@@ -290,25 +317,6 @@ class JavaApiExampleSmokeTest {
         }
 
         @Test
-        void countrySpecificIdsHaveCorrectFormat() {
-            var record = next(GeneratedFeeder(
-                    field("ssn", ssn()),
-                    field("nino", nino()),
-                    field("nif", nif()),
-                    field("cf", codiceFiscale()),
-                    field("tin", steueridentifikationsnummer()),
-                    field("innCo", innCompany()),
-                    field("ogrnip", ogrnip()),
-                    field("passRU", passportRu()),
-                    field("passUS", passportNumber(countryUS()))
-            ));
-            assertThat(record.get("ssn").toString()).matches("\\d{3}-\\d{2}-\\d{4}");
-            assertThat(record.get("nino").toString()).matches("[A-Z]{2}\\d{6}[A-D]");
-            assertThat(record.get("innCo").toString()).hasSize(12).matches("\\d+");
-            assertThat(record.get("passRU").toString()).hasSize(10).matches("\\d+");
-        }
-
-        @Test
         void loremTextHasMinimumContent() {
             var record = next(GeneratedFeeder(
                     field("word", loremWord()),
@@ -350,27 +358,31 @@ class JavaApiExampleSmokeTest {
     @DisplayName("IntensityConverter (Java API)")
     class IntensityConverterTests {
 
-        @Test
-        void rpmConvertsToRps() {
-            assertThat(IntensityConverter.rpm(60.0)).isEqualTo(1.0);
-            assertThat(IntensityConverter.rpm(120.0)).isEqualTo(2.0);
+        @ParameterizedTest(name = "{0} {1} = {2} RPS")
+        @CsvSource({
+                "60.0, rpm, 1.0",
+                "120.0, rpm, 2.0",
+                "3600.0, rph, 1.0",
+                "7200.0, rph, 2.0",
+                "5.0, rps, 5.0"
+        })
+        void intensityConversion(double input, String unit, double expected) {
+            double result = switch (unit) {
+                case "rpm" -> IntensityConverter.rpm(input);
+                case "rph" -> IntensityConverter.rph(input);
+                case "rps" -> IntensityConverter.rps(input);
+                default -> throw new IllegalArgumentException(unit);
+            };
+            assertThat(result).isEqualTo(expected);
         }
 
-        @Test
-        void rphConvertsToRps() {
-            assertThat(IntensityConverter.rph(3600.0)).isEqualTo(1.0);
-            assertThat(IntensityConverter.rph(7200.0)).isEqualTo(2.0);
-        }
-
-        @Test
-        void rpsIsIdentity() {
-            assertThat(IntensityConverter.rps(5.0)).isEqualTo(5.0);
-        }
-
-        @Test
-        void intensityFromStringParses() {
-            assertThat(IntensityConverter.getIntensityFromString("3600 rph")).isEqualTo(1.0);
-            assertThat(IntensityConverter.getIntensityFromString("60 rpm")).isEqualTo(1.0);
+        @ParameterizedTest(name = "parse \"{0}\" = {1} RPS")
+        @CsvSource({
+                "3600 rph, 1.0",
+                "60 rpm, 1.0"
+        })
+        void intensityFromStringParses(String input, double expected) {
+            assertThat(IntensityConverter.getIntensityFromString(input)).isEqualTo(expected);
         }
     }
 }
