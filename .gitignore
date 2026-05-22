@@ -7,8 +7,12 @@
 /\.bsp/
 /project/project/
 /project/target/
+/examples/*/target/
 /report/
 *.log
 /results/
 **/.gradle/
 **/build/
+
+# Local Codex guidance
+agents.md
