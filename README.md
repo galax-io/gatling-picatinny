@@ -74,10 +74,29 @@ gatling("org.galaxio:gatling-picatinny_2.13:1.12.1")
 </dependency>
 ```
 
-### Legacy — Gatling 3.11 (sbt)
+### Legacy — Gatling 3.11
+
+**sbt:**
 
 ```scala
 libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "0.18.2" % Test
+```
+
+**Gradle (Kotlin DSL):**
+
+```kotlin
+gatling("org.galaxio:gatling-picatinny_2.13:0.18.2")
+```
+
+**Maven:**
+
+```xml
+<dependency>
+  <groupId>org.galaxio</groupId>
+  <artifactId>gatling-picatinny_2.13</artifactId>
+  <version>0.18.2</version>
+  <scope>test</scope>
+</dependency>
 ```
 
 ## Table of Contents
