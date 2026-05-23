@@ -38,36 +38,46 @@ The `examples/` folder contains source overlays for all three languages. Each ov
 
 ## Compatibility
 
-| Plugin Version | Gatling | Scala | Java |
-|---|---|---|---|
-| x.y.z-latest | 3.13.x | 2.13 | 17+ |
-| x.y.z | 3.11.x | 2.13 | 17+ |
+| Picatinny version | Gatling | Scala | Java | Branch |
+|---|---|---|---|---|
+| **1.12.1** (latest) | 3.13.x | 2.13 | 17+ | `main` |
+| 0.18.2 | 3.11.x | 2.13 | 17+ | — (archived) |
 
-> **Branch strategy:** `main` targets Gatling 3.11.x, `latest/gatling` targets Gatling 3.13.x.
+> **Which version should I use?**
+> - **Gatling 3.13 (current)** — use `1.12.1` from the `main` branch.
+> - **Gatling 3.11 (legacy)** — use `0.18.2`; that line is no longer actively developed.
+
+> **Branch strategy:** `main` tracks the latest stable Gatling release (currently 3.13.x). There is no separate long-term branch for older Gatling lines.
 
 ## Installation
 
-### Scala (sbt)
+### Scala (sbt) — Gatling 3.13
 
 ```scala
-libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<version>" % Test
+libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "1.12.1" % Test
 ```
 
-### Java / Kotlin (Gradle Kotlin DSL)
+### Java / Kotlin (Gradle Kotlin DSL) — Gatling 3.13
 
 ```kotlin
-gatling("org.galaxio:gatling-picatinny_2.13:<version>")
+gatling("org.galaxio:gatling-picatinny_2.13:1.12.1")
 ```
 
-### Maven
+### Maven — Gatling 3.13
 
 ```xml
 <dependency>
   <groupId>org.galaxio</groupId>
   <artifactId>gatling-picatinny_2.13</artifactId>
-  <version>${version}</version>
+  <version>1.12.1</version>
   <scope>test</scope>
 </dependency>
+```
+
+### Legacy — Gatling 3.11 (sbt)
+
+```scala
+libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "0.18.2" % Test
 ```
 
 ## Table of Contents
