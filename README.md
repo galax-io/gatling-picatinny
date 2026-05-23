@@ -20,15 +20,14 @@ Pick the snippet for your build tool in [Installation](#installation), then come
 
 ### Step 2 — Open an example project
 
-Three minimal runnable projects live in the `examples/` folder. Pick the language you already use:
+Two standalone runnable projects live in the `examples/` folder. Pick the language you already use:
 
-| Language | Example project | Entry point |
-|---|---|---|
-| Scala | [examples/scala-sbt-example](examples/scala-sbt-example) | `src/test/scala/.../Debug.scala` |
-| Java | [examples/java-maven-example](examples/java-maven-example) | `src/test/java/.../Debug.java` |
-| Kotlin | [examples/kotlin-gradle-example](examples/kotlin-gradle-example) | `src/gatling/kotlin/.../Debug.kt` |
+| Language | Example project | Entry point | Run command |
+|---|---|---|---|
+| Java | [examples/java-maven-example](examples/java-maven-example) | `src/test/java/.../Debug.java` | `mvn gatling:test` |
+| Kotlin | [examples/kotlin-gradle-example](examples/kotlin-gradle-example) | `src/gatling/kotlin/.../Debug.kt` | `./gradlew gatlingRun` |
 
-Clone the repo, open the `Debug` simulation for your language, and run it (`sbt gatling:test` for Scala, `./gradlew gatlingRun` for Kotlin/Gradle, `mvn gatling:test` for Java/Maven) to confirm a green run before adding your own scenarios.
+Clone the repo, open the `Debug` simulation for your language, and run it to confirm a green run before adding your own scenarios. For Scala, use the [sbt template flow](#examples) — the `examples/scala-sbt-example` folder is a source reference, not a standalone sbt project.
 
 ### Step 3 — Find the feature you need
 
@@ -1574,15 +1573,18 @@ To test your changes use `sbt test`.
 
 ## Examples
 
-Ready-to-run example projects are included in the repository. Each covers the same set of scenarios (Debug, Stability, MaxPerformance, ScenarioCoverage, TransactionCoverage) so you can compare Scala / Java / Kotlin patterns side-by-side:
+Example projects cover the same set of scenarios (Debug, Stability, MaxPerformance, ScenarioCoverage, TransactionCoverage) so you can compare Java / Kotlin / Scala patterns side-by-side.
+
+**Standalone runnable (clone and run directly):**
 
 | Language | Folder | Build tool | Run command |
 |---|---|---|---|
-| Scala | [examples/scala-sbt-example](examples/scala-sbt-example) | sbt | `sbt gatling:test` |
 | Java | [examples/java-maven-example](examples/java-maven-example) | Maven | `mvn gatling:test` |
 | Kotlin | [examples/kotlin-gradle-example](examples/kotlin-gradle-example) | Gradle | `./gradlew gatlingRun` |
 
-Start with the `Debug` simulation in each project — it is the smallest runnable entry point. See the [Start here](#start-here) section for a guided first-run path.
+**Scala source reference** — [examples/scala-sbt-example](examples/scala-sbt-example) is a source tree without a standalone `build.sbt`. To use Scala, add the library dependency to your own Gatling sbt project (see [Installation](#installation)) and copy patterns from the example source. Run with `sbt Gatling/test`.
+
+Start with the `Debug` simulation — it is the smallest runnable entry point. See the [Start here](#start-here) section for a guided first-run path.
 
 ## Contributing
 
