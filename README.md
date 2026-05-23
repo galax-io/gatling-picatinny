@@ -8,6 +8,42 @@
 
 Gatling DSL extensions library — production-ready utilities for feeders, transactions, assertions, templates, config management, JWT generation, Redis integration, and more. Build faster, more reliable performance tests.
 
+---
+
+## Start here
+
+Gatling Picatinny is best for teams that write Gatling load tests and need production-grade helpers on top of the core DSL: structured config, realistic data feeders, signed JWTs, Redis-backed scenarios, reusable transaction blocks, and response-time assertions — without writing all of that from scratch.
+
+### Step 1 — Add the dependency
+
+Pick the snippet for your build tool in [Installation](#installation), then come back here.
+
+### Step 2 — Open an example project
+
+Three minimal runnable projects live in the `examples/` folder. Pick the language you already use:
+
+| Language | Example project | Entry point |
+|---|---|---|
+| Scala | [examples/scala-sbt-example](examples/scala-sbt-example) | `src/test/scala/.../Debug.scala` |
+| Java | [examples/java-maven-example](examples/java-maven-example) | `src/test/java/.../Debug.java` |
+| Kotlin | [examples/kotlin-gradle-example](examples/kotlin-gradle-example) | `src/gatling/kotlin/.../Debug.kt` |
+
+Clone the repo, open the `Debug` simulation for your language, and run it (`sbt gatling:test` for Scala, `./gradlew gatlingRun` for Kotlin/Gradle, `mvn gatling:test` for Java/Maven) to confirm a green run before adding your own scenarios.
+
+### Step 3 — Find the feature you need
+
+| I want to… | Go to |
+|---|---|
+| Share `baseUrl`, intensity, and custom vars across scenarios | [Config](#config) |
+| Generate realistic test data (names, phones, UUIDs, CSV rows) | [Feeders](#feeders) |
+| Wrap request groups into named transactions with latency stats | [Transactions](#transactions) |
+| Attach a signed JWT to every request | [JWT](#jwt) |
+| Share state between virtual users via Redis | [Redis](#redis) |
+| Assert response-time percentiles after a run | [Assertions](#assertion) |
+| Render dynamic request bodies from Mustache templates | [Templates](#templates) |
+
+---
+
 ## Compatibility
 
 | Plugin Version | Gatling | Scala | Java |
@@ -44,6 +80,7 @@ gatling("org.galaxio:gatling-picatinny_2.13:<version>")
 
 ## Table of Contents
 
+- [Start here](#start-here)
 - [Compatibility](#compatibility)
 - [Installation](#installation)
 - [Config](#config)
@@ -1535,6 +1572,17 @@ libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<latest>"
 
 To test your changes use `sbt test`.
 
+## Examples
+
+Ready-to-run example projects are included in the repository. Each covers the same set of scenarios (Debug, Stability, MaxPerformance, ScenarioCoverage, TransactionCoverage) so you can compare Scala / Java / Kotlin patterns side-by-side:
+
+| Language | Folder | Build tool | Run command |
+|---|---|---|---|
+| Scala | [examples/scala-sbt-example](examples/scala-sbt-example) | sbt | `sbt gatling:test` |
+| Java | [examples/java-maven-example](examples/java-maven-example) | Maven | `mvn gatling:test` |
+| Kotlin | [examples/kotlin-gradle-example](examples/kotlin-gradle-example) | Gradle | `./gradlew gatlingRun` |
+
+Start with the `Debug` simulation in each project — it is the smallest runnable entry point. See the [Start here](#start-here) section for a guided first-run path.
 
 ## Contributing
 
