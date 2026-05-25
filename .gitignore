@@ -12,6 +12,3 @@
 /results/
 **/.gradle/
 **/build/
-
-# Local Codex guidance
-agents.md
