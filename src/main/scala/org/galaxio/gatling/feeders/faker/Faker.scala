@@ -712,16 +712,3 @@ object Faker {
       } yield f(a, b, c, d)
   }
 }
-
-private object RegexSampler {
-
-  def generator(pattern: String): Generator[String] = {
-    val normalizedPattern =
-      Option(pattern).map(_.trim).getOrElse(throw new IllegalArgumentException("Regex pattern must be non-null"))
-    require(normalizedPattern.nonEmpty, "Regex pattern must be non-empty")
-    require(Generex.isValidPattern(normalizedPattern), s"Invalid regex pattern: $normalizedPattern")
-
-    val perThread = ThreadLocal.withInitial(() => new Generex(normalizedPattern))
-    Generator.delay(perThread.get().random())
-  }
-}

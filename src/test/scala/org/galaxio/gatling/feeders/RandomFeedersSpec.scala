@@ -175,6 +175,14 @@ class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenP
       values.foreach(_ should fullyMatch regex "[A-Z]{2}[0-9]{4}")
     }
 
+    "preserve surrounding spaces through RegexFeeder" in {
+      val value = RegexFeeder("rx", " [A-Z]{2} ").next()("rx").toString
+
+      value should startWith(" ")
+      value should endWith(" ")
+      value should have length 4
+    }
+
     "fail fast for invalid regex generator patterns" in {
       assertThrows[IllegalArgumentException] {
         Faker.string.matching("[A-Z").sample()
