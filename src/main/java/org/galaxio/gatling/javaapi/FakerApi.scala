@@ -40,6 +40,7 @@ object FakerApi {
   def numeric(length: Int): Generator[String]      = Faker.string.numeric(length)
   def hex(length: Int): Generator[String]          = Faker.string.hex(length)
   def cyrillic(length: Int): Generator[String]     = Faker.string.cyrillic(length)
+  def matching(pattern: String): Generator[String] = Faker.string.matching(pattern)
 
   // --- Number ---
 
