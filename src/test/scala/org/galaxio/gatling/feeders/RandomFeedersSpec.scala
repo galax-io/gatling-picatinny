@@ -1,5 +1,6 @@
 package org.galaxio.gatling.feeders
 
+import org.galaxio.gatling.feeders.faker.Faker
 import org.scalacheck._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
@@ -165,6 +166,18 @@ class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenP
               record(paramName) should fullyMatch regex regexPattern
             },
           )
+      }
+    }
+
+    "create RegexFeeder with fresh values on each record" in {
+      val values = RegexFeeder("rx", "[A-Z]{2}[0-9]{4}").take(20).map(_("rx").toString).toList
+      values.distinct.size should be > 1
+      values.foreach(_ should fullyMatch regex "[A-Z]{2}[0-9]{4}")
+    }
+
+    "fail fast for invalid regex generator patterns" in {
+      assertThrows[IllegalArgumentException] {
+        Faker.string.matching("[A-Z").sample()
       }
     }
 
