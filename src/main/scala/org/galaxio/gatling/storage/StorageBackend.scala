@@ -99,9 +99,9 @@ final case class JdbcStorageBackend(
     username: String = "",
     password: String = "",
 ) extends StorageBackend {
-  private implicit val formats: Formats   = DefaultFormats
-  private val tableInitialized            = new AtomicBoolean(false)
-  private val tableInitLock               = new AnyRef
+  private implicit val formats: Formats = DefaultFormats
+  private val tableInitialized          = new AtomicBoolean(false)
+  private val tableInitLock             = new AnyRef
 
   private def withConnection[T](f: Connection => T): T = {
     val conn =
