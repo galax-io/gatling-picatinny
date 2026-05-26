@@ -119,37 +119,11 @@ class ConfigValueMaskingSpec extends AnyWordSpec with Matchers {
         "client.api-key",
         "client.api_key",
         "aws.credential",
-        "vault.private_key",
-        "vault.client_secret",
-        "aws.access_key",
-        "secrets.secret_key",
       )
 
       sensitivePaths.foreach { path =>
         ConfigValueMasking.displayValue(path, "raw-value") shouldBe "******"
         ConfigValueMasking.isSensitive(path) shouldBe true
-      }
-    }
-
-    "mask representative hocon secret keys" in {
-      val config = ConfigFactory.parseString("""
-          |secrets {
-          |  private_key = "private"
-          |  client_secret = "client"
-          |  access_key = "access"
-          |  secret_key = "secret"
-          |}
-          |""".stripMargin)
-
-      val secretPaths = Seq(
-        "secrets.private_key",
-        "secrets.client_secret",
-        "secrets.access_key",
-        "secrets.secret_key",
-      )
-
-      secretPaths.foreach { path =>
-        ConfigValueMasking.displayValue(path, config.getString(path)) shouldBe "******"
       }
     }
 

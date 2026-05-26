@@ -69,7 +69,6 @@ public final class GeneratedPicatinnyFeeders {
         return GeneratedFeeder(
                 field("alphabeticStr", alphabetic(10)),
                 field("alphanumericStr", alphanumeric(12)),
-                field("matchingStr", matching("[A-Z]{2}[0-9]{4}")),
                 field("numericStr", numeric(8)),
                 field("hexStr", hex(16)),
                 field("cyrillicStr", cyrillic(6))

@@ -77,7 +77,6 @@ object GeneratedPicatinnyFeeders {
     GeneratedFeeder(
       "alphabeticStr"     -> Faker.string.alphabetic(10),
       "alphanumericStr"   -> Faker.string.alphanumeric(12),
-      "matchingStr"       -> Faker.string.matching("[A-Z]{2}[0-9]{4}"),
       "numericStr"        -> Faker.string.numeric(8),
       "hexStr"            -> Faker.string.hex(16),
       "cyrillicStr"       -> Faker.string.cyrillic(6),
