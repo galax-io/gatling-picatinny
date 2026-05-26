@@ -320,6 +320,7 @@ jobs:
 
   benchmarks-current:
     name: JMH Benchmarks / current
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -389,7 +390,7 @@ jobs:
 
   benchmarks-base:
     name: JMH Benchmarks / base branch
-    if: github.event_name == 'pull_request'
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
