@@ -68,8 +68,24 @@ class StorageBackendSpec extends AnyWordSpec with Matchers {
         override def disconnect(): Unit                       = ()
       }
 
-      val thrown = intercept[IllegalStateException] {
+      val thrown = intercept[StorageWriteException] {
         backend.saveRecords(client, Seq(Map[String, Any]("user" -> "alice")))
+      }
+
+      thrown.getMessage should include("test:storage:backend")
+    }
+
+    "fail when redis clear cannot be persisted" in {
+      val backend = RedisBackend("127.0.0.1", 6379, "test:storage:backend")
+      val client  = new RedisClientLike {
+        override def set(key: String, value: String): Boolean = true
+        override def get(key: String): Option[String]         = None
+        override def del(key: String): Option[Long]           = None
+        override def disconnect(): Unit                       = ()
+      }
+
+      val thrown = intercept[StorageWriteException] {
+        backend.clearRecords(client)
       }
 
       thrown.getMessage should include("test:storage:backend")
