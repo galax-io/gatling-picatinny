@@ -4,7 +4,7 @@ def UtilsModule(id: String) = Project(id, file(id))
 lazy val IntegrationTest    = config("it") extend Runtime
 
 lazy val root = (project in file("."))
-  .enablePlugins(GitVersioning, JmhPlugin)
+  .enablePlugins(JmhPlugin)
   .configs(IntegrationTest)
   .settings(inConfig(IntegrationTest)(Defaults.testSettings))
   .settings(
@@ -16,6 +16,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= json4s,
     libraryDependencies ++= pureConfig,
     libraryDependencies ++= jackson,
+    libraryDependencies ++= scalaLogging,
     libraryDependencies ++= scalaTesting,
     libraryDependencies ++= generex,
     libraryDependencies ++= jwt,
@@ -39,3 +40,5 @@ lazy val root = (project in file("."))
       "-language:postfixOps",
     ),
   )
+
+ThisBuild / com.github.sbt.git.SbtGit.GitKeys.useConsoleForROGit := true
