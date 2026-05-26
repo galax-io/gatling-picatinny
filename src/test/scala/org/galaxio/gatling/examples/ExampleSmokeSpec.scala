@@ -241,6 +241,7 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl with Table
       ("field", "generator", "length", "regex"),
       ("alpha", Faker.string.alphabetic(10), 10, "[a-zA-Z]{10}"),
       ("alphanum", Faker.string.alphanumeric(12), 12, "[a-zA-Z0-9]{12}"),
+      ("matching", Faker.string.matching("[A-Z]{2}[0-9]{4}"), 6, "[A-Z]{2}[0-9]{4}"),
       ("hex", Faker.string.hex(16), 16, "[0-9a-f]{16}"),
       ("cyrillic", Faker.string.cyrillic(6), 6, ".*"),
     )
@@ -251,6 +252,12 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl with Table
         value should have length expectedLen.toLong
         value should fullyMatch regex regex
       }
+    }
+
+    "produce fresh values from regex generator through GeneratedFeeder" in {
+      val values = GeneratedFeeder("rx" -> Faker.string.matching("[A-Z]{2}[0-9]{4}")).take(20).map(_("rx").toString).toList
+      values.distinct.size should be > 1
+      values.foreach(_ should fullyMatch regex "[A-Z]{2}[0-9]{4}")
     }
 
     "produce person names with at least 2 characters" in {

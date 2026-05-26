@@ -171,6 +171,7 @@ public final class Feeders {
         return toJavaFeeder(org.galaxio.gatling.feeders.RandomUUIDFeeder.apply(paramName));
     }
 
+    @Deprecated(since = "faker-api")
     public static Iterator<Map<String, Object>> RegexFeeder(String paramName, String regex) {
         return toJavaFeeder(org.galaxio.gatling.feeders.RegexFeeder.apply(paramName, regex));
     }
