@@ -181,6 +181,14 @@ class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenP
       }
     }
 
+    "preserve surrounding spaces in regex patterns" in {
+      val value = Faker.string.matching(" [A-Z]{2} ").sample()
+
+      value should startWith(" ")
+      value should endWith(" ")
+      value should have length 4
+    }
+
     "create SequentialFeeder" in {
       forAll(rndString, positiveInt, positiveInt) { (paramName, start, step) =>
         val list = SequentialFeeder(paramName, start, step).take(50).toList.flatten
