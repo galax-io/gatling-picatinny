@@ -91,6 +91,22 @@ class SessionStorageSpec extends AnyWordSpec with Matchers {
       withBe.toFeeder.head("key") shouldBe "value"
     }
 
+    "withBackend keeps the original storage isolated from later mutations" in {
+      val storage = SessionStorage()
+      storage.addRecord(Map("key" -> "value"))
+
+      val tmpFile = java.io.File.createTempFile("storage-test3", ".json")
+      tmpFile.deleteOnExit()
+      val withBe  = storage.withBackend(JsonFileBackend(tmpFile.getAbsolutePath))
+
+      withBe.addRecord(Map("key" -> "new-value"))
+
+      storage.size shouldBe 1
+      storage.toFeeder.head("key") shouldBe "value"
+      withBe.size shouldBe 2
+      withBe.toFeeder.last("key") shouldBe "new-value"
+    }
+
   }
 
   implicit class TestHelper(storage: SessionStorage) {

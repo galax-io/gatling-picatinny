@@ -16,7 +16,7 @@ final class SessionStorage(
 
   def withBackend(b: StorageBackend): SessionStorage = {
     val storage = new SessionStorage(Some(b))
-    records.forEach(r => storage.records.add(r))
+    storage.records.addAll(new ConcurrentLinkedQueue[Record[Any]](records))
     storage
   }
 
