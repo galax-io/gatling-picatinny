@@ -11,6 +11,14 @@ private[config] object ConfigValueMasking {
     "api-key",
     "api_key",
     "credential",
+    "privatekey",
+    "private_key",
+    "clientsecret",
+    "client_secret",
+    "accesskey",
+    "access_key",
+    "secretkey",
+    "secret_key",
   )
 
   def displayValue(path: String, value: Any): String =
