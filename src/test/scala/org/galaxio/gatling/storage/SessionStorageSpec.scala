@@ -91,6 +91,21 @@ class SessionStorageSpec extends AnyWordSpec with Matchers {
       withBe.toFeeder.head("key") shouldBe "value"
     }
 
+    "withBackend keeps record queues independent after copying" in {
+      val storage = SessionStorage()
+      storage.addRecord(Map("source" -> "original"))
+
+      val tmpFile = java.io.File.createTempFile("storage-test3", ".json")
+      tmpFile.deleteOnExit()
+      val withBe  = storage.withBackend(JsonFileBackend(tmpFile.getAbsolutePath))
+
+      withBe.addRecord(Map("source" -> "backend"))
+      storage.addRecord(Map("source" -> "memory"))
+
+      storage.toFeeder.map(_("source")) should contain theSameElementsInOrderAs Seq("original", "memory")
+      withBe.toFeeder.map(_("source")) should contain theSameElementsInOrderAs Seq("original", "backend")
+    }
+
   }
 
   implicit class TestHelper(storage: SessionStorage) {
