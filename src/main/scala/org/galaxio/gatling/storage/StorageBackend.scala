@@ -89,6 +89,11 @@ final case class RedisBackend(
       case None       => Seq.empty
     }
 
+  /** Clears the persisted session storage.
+    *
+    * This path is intentionally fail-fast: if Redis does not report a delete result, we treat it as a failed clear instead of
+    * silently accepting a potentially stale session snapshot.
+    */
   private[storage] def clearRecords(client: RedisClientLike): Unit = {
     if (client.del(storageKey).isEmpty)
       throw new StorageWriteException(s"Failed to clear session storage from Redis key '$storageKey'")

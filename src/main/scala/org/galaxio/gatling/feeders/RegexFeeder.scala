@@ -10,6 +10,7 @@ import org.galaxio.gatling.feeders.faker.Faker
 object RegexFeeder {
 
   def apply(paramName: String, regex: String): Feeder[String] = {
+    // Reuse the generator so each feeder iteration does not rebuild its thread-local regex sampler.
     val generator = Faker.string.matching(regex)
     feeder[String](paramName)(generator.sample())
   }
