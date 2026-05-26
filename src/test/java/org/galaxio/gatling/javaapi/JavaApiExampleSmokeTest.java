@@ -248,7 +248,6 @@ class JavaApiExampleSmokeTest {
             return Stream.of(
                     Arguments.of("alpha", alphabetic(10), 10, "[a-zA-Z]+"),
                     Arguments.of("alphanum", alphanumeric(12), 12, "[a-zA-Z0-9]+"),
-                    Arguments.of("matching", matching("[A-Z]{2}[0-9]{4}"), 6, "[A-Z]{2}[0-9]{4}"),
                     Arguments.of("num", numeric(8), 8, "\\d+"),
                     Arguments.of("hex", hex(16), 16, "[0-9a-f]+"),
                     Arguments.of("cyr", cyrillic(6), 6, ".+")
@@ -261,17 +260,6 @@ class JavaApiExampleSmokeTest {
         void stringGeneratorHasExactLength(String name, org.galaxio.gatling.feeders.faker.Generator<?> generator, int length, String regex) {
             var value = next(GeneratedFeeder(field("v", (org.galaxio.gatling.feeders.faker.Generator<Object>) generator))).get("v").toString();
             assertThat(value).hasSize(length).matches(regex);
-        }
-
-        @Test
-        void regexGeneratorProducesFreshValues() {
-            var feeder = GeneratedFeeder(field("rx", matching("[A-Z]{2}[0-9]{4}")));
-            var values = new LinkedHashSet<String>();
-            for (int i = 0; i < 20; i++) {
-                values.add(next(feeder).get("rx").toString());
-            }
-            assertThat(values).hasSizeGreaterThan(1);
-            assertThat(values).allMatch(value -> value.matches("[A-Z]{2}[0-9]{4}"));
         }
 
         @Test

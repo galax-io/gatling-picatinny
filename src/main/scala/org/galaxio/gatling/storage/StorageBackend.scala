@@ -8,22 +8,6 @@ import org.json4s.native.Serialization.writePretty
 import java.nio.file.{Files, Paths}
 import java.sql.{Connection, DriverManager}
 
-private[storage] trait RedisClientLike {
-  def set(key: String, value: String): Boolean
-  def get(key: String): Option[String]
-  def del(key: String): Option[Long]
-  def disconnect(): Unit
-}
-
-private[storage] object RedisClientLike {
-  def from(client: com.redis.RedisClient): RedisClientLike = new RedisClientLike {
-    override def set(key: String, value: String): Boolean = client.set(key, value)
-    override def get(key: String): Option[String]         = client.get(key)
-    override def del(key: String): Option[Long]           = client.del(key)
-    override def disconnect(): Unit                       = client.disconnect
-  }
-}
-
 trait StorageBackend {
   def save(records: Seq[Record[Any]]): Unit
   def load(): Seq[Record[Any]]
@@ -55,39 +39,26 @@ final case class RedisBackend(
   import com.redis.RedisClient
   private implicit val formats: Formats = DefaultFormats
 
-  private def withClient[T](f: RedisClientLike => T): T = {
-    val client  = new RedisClient(host, port)
-    val adapter = RedisClientLike.from(client)
-    try f(adapter)
-    finally adapter.disconnect()
-  }
-
   override def save(records: Seq[Record[Any]]): Unit = {
-    withClient(saveRecords(_, records))
+    val client = new RedisClient(host, port)
+    try client.set(storageKey, writePretty(records))
+    finally client.disconnect
   }
 
   override def load(): Seq[Record[Any]] = {
-    withClient(loadRecords)
+    val client = new RedisClient(host, port)
+    try
+      client.get(storageKey) match {
+        case Some(json) => parse(json).extract[List[Map[String, Any]]]
+        case None       => Seq.empty
+      }
+    finally client.disconnect
   }
 
   override def clear(): Unit = {
-    withClient(clearRecords)
-  }
-
-  private[storage] def saveRecords(client: RedisClientLike, records: Seq[Record[Any]]): Unit = {
-    if (!client.set(storageKey, writePretty(records)))
-      throw new IllegalStateException(s"Failed to persist session storage to Redis key '$storageKey'")
-  }
-
-  private[storage] def loadRecords(client: RedisClientLike): Seq[Record[Any]] =
-    client.get(storageKey) match {
-      case Some(json) => parse(json).extract[List[Map[String, Any]]]
-      case None       => Seq.empty
-    }
-
-  private[storage] def clearRecords(client: RedisClientLike): Unit = {
-    client.del(storageKey)
-    ()
+    val client = new RedisClient(host, port)
+    try client.del(storageKey)
+    finally client.disconnect
   }
 }
 

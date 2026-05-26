@@ -1,6 +1,5 @@
 package org.galaxio.gatling.feeders.faker
 
-import com.mifmif.common.regex.Generex
 import org.galaxio.gatling.utils.{RandomDataGenerators, RandomPhoneGenerator}
 import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
 
@@ -132,13 +131,6 @@ object Faker {
 
     def lengthBetween(min: Int, max: Int, alphabet: String): Generator[String] =
       number.int(min, max).flatMap(fromAlphabet(alphabet, _))
-
-    /** Generates strings matching a finite regex pattern.
-      *
-      * This is the generator-based replacement for the legacy `RegexFeeder`.
-      */
-    def matching(pattern: String): Generator[String] =
-      RegexSampler.generator(pattern)
   }
 
   /** Person data generators. */
@@ -694,18 +686,5 @@ object Faker {
         c <- tuple._3
         d <- tuple._4
       } yield f(a, b, c, d)
-  }
-}
-
-private object RegexSampler {
-
-  def generator(pattern: String): Generator[String] = {
-    val normalizedPattern =
-      Option(pattern).map(_.trim).getOrElse(throw new IllegalArgumentException("Regex pattern must be non-null"))
-    require(normalizedPattern.nonEmpty, "Regex pattern must be non-empty")
-    require(Generex.isValidPattern(normalizedPattern), s"Invalid regex pattern: $normalizedPattern")
-
-    val perThread = ThreadLocal.withInitial(() => new Generex(normalizedPattern))
-    Generator.delay(perThread.get().random())
   }
 }
