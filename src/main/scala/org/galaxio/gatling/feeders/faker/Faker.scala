@@ -135,10 +135,26 @@ object Faker {
 
     /** Generates strings matching a finite regex pattern.
       *
-      * This is the generator-based replacement for the legacy `RegexFeeder`.
+      * This is the generator-based replacement for the legacy `RegexFeeder`. Keep the returned generator in a `val` and reuse
+      * it; each generator holds a thread-local automaton instance.
+      *
+      * The pattern must be compatible with `Generex`/dk.brics.automaton syntax. Lookarounds, backreferences, and other
+      * unsupported regex features are rejected.
       */
     def matching(pattern: String): Generator[String] =
       RegexSampler.generator(pattern)
+  }
+
+  private object RegexSampler {
+    def generator(pattern: String): Generator[String] = {
+      val normalizedPattern =
+        Option(pattern).getOrElse(throw new IllegalArgumentException("Regex pattern must be non-null"))
+      require(normalizedPattern.nonEmpty, "Regex pattern must be non-empty")
+      require(Generex.isValidPattern(normalizedPattern), s"Invalid regex pattern: $normalizedPattern")
+
+      val perThread = ThreadLocal.withInitial(() => new Generex(normalizedPattern))
+      Generator.delay(perThread.get().random())
+    }
   }
 
   /** Person data generators. */
@@ -694,18 +710,5 @@ object Faker {
         c <- tuple._3
         d <- tuple._4
       } yield f(a, b, c, d)
-  }
-}
-
-private object RegexSampler {
-
-  def generator(pattern: String): Generator[String] = {
-    val normalizedPattern =
-      Option(pattern).map(_.trim).getOrElse(throw new IllegalArgumentException("Regex pattern must be non-null"))
-    require(normalizedPattern.nonEmpty, "Regex pattern must be non-empty")
-    require(Generex.isValidPattern(normalizedPattern), s"Invalid regex pattern: $normalizedPattern")
-
-    val perThread = ThreadLocal.withInitial(() => new Generex(normalizedPattern))
-    Generator.delay(perThread.get().random())
   }
 }
