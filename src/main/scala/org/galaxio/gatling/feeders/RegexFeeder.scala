@@ -9,10 +9,9 @@ import org.galaxio.gatling.feeders.faker.Faker
 )
 object RegexFeeder {
 
-  def apply(paramName: String, regex: String): Feeder[String] =
-    {
-      val generator = Faker.string.matching(regex)
-      feeder[String](paramName)(generator.sample())
-    }
+  def apply(paramName: String, regex: String): Feeder[String] = {
+    val generator = Faker.string.matching(regex)
+    feeder[String](paramName)(generator.sample())
+  }
 
 }

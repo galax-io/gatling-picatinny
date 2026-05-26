@@ -135,8 +135,8 @@ object Faker {
 
     /** Generates strings matching a finite regex pattern.
       *
-      * This is the generator-based replacement for the legacy `RegexFeeder`.
-      * Keep the returned generator in a `val` and reuse it; each generator holds a thread-local automaton instance.
+      * This is the generator-based replacement for the legacy `RegexFeeder`. Keep the returned generator in a `val` and reuse
+      * it; each generator holds a thread-local automaton instance.
       *
       * The pattern must be compatible with `Generex`/dk.brics.automaton syntax. Lookarounds, backreferences, and other
       * unsupported regex features are rejected.
