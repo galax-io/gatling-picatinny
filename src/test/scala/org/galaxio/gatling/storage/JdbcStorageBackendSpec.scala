@@ -19,7 +19,7 @@ class JdbcStorageBackendSpec extends AnyWordSpec with Matchers {
       }
 
       driver.state.resultSetCloseCount.get() shouldBe 1
-      driver.state.statementCloseCount.get() shouldBe 1
+      driver.state.statementCloseCount.get() shouldBe 2
       driver.state.connectionCloseCount.get() shouldBe 1
     }
 
@@ -38,6 +38,8 @@ class JdbcStorageBackendSpec extends AnyWordSpec with Matchers {
       driver.state.executeBatchCount.get() shouldBe 1
       driver.state.queryCount.get() shouldBe 1
       driver.state.statementCloseCount.get() shouldBe 3
+      driver.state.preparedStatementCloseCount.get() shouldBe 1
+      driver.state.connectionCloseCount.get() shouldBe 3
     }
 
     "initialize the table before clearing a fresh backend" in {

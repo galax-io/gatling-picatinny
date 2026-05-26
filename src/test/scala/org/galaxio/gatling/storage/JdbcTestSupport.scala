@@ -36,13 +36,18 @@ private[storage] object JdbcTestSupport {
 
     private def createConnection(): Connection = {
       val connectionHandler = new InvocationHandler {
+        private var closed = false
+
         override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = method.getName match {
           case "createStatement"  => createStatement()
           case "prepareStatement" => createPreparedStatement()
           case "close"            =>
-            state.closeConnection()
+            if (!closed) {
+              closed = true
+              state.closeConnection()
+            }
             null
-          case "isClosed"         => java.lang.Boolean.valueOf(state.connectionCloseCount.get() > 0)
+          case "isClosed"         => java.lang.Boolean.valueOf(closed)
           case "unwrap"           => null
           case "isWrapperFor"     =>
             java.lang.Boolean.FALSE
@@ -55,6 +60,8 @@ private[storage] object JdbcTestSupport {
 
     private def createStatement(): Statement = {
       val statementHandler = new InvocationHandler {
+        private var closed = false
+
         override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = method.getName match {
           case "execute"      =>
             val sql = args.headOption.map(_.asInstanceOf[String]).getOrElse("")
@@ -64,7 +71,10 @@ private[storage] object JdbcTestSupport {
             state.queryCount.incrementAndGet()
             createResultSet()
           case "close"        =>
-            state.closeStatement()
+            if (!closed) {
+              closed = true
+              state.closeStatement()
+            }
             null
           case "unwrap"       => null
           case "isWrapperFor" => java.lang.Boolean.FALSE
@@ -78,6 +88,7 @@ private[storage] object JdbcTestSupport {
     private def createPreparedStatement(): PreparedStatement = {
       val statementHandler = new InvocationHandler {
         private var batchCount = 0
+        private var closed     = false
 
         override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = method.getName match {
           case "setString"    => null
@@ -88,7 +99,10 @@ private[storage] object JdbcTestSupport {
             state.executeBatchCount.incrementAndGet()
             Array.fill(batchCount)(1)
           case "close"        =>
-            state.closePreparedStatement()
+            if (!closed) {
+              closed = true
+              state.closePreparedStatement()
+            }
             null
           case "unwrap"       => null
           case "isWrapperFor" => java.lang.Boolean.FALSE
@@ -101,7 +115,8 @@ private[storage] object JdbcTestSupport {
 
     private def createResultSet(): ResultSet = {
       val resultSetHandler = new InvocationHandler {
-        private var index = -1
+        private var index  = -1
+        private var closed = false
 
         override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = method.getName match {
           case "next"         =>
@@ -110,7 +125,10 @@ private[storage] object JdbcTestSupport {
           case "getString"    =>
             if (index < 0 || index >= state.rows.length) null else state.rows(index)
           case "close"        =>
-            state.closeResultSet()
+            if (!closed) {
+              closed = true
+              state.closeResultSet()
+            }
             null
           case "unwrap"       => null
           case "isWrapperFor" => java.lang.Boolean.FALSE
@@ -147,34 +165,13 @@ private[storage] object JdbcTestSupport {
     val preparedStatementCloseCount = new AtomicInteger(0)
     val resultSetCloseCount         = new AtomicInteger(0)
 
-    private var connectionClosed = false
-    private var statementClosed  = false
-    private var preparedClosed   = false
-    private var resultSetClosed  = false
+    def closeConnection(): Unit = connectionCloseCount.incrementAndGet()
 
-    def closeConnection(): Unit =
-      if (!connectionClosed) {
-        connectionClosed = true
-        connectionCloseCount.incrementAndGet()
-      }
+    def closeStatement(): Unit = statementCloseCount.incrementAndGet()
 
-    def closeStatement(): Unit =
-      if (!statementClosed) {
-        statementClosed = true
-        statementCloseCount.incrementAndGet()
-      }
+    def closePreparedStatement(): Unit = preparedStatementCloseCount.incrementAndGet()
 
-    def closePreparedStatement(): Unit =
-      if (!preparedClosed) {
-        preparedClosed = true
-        preparedStatementCloseCount.incrementAndGet()
-      }
-
-    def closeResultSet(): Unit =
-      if (!resultSetClosed) {
-        resultSetClosed = true
-        resultSetCloseCount.incrementAndGet()
-      }
+    def closeResultSet(): Unit = resultSetCloseCount.incrementAndGet()
   }
 
   def withRegisteredDriver[T](driver: RecordingJdbcDriver)(body: => T): T = {
