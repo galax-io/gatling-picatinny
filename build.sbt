@@ -3,8 +3,10 @@ import Dependencies.*
 def UtilsModule(id: String) = Project(id, file(id))
 lazy val IntegrationTest    = config("it") extend Runtime
 
+ThisBuild / com.github.sbt.git.SbtGit.GitKeys.useConsoleForROGit := true
+
 lazy val root = (project in file("."))
-  .enablePlugins(JmhPlugin)
+  .enablePlugins(GitVersioning, JmhPlugin)
   .configs(IntegrationTest)
   .settings(inConfig(IntegrationTest)(Defaults.testSettings))
   .settings(
@@ -39,5 +41,3 @@ lazy val root = (project in file("."))
       "-language:postfixOps",
     ),
   )
-
-ThisBuild / com.github.sbt.git.SbtGit.GitKeys.useConsoleForROGit := true
