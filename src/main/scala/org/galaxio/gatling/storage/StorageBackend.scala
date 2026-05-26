@@ -7,6 +7,8 @@ import org.json4s.native.Serialization.writePretty
 
 import java.nio.file.{Files, Paths}
 import java.sql.{Connection, DriverManager}
+import java.util.concurrent.atomic.AtomicBoolean
+import scala.util.Using
 
 private[storage] trait RedisClientLike {
   def set(key: String, value: String): Boolean
@@ -97,7 +99,9 @@ final case class JdbcStorageBackend(
     username: String = "",
     password: String = "",
 ) extends StorageBackend {
-  private implicit val formats: Formats = DefaultFormats
+  private implicit val formats: Formats   = DefaultFormats
+  private val tableInitialized            = new AtomicBoolean(false)
+  private val tableInitLock               = new AnyRef
 
   private def withConnection[T](f: Connection => T): T = {
     val conn =
@@ -108,45 +112,54 @@ final case class JdbcStorageBackend(
   }
 
   private def ensureTable(conn: Connection): Unit = {
-    val stmt = conn.createStatement()
-    try
+    if (!tableInitialized.get)
+      tableInitLock.synchronized {
+        if (!tableInitialized.get) {
+          initTable(conn)
+          tableInitialized.set(true)
+        }
+      }
+  }
+
+  private def initTable(conn: Connection): Unit = {
+    Using.resource(conn.createStatement()) { stmt =>
       stmt.execute(
         s"""CREATE TABLE IF NOT EXISTS $tableName (
-         |  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-         |  record_data TEXT NOT NULL,
-         |  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-         |)""".stripMargin,
+           |  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+           |  record_data TEXT NOT NULL,
+           |  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+           |)""".stripMargin,
       )
-    finally stmt.close()
+    }
   }
 
   override def save(records: Seq[Record[Any]]): Unit = withConnection { conn =>
     ensureTable(conn)
-    val ps = conn.prepareStatement(s"INSERT INTO $tableName (record_data) VALUES (?)")
-    try {
+    Using.resource(conn.prepareStatement(s"INSERT INTO $tableName (record_data) VALUES (?)")) { ps =>
       records.foreach { record =>
         ps.setString(1, writePretty(record))
         ps.addBatch()
       }
       ps.executeBatch()
-    } finally ps.close()
+    }
   }
 
   override def load(): Seq[Record[Any]] = withConnection { conn =>
     ensureTable(conn)
-    val stmt = conn.createStatement()
-    try {
-      val rs      = stmt.executeQuery(s"SELECT record_data FROM $tableName ORDER BY id")
-      val builder = Seq.newBuilder[Record[Any]]
-      while (rs.next())
-        builder += parse(rs.getString("record_data")).extract[Map[String, Any]]
-      builder.result()
-    } finally stmt.close()
+    Using.resource(conn.createStatement()) { stmt =>
+      Using.resource(stmt.executeQuery(s"SELECT record_data FROM $tableName ORDER BY id")) { rs =>
+        val builder = Seq.newBuilder[Record[Any]]
+        while (rs.next())
+          builder += parse(rs.getString("record_data")).extract[Map[String, Any]]
+        builder.result()
+      }
+    }
   }
 
   override def clear(): Unit = withConnection { conn =>
-    val stmt = conn.createStatement()
-    try stmt.execute(s"DELETE FROM $tableName")
-    finally stmt.close()
+    ensureTable(conn)
+    Using.resource(conn.createStatement()) { stmt =>
+      stmt.execute(s"DELETE FROM $tableName")
+    }
   }
 }
