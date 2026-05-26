@@ -5,7 +5,14 @@ import java.net.http.HttpClient.Redirect
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
 
-case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSeconds: Long = 3000) {
+/** Lightweight JDK HttpClient wrapper used by feeders and utility clients.
+  *
+  * @param followRedirects
+  *   JDK redirect policy name
+  * @param connectTimeoutInSeconds
+  *   connection timeout in seconds
+  */
+case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSeconds: Long = 3) {
 
   private val jsonContentType: String = "application/json"
   private val client: HttpClient      = buildClient()
