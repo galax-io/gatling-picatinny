@@ -35,10 +35,6 @@ object Dependencies {
     "com.fasterxml.jackson.core"       % "jackson-core"            % "2.21.0",
   )
 
-  lazy val scalaLogging: Seq[ModuleID] = Seq(
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-  )
-
   lazy val scalaTest: Seq[ModuleID] = Seq(
     "org.scalatest" %% "scalatest" % "3.2.19" % "test,it",
   )

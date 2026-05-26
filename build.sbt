@@ -16,7 +16,6 @@ lazy val root = (project in file("."))
     libraryDependencies ++= json4s,
     libraryDependencies ++= pureConfig,
     libraryDependencies ++= jackson,
-    libraryDependencies ++= scalaLogging,
     libraryDependencies ++= scalaTesting,
     libraryDependencies ++= generex,
     libraryDependencies ++= jwt,
