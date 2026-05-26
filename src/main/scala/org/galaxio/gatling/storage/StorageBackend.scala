@@ -32,6 +32,8 @@ trait StorageBackend {
   def clear(): Unit
 }
 
+final class StorageWriteException(message: String) extends RuntimeException(message)
+
 final case class JsonFileBackend(filePath: String) extends StorageBackend {
   private implicit val formats: Formats = DefaultFormats
 
@@ -78,7 +80,7 @@ final case class RedisBackend(
 
   private[storage] def saveRecords(client: RedisClientLike, records: Seq[Record[Any]]): Unit = {
     if (!client.set(storageKey, writePretty(records)))
-      throw new IllegalStateException(s"Failed to persist session storage to Redis key '$storageKey'")
+      throw new StorageWriteException(s"Failed to persist session storage to Redis key '$storageKey'")
   }
 
   private[storage] def loadRecords(client: RedisClientLike): Seq[Record[Any]] =
@@ -88,8 +90,8 @@ final case class RedisBackend(
     }
 
   private[storage] def clearRecords(client: RedisClientLike): Unit = {
-    client.del(storageKey)
-    ()
+    if (client.del(storageKey).isEmpty)
+      throw new StorageWriteException(s"Failed to clear session storage from Redis key '$storageKey'")
   }
 }
 
