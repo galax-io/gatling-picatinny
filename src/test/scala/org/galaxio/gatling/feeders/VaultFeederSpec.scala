@@ -17,4 +17,12 @@ class VaultFeederSpec extends AnyWordSpec with Matchers {
       (parse(body) \ "secret_id").extract[String] shouldBe "secret\nid"
     }
   }
+
+  "VaultFeeder.extractClientToken" should {
+    "extract the raw token string from the auth payload" in {
+      val payload = parse("""{"auth":{"client_token":"vault-token-123"}}""")
+
+      VaultFeeder.extractClientToken(payload) shouldBe "vault-token-123"
+    }
+  }
 }
