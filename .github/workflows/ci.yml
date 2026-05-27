@@ -605,6 +605,7 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: write
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -696,6 +697,42 @@ jobs:
             git tag -a "$NEXT_TAG" -m "Release $NEXT_TAG"
             git push origin "$NEXT_TAG"
           fi
+
+      - name: Run Trivy vulnerability gate
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          hide-progress: true
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload Trivy scan results
+        if: always() && (startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag))
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Generate and submit release SBOM
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: github
+          output: dependency-results.sbom.json
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release SBOM artifact
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-sbom
+          path: dependency-results.sbom.json
 
       - name: Publish to Sonatype via sbt-ci-release
         if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
