@@ -3,7 +3,7 @@ package org.galaxio.gatling.feeders
 import io.gatling.core.feeder.Record
 import org.galaxio.gatling.utils.THttpClient
 import org.json4s.native.JsonMethods
-import org.json4s.{DefaultFormats, JValue}
+import org.json4s.{DefaultFormats, Extraction, JValue}
 
 import java.util.Objects.requireNonNull
 
@@ -21,7 +21,7 @@ object VaultFeeder {
 
     implicit val formats: DefaultFormats = org.json4s.DefaultFormats
 
-    val body: String = s"""{"role_id":"$roleId","secret_id":"$secretId"}"""
+    val body = approleLoginBody(roleId, secretId)
 
     val vaultTokenResponse: String = THttpClient()
       .POSTJson(s"""$vaultUrl/v1/auth/approle/login""", body)
@@ -88,4 +88,7 @@ object VaultFeeder {
     val selectedKeys = keys.toSet
     data.view.filterKeys(selectedKeys.contains).toMap
   }
+
+  private[feeders] def approleLoginBody(roleId: String, secretId: String)(implicit formats: DefaultFormats): String =
+    JsonMethods.compact(JsonMethods.render(Extraction.decompose(Map("role_id" -> roleId, "secret_id" -> secretId))))
 }
