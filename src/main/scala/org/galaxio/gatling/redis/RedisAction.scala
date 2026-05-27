@@ -31,7 +31,7 @@ case class RedisAction(
           val result = clientPool.withClient(client => command.execute(client))
           val end    = if (statsEnabled) clock.nowMillis else 0L
 
-          val updatedSession = saveAsVar.fold(session)(varName => session.set(varName, result.orNull))
+          val updatedSession = RedisAction.updateSessionWithResult(session, saveAsVar, result)
 
           if (statsEnabled) {
             statsEngine.logResponse(
@@ -89,4 +89,16 @@ case class RedisAction(
     }
 
   override def statsEngine: StatsEngine = ctx.coreComponents.statsEngine
+}
+
+object RedisAction {
+  private[redis] def updateSessionWithResult(
+      session: Session,
+      saveAsVar: Option[String],
+      result: Option[Any],
+  ): Session =
+    saveAsVar match {
+      case Some(varName) => result.fold(session)(value => session.set(varName, value))
+      case None          => session
+    }
 }
