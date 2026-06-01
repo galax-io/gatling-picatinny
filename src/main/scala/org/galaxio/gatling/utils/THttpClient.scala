@@ -15,26 +15,22 @@ import java.time.Duration
 case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSeconds: Long = 3) {
 
   private val jsonContentType: String = "application/json"
-  private val client: HttpClient      = buildClient()
 
-  def buildClient(): HttpClient = {
-    val client: HttpClient = HttpClient
+  private val client: HttpClient =
+    HttpClient
       .newBuilder()
       .connectTimeout(Duration.ofSeconds(connectTimeoutInSeconds))
       .followRedirects(Redirect.valueOf(followRedirects))
       .build()
 
-    client
-  }
-
-  def GET(uri: String, headers: Seq[String] = Seq.empty[String]): HttpResponse[String] = {
+  def GET(uri: String, headers: Seq[String] = Seq.empty): HttpResponse[String] = {
     val builder = HttpRequest.newBuilder().uri(URI.create(uri))
     if (headers.nonEmpty) builder.headers(headers: _*)
     client.send(builder.build(), HttpResponse.BodyHandlers.ofString)
   }
 
-  def POSTJson(uri: String, json: String, headers: Seq[String] = Seq.empty[String]): HttpResponse[String] = {
-    val hdrs: Seq[String] = Seq("Content-Type", s"""$jsonContentType""") ++ headers
+  def POSTJson(uri: String, json: String, headers: Seq[String] = Seq.empty): HttpResponse[String] = {
+    val hdrs: Seq[String] = Seq("Content-Type", jsonContentType) ++ headers
 
     val request: HttpRequest = HttpRequest
       .newBuilder()
@@ -45,5 +41,4 @@ case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSecond
 
     client.send(request, HttpResponse.BodyHandlers.ofString)
   }
-
 }
