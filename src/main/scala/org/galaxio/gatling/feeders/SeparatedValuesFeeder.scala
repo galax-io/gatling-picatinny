@@ -33,7 +33,11 @@ object SeparatedValuesFeeder {
   def apply(paramName: String, source: String, separator: Char): IndexedSeq[Record[String]] = {
 
     val records = splitter(source, separator).map(s => Map(paramName -> s.trim))
-    require(records.nonEmpty, "Feeder source is empty")
+    require(
+      records.nonEmpty,
+      s"SeparatedValuesFeeder('$paramName'): source string produced no records after splitting by '$separator'. " +
+        "Check that the source string is not empty and contains the expected separator.",
+    )
 
     records
   }
@@ -61,7 +65,11 @@ object SeparatedValuesFeeder {
   ): IndexedSeq[Record[String]] = {
 
     val records = source.flatMap(s => splitter(s, separator)).map(s => Map(paramName -> s.trim)).toIndexedSeq
-    require(records.nonEmpty, "Feeder source is empty")
+    require(
+      records.nonEmpty,
+      s"SeparatedValuesFeeder('$paramName'): source sequence is empty or produced no records after splitting by '$separator'. " +
+        "Check that the source sequence contains at least one non-empty element.",
+    )
 
     records
   }
@@ -111,7 +119,12 @@ object SeparatedValuesFeeder {
       )
       .flatten
       .toIndexedSeq
-    require(records.nonEmpty, "Feeder source is empty")
+    require(
+      records.nonEmpty,
+      s"SeparatedValuesFeeder(prefix=${paramPrefix.getOrElse("none")}): " +
+        s"source map sequence is empty or produced no records after splitting by '$separator'. " +
+        "Check that the source contains at least one non-empty map entry.",
+    )
 
     records
   }

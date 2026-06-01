@@ -48,5 +48,21 @@ class TransformFeedersSpec extends AnyWordSpec with Matchers {
         Map("rndString" -> "host12"),
       )
     }
+
+    "include param name in error message for empty Seq source" in {
+      val ex = the[IllegalArgumentException] thrownBy {
+        SeparatedValuesFeeder("myParam", Seq.empty[String], ',')
+      }
+      ex.getMessage should include("myParam")
+      ex.getMessage should include("source sequence is empty")
+    }
+
+    "include prefix in error message for empty map sequence source" in {
+      val ex = the[IllegalArgumentException] thrownBy {
+        SeparatedValuesFeeder(Some("pfx"), Seq.empty[Map[String, Any]], ',')
+      }
+      ex.getMessage should include("pfx")
+      ex.getMessage should include("source map sequence is empty")
+    }
   }
 }
