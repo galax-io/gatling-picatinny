@@ -155,6 +155,15 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       enriched.next() shouldBe Map("id" -> "42", "active" -> true, "currency" -> "USD")
     }
 
+    "widen typed feeder records safely in withGenerated" in {
+      val stringFeeder: Iterator[Map[String, String]] = Iterator.single(Map("name" -> "alice"))
+      val enriched                                    = GeneratedFeeder.withGenerated(stringFeeder, "score", Generator.const(42))
+
+      val record = enriched.next()
+      record("name") shouldBe "alice"
+      record("score") shouldBe 42
+    }
+
     "rename feeder keys" in {
       val feeder  = Iterator.single(Map("old_name" -> "value"))
       val renamed = feeder.rename("old_name", "new_name")
