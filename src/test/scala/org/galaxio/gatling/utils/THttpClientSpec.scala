@@ -23,12 +23,14 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
     server.createContext(
       "/get",
       (ex: HttpExchange) => {
-        lastRequestHeaders = ex.getRequestHeaders.entrySet().toArray
+        lastRequestHeaders = ex.getRequestHeaders
+          .entrySet()
+          .toArray
           .collect { case e: java.util.Map.Entry[_, _] => e.getKey.toString -> e.getValue.toString }
           .toMap
         val body = "ok".getBytes(StandardCharsets.UTF_8)
         ex.sendResponseHeaders(200, body.length.toLong)
-        val os = ex.getResponseBody
+        val os   = ex.getResponseBody
         os.write(body)
         os.close()
       },
@@ -37,13 +39,15 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
     server.createContext(
       "/post",
       (ex: HttpExchange) => {
-        lastRequestHeaders = ex.getRequestHeaders.entrySet().toArray
+        lastRequestHeaders = ex.getRequestHeaders
+          .entrySet()
+          .toArray
           .collect { case e: java.util.Map.Entry[_, _] => e.getKey.toString -> e.getValue.toString }
           .toMap
         lastRequestBody = new String(ex.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
         val body = "ok".getBytes(StandardCharsets.UTF_8)
         ex.sendResponseHeaders(200, body.length.toLong)
-        val os = ex.getResponseBody
+        val os   = ex.getResponseBody
         os.write(body)
         os.close()
       },
@@ -83,7 +87,7 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "respect custom connection timeout parameter" in {
-      val client = THttpClient(connectTimeoutInSeconds = 5)
+      val client   = THttpClient(connectTimeoutInSeconds = 5)
       val response = client.GET(s"http://localhost:$port/get")
       response.statusCode() shouldBe 200
     }

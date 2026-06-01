@@ -7,9 +7,8 @@ import org.json4s.{DefaultFormats, Formats, JValue}
 
 /** Creates a one-record feeder from a JSON HTTP endpoint.
   *
-  * Use this for small configuration or test-data APIs. Non-string top-level fields (numbers, booleans, null) are
-  * converted to their string representation; richer JSON transformations should be performed before values reach the
-  * feeder boundary.
+  * Use this for small configuration or test-data APIs. Non-string top-level fields (numbers, booleans, null) are converted to
+  * their string representation; richer JSON transformations should be performed before values reach the feeder boundary.
   */
 object HttpJsonFeeder {
 
@@ -42,8 +41,12 @@ object HttpJsonFeeder {
   }
 
   private def extractFields(json: JValue): Record[String] =
-    json.extract[Map[String, Any]].view.mapValues {
-      case null => "null"
-      case v    => v.toString
-    }.toMap
+    json
+      .extract[Map[String, Any]]
+      .view
+      .mapValues {
+        case null => "null"
+        case v    => v.toString
+      }
+      .toMap
 }

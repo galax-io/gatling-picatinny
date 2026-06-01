@@ -27,7 +27,7 @@ class HttpJsonFeederSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
       (ex: HttpExchange) => {
         val bytes = body.getBytes(StandardCharsets.UTF_8)
         ex.sendResponseHeaders(status, bytes.length.toLong)
-        val os = ex.getResponseBody
+        val os    = ex.getResponseBody
         os.write(bytes)
         os.close()
       },
