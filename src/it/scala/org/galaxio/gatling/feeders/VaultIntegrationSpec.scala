@@ -128,5 +128,52 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
       result should have size 1
       result.head shouldBe Map("db_host" -> "localhost", "db_port" -> "5432", "api_key" -> "abc123")
     }
+
+    "fail on duplicate keys by default" in {
+      writeSecret(s"$kvMount/test/dup-a", Map("shared" -> "from-a", "only_a" -> "a"))
+      writeSecret(s"$kvMount/test/dup-b", Map("shared" -> "from-b", "only_b" -> "b"))
+
+      val paths = List(
+        (s"$kvMount/test/dup-a", List("shared", "only_a")),
+        (s"$kvMount/test/dup-b", List("shared", "only_b")),
+      )
+
+      val ex = the[IllegalArgumentException] thrownBy {
+        VaultFeeder.fromPaths(vaultUrl, appRoleId, appSecretId, paths)
+      }
+      ex.getMessage should include("shared")
+    }
+
+    "keep last value with LastWins strategy" in {
+      writeSecret(s"$kvMount/test/lw-a", Map("key" -> "first", "a" -> "1"))
+      writeSecret(s"$kvMount/test/lw-b", Map("key" -> "second", "b" -> "2"))
+
+      val paths = List(
+        (s"$kvMount/test/lw-a", List("key", "a")),
+        (s"$kvMount/test/lw-b", List("key", "b")),
+      )
+
+      val result = VaultFeeder.fromPaths(vaultUrl, appRoleId, appSecretId, paths, DuplicateKeyStrategy.LastWins)
+
+      result.head("key") shouldBe "second"
+      result.head("a") shouldBe "1"
+      result.head("b") shouldBe "2"
+    }
+
+    "keep first value with FirstWins strategy" in {
+      writeSecret(s"$kvMount/test/fw-a", Map("key" -> "first", "a" -> "1"))
+      writeSecret(s"$kvMount/test/fw-b", Map("key" -> "second", "b" -> "2"))
+
+      val paths = List(
+        (s"$kvMount/test/fw-a", List("key", "a")),
+        (s"$kvMount/test/fw-b", List("key", "b")),
+      )
+
+      val result = VaultFeeder.fromPaths(vaultUrl, appRoleId, appSecretId, paths, DuplicateKeyStrategy.FirstWins)
+
+      result.head("key") shouldBe "first"
+      result.head("a") shouldBe "1"
+      result.head("b") shouldBe "2"
+    }
   }
 }
