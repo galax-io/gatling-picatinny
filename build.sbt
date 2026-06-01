@@ -1,7 +1,7 @@
 import Dependencies.*
 
 def UtilsModule(id: String) = Project(id, file(id))
-lazy val IntegrationTest    = config("it") extend Runtime
+lazy val IntegrationTest    = config("it") extend Test
 
 lazy val root = (project in file("."))
   .enablePlugins(GitVersioning, JmhPlugin)
