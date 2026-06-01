@@ -245,7 +245,7 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -276,7 +276,7 @@ jobs:
           restore-keys: sbt-${{ runner.os }}-
 
       - name: Coverage
-        run: sbt clean coverage test coverageOff coverageReport coverageAggregate
+        run: sbt clean coverage test "IntegrationTest/test" coverageOff coverageReport coverageAggregate
 
       - name: Upload coverage reports to Codecov
         if: always()
