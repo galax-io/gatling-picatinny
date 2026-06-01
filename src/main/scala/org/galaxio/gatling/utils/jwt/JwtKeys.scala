@@ -5,6 +5,7 @@ import java.security.spec.{PKCS8EncodedKeySpec, X509EncodedKeySpec}
 import java.security.{KeyFactory, PrivateKey, PublicKey}
 import java.util.Base64
 import scala.io.Source
+import scala.util.Using
 
 /** Utility for loading PEM-encoded keys for JWT signing and verification.
   *
@@ -76,11 +77,9 @@ object JwtKeys {
   }
 
   private def readResourceString(path: String): String = {
-    val url    = getClass.getClassLoader.getResource(path)
+    val url = getClass.getClassLoader.getResource(path)
     if (url == null) throw new IllegalArgumentException(s"Resource not found: $path")
-    val source = Source.fromURL(url)
-    try source.mkString
-    finally source.close()
+    Using.resource(Source.fromURL(url))(_.mkString)
   }
 
 }
