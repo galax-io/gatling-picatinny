@@ -29,15 +29,15 @@ case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSecond
     client.send(builder.build(), HttpResponse.BodyHandlers.ofString)
   }
 
-  def POSTJson(uri: String, json: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
-    sendJson(uri, json, "POST", headers)
+  def POST(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
+    sendJson(uri, body, "POST", headers)
 
-  def PUTJson(uri: String, json: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
-    sendJson(uri, json, "PUT", headers)
+  def PUT(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
+    sendJson(uri, body, "PUT", headers)
 
   private def sendJson(
       uri: String,
-      json: String,
+      body: String,
       method: String,
       headers: Seq[String],
   ): HttpResponse[String] = {
@@ -45,7 +45,7 @@ case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSecond
 
     val request: HttpRequest = HttpRequest
       .newBuilder()
-      .method(method, HttpRequest.BodyPublishers.ofString(json))
+      .method(method, HttpRequest.BodyPublishers.ofString(body))
       .uri(URI.create(uri))
       .headers(hdrs: _*)
       .timeout(Duration.ofSeconds(connectTimeoutInSeconds))
