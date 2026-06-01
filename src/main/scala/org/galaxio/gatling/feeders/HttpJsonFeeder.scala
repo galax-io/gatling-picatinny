@@ -9,10 +9,13 @@ import java.util.Objects.requireNonNull
 
 /** Creates a one-record feeder from a JSON HTTP endpoint.
   *
-  * Use this for small configuration or test-data APIs. It extracts top-level JSON string fields only; richer JSON
-  * transformations should be performed before values reach the feeder boundary.
+  * Use this for small configuration or test-data APIs. Non-string top-level fields (numbers, booleans) are converted
+  * to their string representation; richer JSON transformations should be performed before values reach the feeder
+  * boundary.
   */
 object HttpJsonFeeder {
+
+  private lazy val sharedClient: THttpClient = THttpClient()
 
   /** Fetches JSON from an HTTP GET endpoint and extracts selected top-level fields into a feeder record.
     *
@@ -33,14 +36,17 @@ object HttpJsonFeeder {
 
     implicit val formats: DefaultFormats = org.json4s.DefaultFormats
 
-    val response = THttpClient().GET(url, headers).body()
+    val response = sharedClient.GET(url, headers).body()
     val json     = JsonMethods.parse(response)
-    val data     = extractStringFields(json)
+    val data     = extractFields(json)
     val keySet   = keys.toSet
 
     IndexedSeq(data.view.filterKeys(keySet.contains).toMap)
   }
 
-  private def extractStringFields(json: JValue)(implicit formats: Formats): Record[String] =
-    json.extract[Map[String, String]]
+  private def extractFields(json: JValue)(implicit formats: Formats): Record[String] =
+    json.extract[Map[String, Any]].view.mapValues {
+      case null => "null"
+      case v    => v.toString
+    }.toMap
 }

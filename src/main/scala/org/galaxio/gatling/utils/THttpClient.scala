@@ -28,13 +28,9 @@ case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSecond
   }
 
   def GET(uri: String, headers: Seq[String] = Seq.empty[String]): HttpResponse[String] = {
-    val request: HttpRequest = HttpRequest
-      .newBuilder()
-      .uri(URI.create(uri))
-      .headers(headers: _*)
-      .build()
-
-    client.send(request, HttpResponse.BodyHandlers.ofString)
+    val builder = HttpRequest.newBuilder().uri(URI.create(uri))
+    if (headers.nonEmpty) builder.headers(headers: _*)
+    client.send(builder.build(), HttpResponse.BodyHandlers.ofString)
   }
 
   def POSTJson(uri: String, json: String, headers: Seq[String] = Seq.empty[String]): HttpResponse[String] = {
