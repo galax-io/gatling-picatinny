@@ -91,5 +91,42 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       val response = client.GET(s"http://localhost:$port/get")
       response.statusCode() shouldBe 200
     }
+
+    "timeout on slow response when requestTimeoutInSeconds is set" in {
+      server.createContext(
+        "/slow",
+        (ex: HttpExchange) => {
+          Thread.sleep(10000) // 10s — well above 2s timeout to avoid CI flakiness
+          val body = "late".getBytes(StandardCharsets.UTF_8)
+          ex.sendResponseHeaders(200, body.length.toLong)
+          val os   = ex.getResponseBody
+          os.write(body)
+          os.close()
+        },
+      )
+
+      val client = THttpClient(requestTimeoutInSeconds = 2)
+      a[java.net.http.HttpTimeoutException] should be thrownBy {
+        client.GET(s"http://localhost:$port/slow")
+      }
+    }
+
+    "allow disabling request timeout with 0" in {
+      val client   = THttpClient(requestTimeoutInSeconds = 0)
+      val response = client.GET(s"http://localhost:$port/get")
+      response.statusCode() shouldBe 200
+    }
+
+    "reject negative requestTimeoutInSeconds" in {
+      an[IllegalArgumentException] should be thrownBy {
+        THttpClient(requestTimeoutInSeconds = -1)
+      }
+    }
+
+    "reject zero connectTimeoutInSeconds" in {
+      an[IllegalArgumentException] should be thrownBy {
+        THttpClient(connectTimeoutInSeconds = 0)
+      }
+    }
   }
 }
