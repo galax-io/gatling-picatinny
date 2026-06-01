@@ -36,7 +36,7 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
     method match {
       case "GET"  => client.GET(s"$vaultUrl/v1/$path", headers).body()
       case "POST" => client.POSTJson(s"$vaultUrl/v1/$path", body, headers).body()
-      case "PUT"  => client.POSTJson(s"$vaultUrl/v1/$path", body, headers).body()
+      case "PUT"  => client.PUTJson(s"$vaultUrl/v1/$path", body, headers).body()
     }
   }
 
