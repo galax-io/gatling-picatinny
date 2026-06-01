@@ -1,13 +1,27 @@
 package org.galaxio.gatling.feeders
 
+import com.typesafe.scalalogging.LazyLogging
 import io.gatling.core.feeder.Record
 import org.galaxio.gatling.utils.THttpClient
 import org.json4s.native.JsonMethods.{compact, parse, render}
 import org.json4s.{DefaultFormats, Extraction, JValue}
 
-import java.util.Objects.requireNonNull
+/** Strategy for handling duplicate keys when merging secrets from multiple Vault paths. */
+sealed trait DuplicateKeyStrategy
 
-object VaultFeeder {
+object DuplicateKeyStrategy {
+
+  /** Throw [[IllegalArgumentException]] listing the colliding keys. */
+  case object FailOnDuplicate extends DuplicateKeyStrategy
+
+  /** Keep the value from the last path in the list (last-writer-wins). Logs a warning. */
+  case object LastWins extends DuplicateKeyStrategy
+
+  /** Keep the value from the first path in the list. Logs a warning. */
+  case object FirstWins extends DuplicateKeyStrategy
+}
+
+object VaultFeeder extends LazyLogging {
 
   /** Retrieves secrets from a single Vault path as a one-record feeder. */
   def apply(
@@ -17,7 +31,7 @@ object VaultFeeder {
       secretId: String,
       keys: List[String],
   ): IndexedSeq[Record[String]] = {
-    requireNonNull(keys, "Keys list must not be null")
+    require(keys != null, "Keys list must not be null")
 
     implicit val formats: DefaultFormats = org.json4s.DefaultFormats
 
@@ -42,19 +56,58 @@ object VaultFeeder {
 
   /** Retrieves secrets from multiple Vault paths and merges them into a single record.
     *
-    * Useful when test data is spread across several Vault secrets.
+    * Useful when test data is spread across several Vault secrets. Uses [[DuplicateKeyStrategy.FailOnDuplicate]] by default.
+    * Java/Kotlin callers without default-argument support should call the 4-arg overload below.
     */
   def fromPaths(
       vaultUrl: String,
       roleId: String,
       secretId: String,
       paths: List[(String, List[String])],
+  ): IndexedSeq[Record[String]] =
+    fromPaths(vaultUrl, roleId, secretId, paths, DuplicateKeyStrategy.FailOnDuplicate)
+
+  /** Retrieves secrets from multiple Vault paths with explicit duplicate-key strategy.
+    *
+    * @param onDuplicate
+    *   strategy when the same key appears in more than one path
+    */
+  def fromPaths(
+      vaultUrl: String,
+      roleId: String,
+      secretId: String,
+      paths: List[(String, List[String])],
+      onDuplicate: DuplicateKeyStrategy,
   ): IndexedSeq[Record[String]] = {
-    requireNonNull(paths, "Paths list must not be null")
-    val merged = paths.flatMap { case (secretPath, keys) =>
+    require(paths != null, "Paths list must not be null")
+    val allPairs = paths.flatMap { case (secretPath, keys) =>
       apply(vaultUrl, secretPath, roleId, secretId, keys).flatMap(_.toSeq)
-    }.toMap
-    IndexedSeq(merged)
+    }
+    IndexedSeq(mergeWithStrategy(allPairs, onDuplicate))
+  }
+
+  private def mergeWithStrategy(
+      pairs: List[(String, String)],
+      strategy: DuplicateKeyStrategy,
+  ): Record[String] = {
+    lazy val duplicates = pairs.groupBy(_._1).collect { case (k, vs) if vs.size > 1 => k }
+    strategy match {
+      case DuplicateKeyStrategy.FailOnDuplicate =>
+        require(
+          duplicates.isEmpty,
+          s"Duplicate keys found across Vault paths: ${duplicates.mkString(", ")}. " +
+            "Use distinct key names, fetch paths separately, or set onDuplicate = LastWins / FirstWins.",
+        )
+        pairs.toMap
+      case DuplicateKeyStrategy.LastWins        =>
+        if (duplicates.nonEmpty)
+          logger.warn(s"Duplicate keys across Vault paths (last-writer-wins): ${duplicates.mkString(", ")}")
+        pairs.toMap
+      case DuplicateKeyStrategy.FirstWins       =>
+        if (duplicates.nonEmpty)
+          logger.warn(s"Duplicate keys across Vault paths (first-writer-wins): ${duplicates.mkString(", ")}")
+        pairs.distinctBy(_._1).toMap
+    }
   }
 
   /** Retrieves secrets using Vault token authentication (no AppRole).
@@ -67,7 +120,7 @@ object VaultFeeder {
       vaultToken: String,
       keys: List[String],
   ): IndexedSeq[Record[String]] = {
-    requireNonNull(keys, "Keys list must not be null")
+    require(keys != null, "Keys list must not be null")
 
     implicit val formats: DefaultFormats = org.json4s.DefaultFormats
 
