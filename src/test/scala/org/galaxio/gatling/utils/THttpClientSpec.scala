@@ -53,6 +53,28 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       },
     )
 
+    server.createContext(
+      "/error",
+      (ex: HttpExchange) => {
+        val body = """{"errors":["permission denied"]}""".getBytes(StandardCharsets.UTF_8)
+        ex.sendResponseHeaders(403, body.length.toLong)
+        val os   = ex.getResponseBody
+        os.write(body)
+        os.close()
+      },
+    )
+
+    server.createContext(
+      "/not-found",
+      (ex: HttpExchange) => {
+        val body = "not found".getBytes(StandardCharsets.UTF_8)
+        ex.sendResponseHeaders(404, body.length.toLong)
+        val os   = ex.getResponseBody
+        os.write(body)
+        os.close()
+      },
+    )
+
     server.start()
   }
 
@@ -60,10 +82,11 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   "THttpClient" should {
 
-    "return a 200 response on GET with default settings" in {
-      val response = THttpClient().get(s"http://localhost:$port/get")
-      response.statusCode() shouldBe 200
-      response.body() shouldBe "ok"
+    "return HttpResult with status and body on GET" in {
+      val result = THttpClient().get(s"http://localhost:$port/get")
+      result.statusCode shouldBe 200
+      result.body shouldBe "ok"
+      result.isSuccess shouldBe true
     }
 
     "send custom headers on GET" in {
@@ -71,9 +94,10 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       lastRequestHeaders.map { case (k, v) => k.toLowerCase -> v } should contain key "x-test"
     }
 
-    "return a 200 response on POST" in {
-      val response = THttpClient().post(s"http://localhost:$port/post", """{"a":1}""")
-      response.statusCode() shouldBe 200
+    "return HttpResult on POST" in {
+      val result = THttpClient().post(s"http://localhost:$port/post", """{"a":1}""")
+      result.statusCode shouldBe 200
+      result.isSuccess shouldBe true
     }
 
     "send Content-Type: application/json on POST" in {
@@ -87,9 +111,56 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
     }
 
     "respect custom connection timeout parameter" in {
-      val client   = THttpClient(timeoutInSeconds = 5)
-      val response = client.get(s"http://localhost:$port/get")
-      response.statusCode() shouldBe 200
+      val client = THttpClient(timeoutInSeconds = 5)
+      val result = client.get(s"http://localhost:$port/get")
+      result.statusCode shouldBe 200
+    }
+
+    "return non-2xx status in HttpResult without throwing" in {
+      val result = THttpClient().get(s"http://localhost:$port/error")
+      result.statusCode shouldBe 403
+      result.body should include("permission denied")
+      result.isSuccess shouldBe false
+    }
+
+    "throw HttpClientException on getOrThrow with non-2xx" in {
+      val ex = the[HttpClientException] thrownBy {
+        THttpClient().getOrThrow(s"http://localhost:$port/error")
+      }
+      ex.statusCode shouldBe 403
+      ex.method shouldBe "GET"
+      ex.getMessage should include("403")
+      ex.getMessage should include("permission denied")
+    }
+
+    "throw HttpClientException on postOrThrow with non-2xx" in {
+      val ex = the[HttpClientException] thrownBy {
+        THttpClient().postOrThrow(s"http://localhost:$port/error", "{}")
+      }
+      ex.statusCode shouldBe 403
+      ex.method shouldBe "POST"
+    }
+
+    "return success from getOrThrow on 2xx" in {
+      val result = THttpClient().getOrThrow(s"http://localhost:$port/get")
+      result.statusCode shouldBe 200
+      result.body shouldBe "ok"
+    }
+
+    "include URI in HttpClientException message" in {
+      val uri = s"http://localhost:$port/not-found"
+      val ex  = the[HttpClientException] thrownBy {
+        THttpClient().getOrThrow(uri)
+      }
+      ex.statusCode shouldBe 404
+      ex.uri shouldBe uri
+      ex.getMessage should include(uri)
+    }
+
+    "close without throwing" in {
+      val client = THttpClient()
+      client.get(s"http://localhost:$port/get")
+      noException should be thrownBy client.close()
     }
   }
 }

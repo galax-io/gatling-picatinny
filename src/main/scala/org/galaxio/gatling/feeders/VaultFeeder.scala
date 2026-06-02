@@ -41,14 +41,14 @@ object VaultFeeder extends LazyLogging {
 
     val vaultTokenResponse: String = client
       .post(s"""$vaultUrl/v1/auth/approle/login""", body)
-      .body()
+      .body
 
     val vaultToken = extractClientToken(parse(vaultTokenResponse))
 
     val getHeaders: Seq[String]   = Seq("X-Vault-Token", s"""$vaultToken""")
     val vaultDataResponse: String = client
       .get(s"""$vaultUrl/v1/$secretPath""", getHeaders)
-      .body()
+      .body
 
     val vaultDataJson: JValue = parse(vaultDataResponse)
     val data: Record[String]  = (vaultDataJson \ "data").extract[Map[String, String]]
@@ -150,7 +150,7 @@ object VaultFeeder extends LazyLogging {
     val getHeaders: Seq[String]   = Seq("X-Vault-Token", vaultToken)
     val vaultDataResponse: String = THttpClient(timeoutInSeconds = timeoutInSeconds)
       .get(s"""$vaultUrl/v1/$secretPath""", getHeaders)
-      .body()
+      .body
 
     val vaultDataJson: JValue = parse(vaultDataResponse)
     val data: Record[String]  = (vaultDataJson \ "data").extract[Map[String, String]]
