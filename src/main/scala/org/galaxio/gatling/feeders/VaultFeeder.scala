@@ -6,7 +6,7 @@ import org.galaxio.gatling.utils.THttpClient
 import org.json4s.native.JsonMethods.{compact, parse, render}
 import org.json4s.{DefaultFormats, Extraction, JValue}
 
-import scala.util.Using
+import scala.util.{Try, Using}
 
 /** Strategy for handling duplicate keys when merging secrets from multiple Vault paths. */
 sealed trait DuplicateKeyStrategy
@@ -151,34 +151,27 @@ object VaultFeeder extends LazyLogging {
     val body      = approleLoginBody(roleId, secretId)
     val loginUrl  = s"$vaultUrl/v1/auth/approle/login"
     val response  = client.postOrThrow(loginUrl, body)
-    val loginJson =
-      try parse(response.body)
-      catch {
-        case e: Exception =>
-          throw new RuntimeException(s"Failed to parse Vault login response as JSON from $loginUrl", e)
-      }
-    try extractClientToken(loginJson)
-    catch {
-      case e: Exception =>
-        throw new RuntimeException("Failed to extract client_token from Vault login response", e)
-    }
+    val loginJson = Try(parse(response.body)).fold(
+      e => throw new RuntimeException(s"Failed to parse Vault login response as JSON from $loginUrl", e),
+      identity,
+    )
+    Try(extractClientToken(loginJson)).fold(
+      e => throw new RuntimeException("Failed to extract client_token from Vault login response", e),
+      identity,
+    )
   }
 
   private def readSecret(client: THttpClient, vaultUrl: String, secretPath: String, vaultToken: String): Record[String] = {
     val secretUrl = s"$vaultUrl/v1/$secretPath"
-    val headers   = Seq("X-Vault-Token", vaultToken)
-    val response  = client.getOrThrow(secretUrl, headers)
-    val json      =
-      try parse(response.body)
-      catch {
-        case e: Exception =>
-          throw new RuntimeException(s"Failed to parse Vault secret response as JSON from '$secretPath'", e)
-      }
-    try (json \ "data").extract[Map[String, String]]
-    catch {
-      case e: Exception =>
-        throw new RuntimeException(s"Failed to extract secret data from Vault response at '$secretPath'", e)
-    }
+    val response  = client.getOrThrow(secretUrl, Seq("X-Vault-Token", vaultToken))
+    val json      = Try(parse(response.body)).fold(
+      e => throw new RuntimeException(s"Failed to parse Vault secret response as JSON from '$secretPath'", e),
+      identity,
+    )
+    Try((json \ "data").extract[Map[String, String]]).fold(
+      e => throw new RuntimeException(s"Failed to extract secret data from Vault response at '$secretPath'", e),
+      identity,
+    )
   }
 
   private def filterRecord(data: Record[String], keys: List[String]): Record[String] = {
