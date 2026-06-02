@@ -69,6 +69,17 @@ object RedisActionBuilder {
           } yield RedisCommand.Strings.SetEx(k, el, v),
       )
 
+    def setExL(key: Expression[Any], expiry: Expression[Long], value: Expression[Any]): GenericRedisActionBuilder =
+      GenericRedisActionBuilder(
+        clientPool,
+        session =>
+          for {
+            k <- key(session)
+            e <- expiry(session)
+            v <- value(session)
+          } yield RedisCommand.Strings.SetEx(k, e, v),
+      )
+
     def MGET(key: Expression[Any], keys: Expression[Any]*): GenericRedisActionBuilder =
       GenericRedisActionBuilder(
         clientPool,
@@ -100,6 +111,16 @@ object RedisActionBuilder {
           } yield RedisCommand.Strings.IncrBy(k, il),
       )
 
+    def incrByL(key: Expression[Any], increment: Expression[Long]): GenericRedisActionBuilder =
+      GenericRedisActionBuilder(
+        clientPool,
+        session =>
+          for {
+            k <- key(session)
+            i <- increment(session)
+          } yield RedisCommand.Strings.IncrBy(k, i),
+      )
+
     def DECR(key: Expression[Any]): GenericRedisActionBuilder =
       GenericRedisActionBuilder(clientPool, session => key(session).map(k => RedisCommand.Strings.Decr(k)))
 
@@ -112,6 +133,16 @@ object RedisActionBuilder {
             d  <- decrement(session)
             dl <- parseLong(d, "decrement")
           } yield RedisCommand.Strings.DecrBy(k, dl),
+      )
+
+    def decrByL(key: Expression[Any], decrement: Expression[Long]): GenericRedisActionBuilder =
+      GenericRedisActionBuilder(
+        clientPool,
+        session =>
+          for {
+            k <- key(session)
+            d <- decrement(session)
+          } yield RedisCommand.Strings.DecrBy(k, d),
       )
 
     // Hash operations
@@ -212,6 +243,17 @@ object RedisActionBuilder {
           } yield RedisCommand.Lists.LRange(k, si, ei),
       )
 
+    def lRangeI(key: Expression[Any], start: Expression[Int], end: Expression[Int]): GenericRedisActionBuilder =
+      GenericRedisActionBuilder(
+        clientPool,
+        session =>
+          for {
+            k <- key(session)
+            s <- start(session)
+            e <- end(session)
+          } yield RedisCommand.Lists.LRange(k, s, e),
+      )
+
     def LLEN(key: Expression[Any]): GenericRedisActionBuilder =
       GenericRedisActionBuilder(clientPool, session => key(session).map(k => RedisCommand.Lists.LLen(k)))
 
@@ -228,6 +270,16 @@ object RedisActionBuilder {
             t  <- ttl(session)
             ti <- parseInt(t, "ttl")
           } yield RedisCommand.Keys.Expire(k, ti),
+      )
+
+    def expireI(key: Expression[Any], ttl: Expression[Int]): GenericRedisActionBuilder =
+      GenericRedisActionBuilder(
+        clientPool,
+        session =>
+          for {
+            k <- key(session)
+            t <- ttl(session)
+          } yield RedisCommand.Keys.Expire(k, t),
       )
 
     def TTL(key: Expression[Any]): GenericRedisActionBuilder =
