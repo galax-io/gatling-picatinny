@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import org.galaxio.gatling.utils.{HttpClientException, THttpClient}
+import org.galaxio.gatling.utils.{HttpClientException, HttpMethod, THttpClient}
 import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods
 import org.scalatest.matchers.should.Matchers
@@ -200,7 +200,7 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
         VaultFeeder(vaultUrl, s"$kvMount/test/creds", "bad-role", "bad-secret", List("x"))
       }
       ex.statusCode shouldBe 400
-      ex.method shouldBe "POST"
+      ex.method shouldBe HttpMethod.Post
       ex.getMessage should include("auth/approle/login")
     }
 
