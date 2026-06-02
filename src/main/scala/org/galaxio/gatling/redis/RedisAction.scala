@@ -49,7 +49,7 @@ case class RedisAction(
           next ! updatedSession
 
         case Failure(message) =>
-          logger.error(s"Redis ${name} expression resolution failed: $message")
+          logger.error("Redis {} expression resolution failed: {}", name, message)
           if (statsEnabled) {
             statsEngine.logResponse(
               session.scenario,
@@ -66,7 +66,7 @@ case class RedisAction(
       }
     } catch {
       case e: Exception =>
-        logger.error(s"Redis ${name} failed", e)
+        logger.error("Redis {} failed", name, e)
         if (statsEnabled) {
           statsEngine.logResponse(
             session.scenario,
