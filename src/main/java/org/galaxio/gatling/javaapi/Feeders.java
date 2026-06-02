@@ -262,6 +262,59 @@ public final class Feeders {
         return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.apply(vaultUrl, secretPath, roleId, secretId, asScala(keys).toList(), timeoutInSeconds));
     }
 
+    public static Iterator<Map<String, Object>> VaultFeederWithToken(
+            String vaultUrl,
+            String secretPath,
+            String vaultToken,
+            List<String> keys
+    ) {
+        return VaultFeederWithToken(vaultUrl, secretPath, vaultToken, keys, 5L);
+    }
+
+    public static Iterator<Map<String, Object>> VaultFeederWithToken(
+            String vaultUrl,
+            String secretPath,
+            String vaultToken,
+            List<String> keys,
+            long timeoutInSeconds
+    ) {
+        return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.withToken(vaultUrl, secretPath, vaultToken, asScala(keys).toList(), timeoutInSeconds));
+    }
+
+    public static Iterator<Map<String, Object>> VaultFeederFromPaths(
+            String vaultUrl,
+            String roleId,
+            String secretId,
+            Map<String, List<String>> paths
+    ) {
+        return VaultFeederFromPaths(vaultUrl, roleId, secretId, paths, org.galaxio.gatling.feeders.DuplicateKeyStrategy.FailOnDuplicate$.MODULE$, 5L);
+    }
+
+    public static Iterator<Map<String, Object>> VaultFeederFromPaths(
+            String vaultUrl,
+            String roleId,
+            String secretId,
+            Map<String, List<String>> paths,
+            org.galaxio.gatling.feeders.DuplicateKeyStrategy onDuplicate
+    ) {
+        return VaultFeederFromPaths(vaultUrl, roleId, secretId, paths, onDuplicate, 5L);
+    }
+
+    public static Iterator<Map<String, Object>> VaultFeederFromPaths(
+            String vaultUrl,
+            String roleId,
+            String secretId,
+            Map<String, List<String>> paths,
+            org.galaxio.gatling.feeders.DuplicateKeyStrategy onDuplicate,
+            long timeoutInSeconds
+    ) {
+        var entries = new java.util.ArrayList<scala.Tuple2<String, scala.collection.immutable.List<String>>>();
+        for (var entry : paths.entrySet()) {
+            entries.add(new scala.Tuple2<>(entry.getKey(), asScala(entry.getValue()).toList()));
+        }
+        return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.fromPaths(vaultUrl, roleId, secretId, asScala(entries).toList(), onDuplicate, timeoutInSeconds));
+    }
+
     @SafeVarargs
     public static Iterator<Map<String, Object>> GeneratedFeeder(Field<?>... fields) {
         return generatedFeeder(Arrays.asList(fields));
