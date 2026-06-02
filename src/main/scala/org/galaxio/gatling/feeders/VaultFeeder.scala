@@ -6,6 +6,8 @@ import org.galaxio.gatling.utils.THttpClient
 import org.json4s.native.JsonMethods.{compact, parse, render}
 import org.json4s.{DefaultFormats, Extraction, JValue}
 
+import scala.util.Using
+
 /** Strategy for handling duplicate keys when merging secrets from multiple Vault paths. */
 sealed trait DuplicateKeyStrategy
 
@@ -36,11 +38,11 @@ object VaultFeeder extends LazyLogging {
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
 
-    val client     = THttpClient(timeoutInSeconds = timeoutInSeconds)
-    val vaultToken = login(client, vaultUrl, roleId, secretId)
-    val data       = readSecret(client, vaultUrl, secretPath, vaultToken)
-
-    IndexedSeq(filterRecord(data, keys))
+    Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
+      val vaultToken = login(client, vaultUrl, roleId, secretId)
+      val data       = readSecret(client, vaultUrl, secretPath, vaultToken)
+      IndexedSeq(filterRecord(data, keys))
+    }
   }
 
   /** Retrieves secrets from multiple Vault paths and merges them into a single record.
@@ -92,14 +94,14 @@ object VaultFeeder extends LazyLogging {
   ): IndexedSeq[Record[String]] = {
     require(paths != null, "Paths list must not be null")
 
-    val client     = THttpClient(timeoutInSeconds = timeoutInSeconds)
-    val vaultToken = login(client, vaultUrl, roleId, secretId)
-
-    val allPairs = paths.flatMap { case (secretPath, keys) =>
-      val data = readSecret(client, vaultUrl, secretPath, vaultToken)
-      filterRecord(data, keys).toSeq
+    Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
+      val vaultToken = login(client, vaultUrl, roleId, secretId)
+      val allPairs   = paths.flatMap { case (secretPath, keys) =>
+        val data = readSecret(client, vaultUrl, secretPath, vaultToken)
+        filterRecord(data, keys).toSeq
+      }
+      IndexedSeq(mergeWithStrategy(allPairs, onDuplicate))
     }
-    IndexedSeq(mergeWithStrategy(allPairs, onDuplicate))
   }
 
   private def mergeWithStrategy(
@@ -139,10 +141,10 @@ object VaultFeeder extends LazyLogging {
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
 
-    val client = THttpClient(timeoutInSeconds = timeoutInSeconds)
-    val data   = readSecret(client, vaultUrl, secretPath, vaultToken)
-
-    IndexedSeq(filterRecord(data, keys))
+    Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
+      val data = readSecret(client, vaultUrl, secretPath, vaultToken)
+      IndexedSeq(filterRecord(data, keys))
+    }
   }
 
   private def login(client: THttpClient, vaultUrl: String, roleId: String, secretId: String): String = {
@@ -153,10 +155,7 @@ object VaultFeeder extends LazyLogging {
       try parse(response.body)
       catch {
         case e: Exception =>
-          throw new RuntimeException(
-            s"Failed to parse Vault login response as JSON from $loginUrl: ${response.body.take(200)}",
-            e,
-          )
+          throw new RuntimeException(s"Failed to parse Vault login response as JSON from $loginUrl", e)
       }
     try extractClientToken(loginJson)
     catch {
@@ -173,10 +172,7 @@ object VaultFeeder extends LazyLogging {
       try parse(response.body)
       catch {
         case e: Exception =>
-          throw new RuntimeException(
-            s"Failed to parse Vault secret response as JSON from '$secretPath': ${response.body.take(200)}",
-            e,
-          )
+          throw new RuntimeException(s"Failed to parse Vault secret response as JSON from '$secretPath'", e)
       }
     try (json \ "data").extract[Map[String, String]]
     catch {
