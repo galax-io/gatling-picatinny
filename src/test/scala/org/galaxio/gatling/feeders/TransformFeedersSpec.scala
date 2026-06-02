@@ -64,5 +64,15 @@ class TransformFeedersSpec extends AnyWordSpec with Matchers {
       ex.getMessage should include("pfx")
       ex.getMessage should include("source map sequence is empty")
     }
+
+    "handle null values in map source without throwing NPE" in {
+      val source = Seq(Map("KEY" -> (null: Any), "OTHER" -> "a,b"))
+
+      val result = SeparatedValuesFeeder(None, source, ',')
+
+      result should contain(Map("KEY" -> "null"))
+      result should contain(Map("OTHER" -> "a"))
+      result should contain(Map("OTHER" -> "b"))
+    }
   }
 }

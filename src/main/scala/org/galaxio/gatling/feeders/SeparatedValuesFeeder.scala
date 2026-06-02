@@ -10,7 +10,8 @@ object SeparatedValuesFeeder {
   private val SemicolonSeparator: Char  = ';'
   private val TabulationSeparator: Char = '\t'
 
-  private def splitter(source: String, separator: Char): IndexedSeq[String] = source.split(separator).toIndexedSeq
+  private def splitter(source: String, separator: Char): IndexedSeq[String] =
+    source.split(separator).toIndexedSeq
 
   /** Creates a feeder with separated values from the source String
     * @param paramName
@@ -109,7 +110,7 @@ object SeparatedValuesFeeder {
     val records = source
       .flatMap(m =>
         m.map { case (k, v) =>
-          splitter(v.toString, separator).map {
+          splitter(String.valueOf(v), separator).map {
             paramPrefix match {
               case None         => s => Map(k -> s)
               case Some(prefix) => s => Map(s"${prefix}_$k" -> s)
