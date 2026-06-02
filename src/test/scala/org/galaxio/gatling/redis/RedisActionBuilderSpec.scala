@@ -272,5 +272,24 @@ class RedisActionBuilderSpec extends AnyWordSpec with Matchers {
       val builder              = redisPool.DECRBY(redisKey, dec)
       runFactory(builder, session) shouldBe a[Failure]
     }
+
+    "succeed Validation when SETEX expiry is a typed Long" in {
+      val expiry: Expression[Any] = (_: Session) => Success(60L)
+      val builder                 = redisPool.SETEX(redisKey, expiry, redisValue)
+      runFactory(builder, session) shouldBe a[Success[_]]
+    }
+
+    "succeed Validation when EXPIRE ttl is a typed Int" in {
+      val ttl: Expression[Any] = (_: Session) => Success(300)
+      val builder              = redisPool.EXPIRE(redisKey, ttl)
+      runFactory(builder, session) shouldBe a[Success[_]]
+    }
+
+    "succeed Validation when LRANGE bounds are typed Ints" in {
+      val start: Expression[Any] = (_: Session) => Success(0)
+      val end: Expression[Any]   = (_: Session) => Success(10)
+      val builder                = redisPool.LRANGE(redisKey, start, end)
+      runFactory(builder, session) shouldBe a[Success[_]]
+    }
   }
 }
