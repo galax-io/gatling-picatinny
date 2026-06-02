@@ -9,7 +9,11 @@ import org.openjdk.jmh.annotations.Benchmark
 // live Redis I/O is intentionally out of scope (no embedded-redis dependency in JMH classpath).
 class RedisActionBenchmark extends JmhBenchmark {
 
-  private val clientPool = new RedisClientPool("localhost", 6379)
+  // Deferred so the class loads without a live Redis host: RedisClientPool eagerly
+  // resolves connection settings on construction, which would otherwise couple JMH
+  // class loading to the presence of a Redis endpoint. lazy val defers instantiation
+  // until the first @Benchmark invocation that needs it.
+  private lazy val clientPool = new RedisClientPool("localhost", 6379)
 
   private val key: io.gatling.core.session.Expression[Any]   = (s: io.gatling.core.session.Session) =>
     io.gatling.commons.validation.Success("user:42")
@@ -20,15 +24,17 @@ class RedisActionBenchmark extends JmhBenchmark {
   private val keyC: io.gatling.core.session.Expression[Any]  = (s: io.gatling.core.session.Session) =>
     io.gatling.commons.validation.Success("user:44")
 
-  private val getBuilder: GenericRedisActionBuilder  = clientPool.GET(key)
-  private val setBuilder: GenericRedisActionBuilder  = clientPool.SET(key, value)
-  private val incrBuilder: GenericRedisActionBuilder = clientPool.INCR(key)
-  private val mgetBuilder: GenericRedisActionBuilder = clientPool.MGET(key, keyB, keyC)
+  private lazy val getBuilder: GenericRedisActionBuilder  = clientPool.GET(key)
+  private lazy val setBuilder: GenericRedisActionBuilder  = clientPool.SET(key, value)
+  private lazy val incrBuilder: GenericRedisActionBuilder = clientPool.INCR(key)
+  private lazy val mgetBuilder: GenericRedisActionBuilder = clientPool.MGET(key, keyB, keyC)
 
-  // A real Session is non-trivial to allocate outside the Gatling runtime;
-  // command factories here are designed to ignore the session argument,
-  // so passing null exercises the validation/closure path without a live engine.
-  private val nullSession: io.gatling.core.session.Session = null
+  // A real Session is non-trivial to allocate outside the Gatling runtime, and the
+  // project's `transactions.fixtures.emptySession` lives in src/test/scala so it is
+  // not reachable from src/main/scala. The command factories used below are designed
+  // to ignore the session argument, so passing null exercises the validation/closure
+  // path without a live engine. Deferred via lazy val for symmetry with clientPool.
+  private lazy val nullSession: io.gatling.core.session.Session = null
 
   @Benchmark
   def buildGetCommand(): io.gatling.commons.validation.Validation[RedisCommand] =
