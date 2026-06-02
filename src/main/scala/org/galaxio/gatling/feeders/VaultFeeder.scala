@@ -23,6 +23,8 @@ object DuplicateKeyStrategy {
 
 object VaultFeeder extends LazyLogging {
 
+  private implicit val formats: DefaultFormats = org.json4s.DefaultFormats
+
   /** Retrieves secrets from a single Vault path as a one-record feeder. */
   def apply(
       vaultUrl: String,
@@ -34,31 +36,16 @@ object VaultFeeder extends LazyLogging {
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
 
-    implicit val formats: DefaultFormats = org.json4s.DefaultFormats
-
-    val body   = approleLoginBody(roleId, secretId)
-    val client = THttpClient(timeoutInSeconds = timeoutInSeconds)
-
-    val vaultTokenResponse: String = client
-      .post(s"""$vaultUrl/v1/auth/approle/login""", body)
-      .body
-
-    val vaultToken = extractClientToken(parse(vaultTokenResponse))
-
-    val getHeaders: Seq[String]   = Seq("X-Vault-Token", s"""$vaultToken""")
-    val vaultDataResponse: String = client
-      .get(s"""$vaultUrl/v1/$secretPath""", getHeaders)
-      .body
-
-    val vaultDataJson: JValue = parse(vaultDataResponse)
-    val data: Record[String]  = (vaultDataJson \ "data").extract[Map[String, String]]
+    val client     = THttpClient(timeoutInSeconds = timeoutInSeconds)
+    val vaultToken = login(client, vaultUrl, roleId, secretId)
+    val data       = readSecret(client, vaultUrl, secretPath, vaultToken)
 
     IndexedSeq(filterRecord(data, keys))
   }
 
   /** Retrieves secrets from multiple Vault paths and merges them into a single record.
     *
-    * Uses [[DuplicateKeyStrategy.FailOnDuplicate]] by default.
+    * Uses [[DuplicateKeyStrategy.FailOnDuplicate]] by default. Authenticates once and reuses the token across all path reads.
     *
     * @param timeoutInSeconds
     *   connect and per-request timeout for Vault HTTP calls (default 5s)
@@ -88,6 +75,8 @@ object VaultFeeder extends LazyLogging {
 
   /** Retrieves secrets from multiple Vault paths with explicit duplicate-key strategy and timeout.
     *
+    * Authenticates once and reuses the token for all path reads.
+    *
     * @param onDuplicate
     *   strategy when the same key appears in more than one path
     * @param timeoutInSeconds
@@ -102,8 +91,13 @@ object VaultFeeder extends LazyLogging {
       timeoutInSeconds: Long,
   ): IndexedSeq[Record[String]] = {
     require(paths != null, "Paths list must not be null")
+
+    val client     = THttpClient(timeoutInSeconds = timeoutInSeconds)
+    val vaultToken = login(client, vaultUrl, roleId, secretId)
+
     val allPairs = paths.flatMap { case (secretPath, keys) =>
-      apply(vaultUrl, secretPath, roleId, secretId, keys, timeoutInSeconds).flatMap(_.toSeq)
+      val data = readSecret(client, vaultUrl, secretPath, vaultToken)
+      filterRecord(data, keys).toSeq
     }
     IndexedSeq(mergeWithStrategy(allPairs, onDuplicate))
   }
@@ -145,27 +139,66 @@ object VaultFeeder extends LazyLogging {
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
 
-    implicit val formats: DefaultFormats = org.json4s.DefaultFormats
-
-    val getHeaders: Seq[String]   = Seq("X-Vault-Token", vaultToken)
-    val vaultDataResponse: String = THttpClient(timeoutInSeconds = timeoutInSeconds)
-      .get(s"""$vaultUrl/v1/$secretPath""", getHeaders)
-      .body
-
-    val vaultDataJson: JValue = parse(vaultDataResponse)
-    val data: Record[String]  = (vaultDataJson \ "data").extract[Map[String, String]]
+    val client = THttpClient(timeoutInSeconds = timeoutInSeconds)
+    val data   = readSecret(client, vaultUrl, secretPath, vaultToken)
 
     IndexedSeq(filterRecord(data, keys))
   }
 
-  private def filterRecord(data: Record[String], keys: List[String]): Record[String] = {
-    val selectedKeys = keys.toSet
-    data.view.filterKeys(selectedKeys.contains).toMap
+  private def login(client: THttpClient, vaultUrl: String, roleId: String, secretId: String): String = {
+    val body      = approleLoginBody(roleId, secretId)
+    val loginUrl  = s"$vaultUrl/v1/auth/approle/login"
+    val response  = client.postOrThrow(loginUrl, body)
+    val loginJson =
+      try parse(response.body)
+      catch {
+        case e: Exception =>
+          throw new RuntimeException(
+            s"Failed to parse Vault login response as JSON from $loginUrl: ${response.body.take(200)}",
+            e,
+          )
+      }
+    try extractClientToken(loginJson)
+    catch {
+      case e: Exception =>
+        throw new RuntimeException("Failed to extract client_token from Vault login response", e)
+    }
   }
 
-  private[feeders] def approleLoginBody(roleId: String, secretId: String)(implicit formats: DefaultFormats): String =
+  private def readSecret(client: THttpClient, vaultUrl: String, secretPath: String, vaultToken: String): Record[String] = {
+    val secretUrl = s"$vaultUrl/v1/$secretPath"
+    val headers   = Seq("X-Vault-Token", vaultToken)
+    val response  = client.getOrThrow(secretUrl, headers)
+    val json      =
+      try parse(response.body)
+      catch {
+        case e: Exception =>
+          throw new RuntimeException(
+            s"Failed to parse Vault secret response as JSON from '$secretPath': ${response.body.take(200)}",
+            e,
+          )
+      }
+    try (json \ "data").extract[Map[String, String]]
+    catch {
+      case e: Exception =>
+        throw new RuntimeException(s"Failed to extract secret data from Vault response at '$secretPath'", e)
+    }
+  }
+
+  private def filterRecord(data: Record[String], keys: List[String]): Record[String] = {
+    val selectedKeys = keys.toSet
+    val result       = data.view.filterKeys(selectedKeys.contains).toMap
+    if (result.isEmpty && keys.nonEmpty)
+      logger.warn(
+        s"None of the requested keys [${keys.mkString(", ")}] were found in the Vault secret. " +
+          s"Available keys: [${data.keys.mkString(", ")}]",
+      )
+    result
+  }
+
+  private[feeders] def approleLoginBody(roleId: String, secretId: String): String =
     compact(render(Extraction.decompose(Map("role_id" -> roleId, "secret_id" -> secretId))))
 
-  private[feeders] def extractClientToken(vaultTokenJson: JValue)(implicit formats: DefaultFormats): String =
+  private[feeders] def extractClientToken(vaultTokenJson: JValue): String =
     (vaultTokenJson \ "auth" \ "client_token").extract[String]
 }
