@@ -1,6 +1,7 @@
 package org.galaxio.gatling.utils
 
 import com.sun.net.httpserver.{HttpExchange, HttpServer}
+import org.galaxio.gatling.utils.HttpMethod
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -128,7 +129,7 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
         THttpClient().getOrThrow(s"http://localhost:$port/error")
       }
       ex.statusCode shouldBe 403
-      ex.method shouldBe "GET"
+      ex.method shouldBe HttpMethod.Get
       ex.getMessage should include("403")
       ex.getMessage should include("permission denied")
     }
@@ -138,7 +139,7 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
         THttpClient().postOrThrow(s"http://localhost:$port/error", "{}")
       }
       ex.statusCode shouldBe 403
-      ex.method shouldBe "POST"
+      ex.method shouldBe HttpMethod.Post
     }
 
     "return success from getOrThrow on 2xx" in {

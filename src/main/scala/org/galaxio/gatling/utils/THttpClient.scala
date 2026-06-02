@@ -6,12 +6,22 @@ import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
 import java.util.concurrent.ExecutorService
 
+sealed trait HttpMethod {
+  def name: String
+}
+
+object HttpMethod {
+  case object Get  extends HttpMethod { val name = "GET"  }
+  case object Post extends HttpMethod { val name = "POST" }
+  case object Put  extends HttpMethod { val name = "PUT"  }
+}
+
 case class HttpResult(statusCode: Int, body: String) {
   def isSuccess: Boolean = statusCode >= 200 && statusCode < 300
 }
 
 class HttpClientException(
-    val method: String,
+    val method: HttpMethod,
     val uri: String,
     val statusCode: Int,
     message: String,
@@ -21,77 +31,80 @@ object HttpClientException {
 
   private val BodyPreviewLimit = 500
 
-  def apply(method: String, uri: String, statusCode: Int, body: String): HttpClientException =
+  def apply(method: HttpMethod, uri: String, statusCode: Int, body: String): HttpClientException =
     new HttpClientException(
       method,
       uri,
       statusCode,
-      s"HTTP $method $uri failed with status $statusCode: ${body.take(BodyPreviewLimit)}",
+      s"HTTP ${method.name} $uri failed with status $statusCode: ${body.take(BodyPreviewLimit)}",
     )
 }
 
-/** Lightweight JDK HttpClient wrapper used by feeders and utility clients.
-  *
-  * @param followRedirects
-  *   JDK redirect policy name
-  * @param timeoutInSeconds
-  *   connect and per-request timeout in seconds
-  */
-final class THttpClient(val followRedirects: String = "NEVER", val timeoutInSeconds: Long = 3) extends AutoCloseable {
-
-  private val jsonContentType: String = "application/json"
+final class THttpClient private (followRedirects: Redirect, timeout: Duration) extends AutoCloseable {
 
   private val client: HttpClient =
     HttpClient
       .newBuilder()
-      .connectTimeout(Duration.ofSeconds(timeoutInSeconds))
-      .followRedirects(Redirect.valueOf(followRedirects))
+      .connectTimeout(timeout)
+      .followRedirects(followRedirects)
       .build()
 
   def get(uri: String, headers: Seq[String] = Seq.empty): HttpResult =
-    execute("GET", uri, headers, None)
+    send(HttpMethod.Get, uri, headers)
 
   def post(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResult =
-    execute("POST", uri, headers, Some(body))
+    send(HttpMethod.Post, uri, headers, Some(body))
 
   def put(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResult =
-    execute("PUT", uri, headers, Some(body))
+    send(HttpMethod.Put, uri, headers, Some(body))
 
   def getOrThrow(uri: String, headers: Seq[String] = Seq.empty): HttpResult =
-    checked(get(uri, headers), "GET", uri)
+    ensureSuccess(get(uri, headers), HttpMethod.Get, uri)
 
   def postOrThrow(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResult =
-    checked(post(uri, body, headers), "POST", uri)
+    ensureSuccess(post(uri, body, headers), HttpMethod.Post, uri)
 
   def putOrThrow(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResult =
-    checked(put(uri, body, headers), "PUT", uri)
+    ensureSuccess(put(uri, body, headers), HttpMethod.Put, uri)
 
-  // JDK 17 HttpClient has no public close(); shut down the executor if one was provided.
-  // The internal SelectorManager daemon thread will terminate on JVM exit regardless.
+  // JDK 17 HttpClient has no public close(). Shut down the executor if present;
+  // the internal SelectorManager daemon terminates on JVM exit regardless.
   override def close(): Unit =
     client.executor().ifPresent {
       case es: ExecutorService => es.shutdown()
       case _                   => ()
     }
 
-  private def execute(method: String, uri: String, headers: Seq[String], body: Option[String]): HttpResult = {
-    val allHeaders = body.fold(headers)(_ => Seq("Content-Type", jsonContentType) ++ headers)
+  private def send(
+      method: HttpMethod,
+      uri: String,
+      headers: Seq[String],
+      body: Option[String] = None,
+  ): HttpResult = {
+    val allHeaders = body.fold(headers)(_ => "Content-Type" +: "application/json" +: headers)
     val publisher  = body.fold(HttpRequest.BodyPublishers.noBody())(HttpRequest.BodyPublishers.ofString)
 
-    val base    = HttpRequest.newBuilder().uri(URI.create(uri)).timeout(Duration.ofSeconds(timeoutInSeconds))
+    val base    = HttpRequest.newBuilder().uri(URI.create(uri)).timeout(timeout)
     val withHdr = if (allHeaders.nonEmpty) base.headers(allHeaders: _*) else base
-    val request = withHdr.method(method, publisher).build()
+    val request = withHdr.method(method.name, publisher).build()
 
     val response = client.send(request, HttpResponse.BodyHandlers.ofString)
     HttpResult(response.statusCode(), response.body())
   }
 
-  private def checked(result: HttpResult, method: String, uri: String): HttpResult =
+  private def ensureSuccess(result: HttpResult, method: HttpMethod, uri: String): HttpResult =
     if (result.isSuccess) result
     else throw HttpClientException(method, uri, result.statusCode, result.body)
 }
 
 object THttpClient {
-  def apply(followRedirects: String = "NEVER", timeoutInSeconds: Long = 3): THttpClient =
-    new THttpClient(followRedirects, timeoutInSeconds)
+
+  def apply(
+      followRedirects: String = "NEVER",
+      timeoutInSeconds: Long = 3,
+  ): THttpClient =
+    new THttpClient(
+      Redirect.valueOf(followRedirects),
+      Duration.ofSeconds(timeoutInSeconds),
+    )
 }
