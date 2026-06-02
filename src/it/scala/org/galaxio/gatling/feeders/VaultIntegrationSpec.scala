@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import org.galaxio.gatling.utils.THttpClient
+import org.galaxio.gatling.utils.{HttpClientException, HttpMethod, THttpClient}
 import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods
 import org.scalatest.matchers.should.Matchers
@@ -174,6 +174,42 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
       result.head("key") shouldBe "first"
       result.head("a") shouldBe "1"
       result.head("b") shouldBe "2"
+    }
+
+    "merge secrets from three paths with single login" in {
+      writeSecret(s"$kvMount/test/tri-a", Map("a" -> "1"))
+      writeSecret(s"$kvMount/test/tri-b", Map("b" -> "2"))
+      writeSecret(s"$kvMount/test/tri-c", Map("c" -> "3"))
+
+      val paths = List(
+        (s"$kvMount/test/tri-a", List("a")),
+        (s"$kvMount/test/tri-b", List("b")),
+        (s"$kvMount/test/tri-c", List("c")),
+      )
+
+      val result = VaultFeeder.fromPaths(vaultUrl, appRoleId, appSecretId, paths)
+
+      result should have size 1
+      result.head shouldBe Map("a" -> "1", "b" -> "2", "c" -> "3")
+    }
+  }
+
+  "VaultFeeder error handling" should {
+    "throw HttpClientException on bad AppRole credentials" in {
+      val ex = the[HttpClientException] thrownBy {
+        VaultFeeder(vaultUrl, s"$kvMount/test/creds", "bad-role", "bad-secret", List("x"))
+      }
+      ex.statusCode shouldBe 400
+      ex.method shouldBe HttpMethod.Post
+      ex.getMessage should include("auth/approle/login")
+    }
+
+    "throw HttpClientException on non-existent secret path" in {
+      val ex = the[HttpClientException] thrownBy {
+        VaultFeeder.withToken(vaultUrl, s"$kvMount/nonexistent/path", rootToken, List("x"))
+      }
+      ex.statusCode shouldBe 404
+      ex.getMessage should include(s"$kvMount/nonexistent/path")
     }
   }
 }
