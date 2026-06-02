@@ -35,8 +35,8 @@ class VaultIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
     val headers = Seq("X-Vault-Token", rootToken)
     method match {
       case "GET"  => client.GET(s"$vaultUrl/v1/$path", headers).body()
-      case "POST" => client.POSTJson(s"$vaultUrl/v1/$path", body, headers).body()
-      case "PUT"  => client.POSTJson(s"$vaultUrl/v1/$path", body, headers).body()
+      case "POST" => client.POST(s"$vaultUrl/v1/$path", body, headers).body()
+      case "PUT"  => client.PUT(s"$vaultUrl/v1/$path", body, headers).body()
     }
   }
 

@@ -38,7 +38,7 @@ object VaultFeeder extends LazyLogging {
     val body = approleLoginBody(roleId, secretId)
 
     val vaultTokenResponse: String = THttpClient()
-      .POSTJson(s"""$vaultUrl/v1/auth/approle/login""", body)
+      .POST(s"""$vaultUrl/v1/auth/approle/login""", body)
       .body()
 
     val vaultToken = extractClientToken(parse(vaultTokenResponse))

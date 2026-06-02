@@ -71,18 +71,18 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       lastRequestHeaders.map { case (k, v) => k.toLowerCase -> v } should contain key "x-test"
     }
 
-    "return a 200 response on POSTJson" in {
-      val response = THttpClient().POSTJson(s"http://localhost:$port/post", """{"a":1}""")
+    "return a 200 response on POST" in {
+      val response = THttpClient().POST(s"http://localhost:$port/post", """{"a":1}""")
       response.statusCode() shouldBe 200
     }
 
-    "send Content-Type: application/json on POSTJson" in {
-      THttpClient().POSTJson(s"http://localhost:$port/post", """{"a":1}""")
+    "send Content-Type: application/json on POST" in {
+      THttpClient().POST(s"http://localhost:$port/post", """{"a":1}""")
       lastRequestHeaders.map { case (k, v) => k.toLowerCase -> v } should contain key "content-type"
     }
 
-    "send the JSON body on POSTJson" in {
-      THttpClient().POSTJson(s"http://localhost:$port/post", """{"x":"y"}""")
+    "send the JSON body on POST" in {
+      THttpClient().POST(s"http://localhost:$port/post", """{"x":"y"}""")
       lastRequestBody shouldBe """{"x":"y"}"""
     }
 
