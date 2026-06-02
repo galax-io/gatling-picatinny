@@ -43,12 +43,19 @@ final case class JwtGeneratorBuilder(
     claimsBuilder: Option[ClaimsBuilder] = None,
 ) {
 
+  private def containsEl(s: String): Boolean = s.contains("#{")
+
+  /** Validate JSON syntax, but skip validation when the string contains Gatling EL markers (`#&#123;...&#125;`), since EL
+    * placeholders are not legal JSON and are resolved at token generation time.
+    */
   private def validateJson(json: String): String =
-    try compact(render(parse(json)))
-    catch {
-      case e: Exception =>
-        throw new IllegalArgumentException(s"Invalid JSON: $json", e)
-    }
+    if (containsEl(json)) json
+    else
+      try compact(render(parse(json)))
+      catch {
+        case e: Exception =>
+          throw new IllegalArgumentException(s"Invalid JSON: $json", e)
+      }
 
   private def readResource(path: String): String = {
     val url    = getClass.getClassLoader.getResource(path)
@@ -89,7 +96,11 @@ final case class JwtGeneratorBuilder(
   def claims(builder: ClaimsBuilder): JwtGeneratorBuilder =
     copy(claimsBuilder = Some(builder))
 
-  private[jwt] val jwtAlgorithm: JwtAlgorithm = {
+  /** Resolved [[JwtAlgorithm]] for this builder. Validation is deferred to first token generation so that builders can be
+    * constructed eagerly (e.g. at simulation setup) without forcing the algorithm name to be known statically. Throws
+    * [[IllegalArgumentException]] when the configured `algorithm` is not supported.
+    */
+  private[jwt] def jwtAlgorithm: JwtAlgorithm = {
     val alg = JwtAlgorithm.fromString(algorithm.toUpperCase)
     alg match {
       case _: JwtUnknownAlgorithm =>
