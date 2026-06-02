@@ -4,14 +4,13 @@ import io.gatling.core.Predef._
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.feeder.{FeederBuilderBase, _}
 
+import scala.collection.mutable.ArrayBuffer
+
 object SeparatedValuesFeeder {
 
   private val CommaSeparator: Char      = ','
   private val SemicolonSeparator: Char  = ';'
   private val TabulationSeparator: Char = '\t'
-
-  private def splitter(source: String, separator: Char): IndexedSeq[String] =
-    source.split(separator).toIndexedSeq
 
   /** Creates a feeder with separated values from the source String
     * @param paramName
@@ -32,15 +31,19 @@ object SeparatedValuesFeeder {
     *   }}}
     */
   def apply(paramName: String, source: String, separator: Char): IndexedSeq[Record[String]] = {
-
-    val records = splitter(source, separator).map(s => Map(paramName -> s.trim))
+    val parts = source.split(separator)
     require(
-      records.nonEmpty,
+      parts.nonEmpty,
       s"SeparatedValuesFeeder('$paramName'): source string produced no records after splitting by '$separator'. " +
         "Check that the source string is not empty and contains the expected separator.",
     )
-
-    records
+    val buf   = new ArrayBuffer[Record[String]](parts.length)
+    var i     = 0
+    while (i < parts.length) {
+      buf += Map(paramName -> parts(i).trim)
+      i += 1
+    }
+    buf.toVector
   }
 
   /** Creates a feeder with separated values from the source Sequence
@@ -64,15 +67,21 @@ object SeparatedValuesFeeder {
   def apply(paramName: String, source: Seq[String], separator: Char)(implicit
       configuration: GatlingConfiguration,
   ): IndexedSeq[Record[String]] = {
-
-    val records = source.flatMap(s => splitter(s, separator)).map(s => Map(paramName -> s.trim)).toIndexedSeq
+    val buf = ArrayBuffer.empty[Record[String]]
+    source.foreach { s =>
+      val parts = s.split(separator)
+      var i     = 0
+      while (i < parts.length) {
+        buf += Map(paramName -> parts(i).trim)
+        i += 1
+      }
+    }
     require(
-      records.nonEmpty,
+      buf.nonEmpty,
       s"SeparatedValuesFeeder('$paramName'): source sequence is empty or produced no records after splitting by '$separator'. " +
         "Check that the source sequence contains at least one non-empty element.",
     )
-
-    records
+    buf.toVector
   }
 
   /** Creates a feeder with separated values from the source Seq[Map[String, String] ]
@@ -106,28 +115,25 @@ object SeparatedValuesFeeder {
   def apply(paramPrefix: Option[String], source: Seq[Map[String, Any]], separator: Char)(implicit
       configuration: GatlingConfiguration,
   ): IndexedSeq[Record[String]] = {
-
-    val records = source
-      .flatMap(m =>
-        m.map { case (k, v) =>
-          splitter(String.valueOf(v), separator).map {
-            paramPrefix match {
-              case None         => s => Map(k -> s)
-              case Some(prefix) => s => Map(s"${prefix}_$k" -> s)
-            }
-          }
-        },
-      )
-      .flatten
-      .toIndexedSeq
+    val buf = ArrayBuffer.empty[Record[String]]
+    source.foreach { m =>
+      m.foreach { case (k, v) =>
+        val key   = paramPrefix.fold(k)(pfx => s"${pfx}_$k")
+        val parts = String.valueOf(v).split(separator)
+        var i     = 0
+        while (i < parts.length) {
+          buf += Map(key -> parts(i))
+          i += 1
+        }
+      }
+    }
     require(
-      records.nonEmpty,
+      buf.nonEmpty,
       s"SeparatedValuesFeeder(prefix=${paramPrefix.getOrElse("none")}): " +
         s"source map sequence is empty or produced no records after splitting by '$separator'. " +
         "Check that the source contains at least one non-empty map entry.",
     )
-
-    records
+    buf.toVector
   }
 
   def csv(paramName: String, source: String): FeederBuilderBase[String] = apply(paramName, source, CommaSeparator)
