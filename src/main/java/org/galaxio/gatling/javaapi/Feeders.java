@@ -281,20 +281,35 @@ public final class Feeders {
         return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.withToken(vaultUrl, secretPath, vaultToken, asScala(keys).toList(), timeoutInSeconds));
     }
 
+    /** Strategy constants for use with {@link #VaultFeederFromPaths}. */
+    public static final org.galaxio.gatling.feeders.DuplicateKeyStrategy FAIL_ON_DUPLICATE =
+            org.galaxio.gatling.feeders.DuplicateKeyStrategy.FailOnDuplicate$.MODULE$;
+    public static final org.galaxio.gatling.feeders.DuplicateKeyStrategy LAST_WINS =
+            org.galaxio.gatling.feeders.DuplicateKeyStrategy.LastWins$.MODULE$;
+    public static final org.galaxio.gatling.feeders.DuplicateKeyStrategy FIRST_WINS =
+            org.galaxio.gatling.feeders.DuplicateKeyStrategy.FirstWins$.MODULE$;
+
+    /**
+     * Fetches secrets from multiple Vault paths and merges them into a single feeder record.
+     *
+     * <p>Paths are supplied as an ordered list of entries so that {@code LAST_WINS} and
+     * {@code FIRST_WINS} strategies are deterministic.  Use {@code List.of(Map.entry(path, keys), ...)}
+     * or build an explicit {@link java.util.ArrayList} when order matters.
+     */
     public static Iterator<Map<String, Object>> VaultFeederFromPaths(
             String vaultUrl,
             String roleId,
             String secretId,
-            Map<String, List<String>> paths
+            List<Map.Entry<String, List<String>>> paths
     ) {
-        return VaultFeederFromPaths(vaultUrl, roleId, secretId, paths, org.galaxio.gatling.feeders.DuplicateKeyStrategy.FailOnDuplicate$.MODULE$, 5L);
+        return VaultFeederFromPaths(vaultUrl, roleId, secretId, paths, FAIL_ON_DUPLICATE, 5L);
     }
 
     public static Iterator<Map<String, Object>> VaultFeederFromPaths(
             String vaultUrl,
             String roleId,
             String secretId,
-            Map<String, List<String>> paths,
+            List<Map.Entry<String, List<String>>> paths,
             org.galaxio.gatling.feeders.DuplicateKeyStrategy onDuplicate
     ) {
         return VaultFeederFromPaths(vaultUrl, roleId, secretId, paths, onDuplicate, 5L);
@@ -304,12 +319,12 @@ public final class Feeders {
             String vaultUrl,
             String roleId,
             String secretId,
-            Map<String, List<String>> paths,
+            List<Map.Entry<String, List<String>>> paths,
             org.galaxio.gatling.feeders.DuplicateKeyStrategy onDuplicate,
             long timeoutInSeconds
     ) {
         var entries = new java.util.ArrayList<scala.Tuple2<String, scala.collection.immutable.List<String>>>();
-        for (var entry : paths.entrySet()) {
+        for (var entry : paths) {
             entries.add(new scala.Tuple2<>(entry.getKey(), asScala(entry.getValue()).toList()));
         }
         return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.fromPaths(vaultUrl, roleId, secretId, asScala(entries).toList(), onDuplicate, timeoutInSeconds));
