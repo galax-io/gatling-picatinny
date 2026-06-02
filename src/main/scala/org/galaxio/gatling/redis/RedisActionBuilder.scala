@@ -7,6 +7,8 @@ import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.session.{Expression, Session}
 import io.gatling.core.structure.ScenarioContext
 
+import scala.util.Try
+
 object RedisActionBuilder {
 
   implicit class RedisClientPoolOps(clientPool: RedisClientPool) {
@@ -60,10 +62,11 @@ object RedisActionBuilder {
         clientPool,
         session =>
           for {
-            k <- key(session)
-            e <- expiry(session)
-            v <- value(session)
-          } yield RedisCommand.Strings.SetEx(k, e.toString.toLong, v),
+            k  <- key(session)
+            e  <- expiry(session)
+            el <- parseLong(e, "expiry")
+            v  <- value(session)
+          } yield RedisCommand.Strings.SetEx(k, el, v),
       )
 
     def MGET(key: Expression[Any], keys: Expression[Any]*): GenericRedisActionBuilder =
@@ -91,9 +94,10 @@ object RedisActionBuilder {
         clientPool,
         session =>
           for {
-            k <- key(session)
-            i <- increment(session)
-          } yield RedisCommand.Strings.IncrBy(k, i.toString.toLong),
+            k  <- key(session)
+            i  <- increment(session)
+            il <- parseLong(i, "increment")
+          } yield RedisCommand.Strings.IncrBy(k, il),
       )
 
     def DECR(key: Expression[Any]): GenericRedisActionBuilder =
@@ -104,9 +108,10 @@ object RedisActionBuilder {
         clientPool,
         session =>
           for {
-            k <- key(session)
-            d <- decrement(session)
-          } yield RedisCommand.Strings.DecrBy(k, d.toString.toLong),
+            k  <- key(session)
+            d  <- decrement(session)
+            dl <- parseLong(d, "decrement")
+          } yield RedisCommand.Strings.DecrBy(k, dl),
       )
 
     // Hash operations
@@ -199,10 +204,12 @@ object RedisActionBuilder {
         clientPool,
         session =>
           for {
-            k <- key(session)
-            s <- start(session)
-            e <- end(session)
-          } yield RedisCommand.Lists.LRange(k, s.toString.toInt, e.toString.toInt),
+            k  <- key(session)
+            s  <- start(session)
+            si <- parseInt(s, "start")
+            e  <- end(session)
+            ei <- parseInt(e, "end")
+          } yield RedisCommand.Lists.LRange(k, si, ei),
       )
 
     def LLEN(key: Expression[Any]): GenericRedisActionBuilder =
@@ -217,9 +224,10 @@ object RedisActionBuilder {
         clientPool,
         session =>
           for {
-            k <- key(session)
-            t <- ttl(session)
-          } yield RedisCommand.Keys.Expire(k, t.toString.toInt),
+            k  <- key(session)
+            t  <- ttl(session)
+            ti <- parseInt(t, "ttl")
+          } yield RedisCommand.Keys.Expire(k, ti),
       )
 
     def TTL(key: Expression[Any]): GenericRedisActionBuilder =
@@ -286,6 +294,27 @@ object RedisActionBuilder {
     override def build(ctx: ScenarioContext, next: Action): Action =
       RedisAction(ctx, next, clientPool, commandFactory, saveAsVar, reqName)
   }
+
+  private[redis] def parseInt(value: Any, name: String): Validation[Int] =
+    value match {
+      case i: Int  => Success(i)
+      case l: Long =>
+        Try(Math.toIntExact(l)).toOption.fold[Validation[Int]](
+          Failure(s"Redis $name '$l' is out of Int range"),
+        )(Success(_))
+      case other   =>
+        Try(other.toString.toInt).toOption
+          .fold[Validation[Int]](Failure(s"Redis $name '$other' is not a valid Int"))(Success(_))
+    }
+
+  private[redis] def parseLong(value: Any, name: String): Validation[Long] =
+    value match {
+      case i: Int  => Success(i.toLong)
+      case l: Long => Success(l)
+      case other   =>
+        Try(other.toString.toLong).toOption
+          .fold[Validation[Long]](Failure(s"Redis $name '$other' is not a valid Long"))(Success(_))
+    }
 
   private def resolveSeq(exprs: Seq[Expression[Any]], session: Session): Validation[Seq[Any]] = {
     val results  = exprs.map(_(session))
