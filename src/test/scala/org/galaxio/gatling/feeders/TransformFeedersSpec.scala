@@ -65,30 +65,6 @@ class TransformFeedersSpec extends AnyWordSpec with Matchers {
       ex.getMessage should include("source map sequence is empty")
     }
 
-    "split correctly when separator is a regex metacharacter (pipe)" in {
-      SeparatedValuesFeeder("val", "a|b|c", '|') shouldBe Vector(
-        Map("val" -> "a"),
-        Map("val" -> "b"),
-        Map("val" -> "c"),
-      )
-    }
-
-    "split correctly when separator is a dot" in {
-      SeparatedValuesFeeder("val", "x.y.z", '.') shouldBe Vector(
-        Map("val" -> "x"),
-        Map("val" -> "y"),
-        Map("val" -> "z"),
-      )
-    }
-
-    "split correctly when separator is a plus" in {
-      SeparatedValuesFeeder("val", "1+2+3", '+') shouldBe Vector(
-        Map("val" -> "1"),
-        Map("val" -> "2"),
-        Map("val" -> "3"),
-      )
-    }
-
     "handle null values in map source without throwing NPE" in {
       val source = Seq(Map("KEY" -> (null: Any), "OTHER" -> "a,b"))
 

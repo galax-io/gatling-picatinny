@@ -4,8 +4,6 @@ import io.gatling.core.Predef._
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.feeder.{FeederBuilderBase, _}
 
-import java.util.regex.Pattern
-
 object SeparatedValuesFeeder {
 
   private val CommaSeparator: Char      = ','
@@ -13,7 +11,7 @@ object SeparatedValuesFeeder {
   private val TabulationSeparator: Char = '\t'
 
   private def splitter(source: String, separator: Char): IndexedSeq[String] =
-    source.split(Pattern.quote(separator.toString)).toIndexedSeq
+    source.split(separator).toIndexedSeq
 
   /** Creates a feeder with separated values from the source String
     * @param paramName
