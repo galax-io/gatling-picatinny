@@ -37,7 +37,7 @@ object HttpClientException {
   * @param timeoutInSeconds
   *   connect and per-request timeout in seconds
   */
-case class THttpClient(followRedirects: String = "NEVER", timeoutInSeconds: Long = 3) extends AutoCloseable {
+final class THttpClient(val followRedirects: String = "NEVER", val timeoutInSeconds: Long = 3) extends AutoCloseable {
 
   private val jsonContentType: String = "application/json"
 
@@ -75,28 +75,23 @@ case class THttpClient(followRedirects: String = "NEVER", timeoutInSeconds: Long
     }
 
   private def execute(method: String, uri: String, headers: Seq[String], body: Option[String]): HttpResult = {
-    val builder = HttpRequest
-      .newBuilder()
-      .uri(URI.create(uri))
-      .timeout(Duration.ofSeconds(timeoutInSeconds))
+    val allHeaders = body.fold(headers)(_ => Seq("Content-Type", jsonContentType) ++ headers)
+    val publisher  = body.fold(HttpRequest.BodyPublishers.noBody())(HttpRequest.BodyPublishers.ofString)
 
-    val allHeaders = body match {
-      case Some(_) => Seq("Content-Type", jsonContentType) ++ headers
-      case None    => headers
-    }
-    if (allHeaders.nonEmpty) builder.headers(allHeaders: _*)
+    val base    = HttpRequest.newBuilder().uri(URI.create(uri)).timeout(Duration.ofSeconds(timeoutInSeconds))
+    val withHdr = if (allHeaders.nonEmpty) base.headers(allHeaders: _*) else base
+    val request = withHdr.method(method, publisher).build()
 
-    val publisher = body match {
-      case Some(json) => HttpRequest.BodyPublishers.ofString(json)
-      case None       => HttpRequest.BodyPublishers.noBody()
-    }
-    builder.method(method, publisher)
-
-    val response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString)
+    val response = client.send(request, HttpResponse.BodyHandlers.ofString)
     HttpResult(response.statusCode(), response.body())
   }
 
   private def checked(result: HttpResult, method: String, uri: String): HttpResult =
     if (result.isSuccess) result
     else throw HttpClientException(method, uri, result.statusCode, result.body)
+}
+
+object THttpClient {
+  def apply(followRedirects: String = "NEVER", timeoutInSeconds: Long = 3): THttpClient =
+    new THttpClient(followRedirects, timeoutInSeconds)
 }
