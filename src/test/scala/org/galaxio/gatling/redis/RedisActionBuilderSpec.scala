@@ -292,4 +292,37 @@ class RedisActionBuilderSpec extends AnyWordSpec with Matchers {
       runFactory(builder, session) shouldBe a[Success[_]]
     }
   }
+
+  "Typed numeric variants" should {
+    "add setExL builder to Gatling chains" in {
+      val ttl: Expression[Long] = 60L
+      val chain                 = exec(redisPool.setExL(redisKey, ttl, redisValue))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add incrByL builder to Gatling chains" in {
+      val inc: Expression[Long] = 5L
+      val chain                 = exec(redisPool.incrByL(redisKey, inc))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add decrByL builder to Gatling chains" in {
+      val dec: Expression[Long] = 3L
+      val chain                 = exec(redisPool.decrByL(redisKey, dec))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add lRangeI builder to Gatling chains" in {
+      val start: Expression[Int] = 0
+      val end: Expression[Int]   = 10
+      val chain                  = exec(redisPool.lRangeI(redisKey, start, end))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+
+    "add expireI builder to Gatling chains" in {
+      val ttl: Expression[Int] = 300
+      val chain                = exec(redisPool.expireI(redisKey, ttl))
+      chain.actionBuilders.head shouldBe a[GenericRedisActionBuilder]
+    }
+  }
 }
