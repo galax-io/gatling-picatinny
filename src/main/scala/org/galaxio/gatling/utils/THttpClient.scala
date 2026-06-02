@@ -4,6 +4,7 @@ import java.net.URI
 import java.net.http.HttpClient.Redirect
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
+import java.util.concurrent.ExecutorService
 
 case class HttpResult(statusCode: Int, body: String) {
   def isSuccess: Boolean = statusCode >= 200 && statusCode < 300
@@ -13,8 +14,8 @@ class HttpClientException(
     val method: String,
     val uri: String,
     val statusCode: Int,
-    override val getMessage: String,
-) extends RuntimeException(getMessage)
+    message: String,
+) extends RuntimeException(message)
 
 object HttpClientException {
 
@@ -65,8 +66,13 @@ case class THttpClient(followRedirects: String = "NEVER", timeoutInSeconds: Long
   def putOrThrow(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResult =
     checked(put(uri, body, headers), "PUT", uri)
 
+  // JDK 17 HttpClient has no public close(); shut down the executor if one was provided.
+  // The internal SelectorManager daemon thread will terminate on JVM exit regardless.
   override def close(): Unit =
-    client.executor().ifPresent(_.asInstanceOf[java.util.concurrent.ExecutorService].shutdown())
+    client.executor().ifPresent {
+      case es: ExecutorService => es.shutdown()
+      case _                   => ()
+    }
 
   private def execute(method: String, uri: String, headers: Seq[String], body: Option[String]): HttpResult = {
     val builder = HttpRequest
