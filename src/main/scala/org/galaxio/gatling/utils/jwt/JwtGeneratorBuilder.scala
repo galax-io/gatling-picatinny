@@ -100,7 +100,7 @@ final case class JwtGeneratorBuilder(
     * constructed eagerly (e.g. at simulation setup) without forcing the algorithm name to be known statically. Throws
     * [[IllegalArgumentException]] when the configured `algorithm` is not supported.
     */
-  private[jwt] def jwtAlgorithm: JwtAlgorithm = {
+  private[jwt] lazy val jwtAlgorithm: JwtAlgorithm = {
     val alg = JwtAlgorithm.fromString(algorithm.toUpperCase)
     alg match {
       case _: JwtUnknownAlgorithm =>
