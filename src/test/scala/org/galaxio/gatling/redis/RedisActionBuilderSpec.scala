@@ -1,9 +1,11 @@
 package org.galaxio.gatling.redis
 
 import com.redis.RedisClientPool
+import io.gatling.commons.validation.{Failure, Success}
 import io.gatling.core.Predef._
-import io.gatling.core.session.Expression
+import io.gatling.core.session.{Expression, Session}
 import org.galaxio.gatling.redis.RedisActionBuilder._
+import org.galaxio.gatling.transactions.fixtures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -217,6 +219,58 @@ class RedisActionBuilderSpec extends AnyWordSpec with Matchers {
       val builder = redisPool.GET(redisKey).saveAs("result").requestName("redis-get")
       builder.saveAsVar shouldBe Some("result")
       builder.reqName shouldBe Some("redis-get")
+    }
+  }
+
+  "Numeric argument validation" should {
+    def runFactory(builder: GenericRedisActionBuilder, session: Session) =
+      builder.commandFactory(session)
+
+    val session = fixtures.emptySession("redis-validation")
+
+    "fail Validation when LRANGE end is non-numeric instead of throwing" in {
+      val start: Expression[Any] = "0"
+      val end: Expression[Any]   = "not-a-number"
+      val builder                = redisPool.LRANGE(redisKey, start, end)
+      runFactory(builder, session) shouldBe a[Failure]
+    }
+
+    "fail Validation when LRANGE start is non-numeric instead of throwing" in {
+      val start: Expression[Any] = "oops"
+      val end: Expression[Any]   = "10"
+      val builder                = redisPool.LRANGE(redisKey, start, end)
+      runFactory(builder, session) shouldBe a[Failure]
+    }
+
+    "succeed Validation when LRANGE bounds are numeric strings" in {
+      val start: Expression[Any] = "0"
+      val end: Expression[Any]   = "10"
+      val builder                = redisPool.LRANGE(redisKey, start, end)
+      runFactory(builder, session) shouldBe a[Success[_]]
+    }
+
+    "fail Validation when EXPIRE ttl is non-numeric instead of throwing" in {
+      val ttl: Expression[Any] = "abc"
+      val builder              = redisPool.EXPIRE(redisKey, ttl)
+      runFactory(builder, session) shouldBe a[Failure]
+    }
+
+    "fail Validation when SETEX expiry is non-numeric instead of throwing" in {
+      val expiry: Expression[Any] = "not-long"
+      val builder                 = redisPool.SETEX(redisKey, expiry, redisValue)
+      runFactory(builder, session) shouldBe a[Failure]
+    }
+
+    "fail Validation when INCRBY increment is non-numeric instead of throwing" in {
+      val inc: Expression[Any] = "x"
+      val builder              = redisPool.INCRBY(redisKey, inc)
+      runFactory(builder, session) shouldBe a[Failure]
+    }
+
+    "fail Validation when DECRBY decrement is non-numeric instead of throwing" in {
+      val dec: Expression[Any] = "x"
+      val builder              = redisPool.DECRBY(redisKey, dec)
+      runFactory(builder, session) shouldBe a[Failure]
     }
   }
 }
