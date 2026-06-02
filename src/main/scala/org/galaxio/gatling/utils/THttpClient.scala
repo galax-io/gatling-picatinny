@@ -9,35 +9,35 @@ import java.time.Duration
   *
   * @param followRedirects
   *   JDK redirect policy name
-  * @param connectTimeoutInSeconds
-  *   connection timeout in seconds
+  * @param timeoutInSeconds
+  *   connect and per-request timeout in seconds
   */
-case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSeconds: Long = 3) {
+case class THttpClient(followRedirects: String = "NEVER", timeoutInSeconds: Long = 3) {
 
   private val jsonContentType: String = "application/json"
 
   private val client: HttpClient =
     HttpClient
       .newBuilder()
-      .connectTimeout(Duration.ofSeconds(connectTimeoutInSeconds))
+      .connectTimeout(Duration.ofSeconds(timeoutInSeconds))
       .followRedirects(Redirect.valueOf(followRedirects))
       .build()
 
-  def GET(uri: String, headers: Seq[String] = Seq.empty): HttpResponse[String] = {
-    val builder = HttpRequest.newBuilder().uri(URI.create(uri)).timeout(Duration.ofSeconds(connectTimeoutInSeconds))
+  def get(uri: String, headers: Seq[String] = Seq.empty): HttpResponse[String] = {
+    val builder = HttpRequest.newBuilder().uri(URI.create(uri)).timeout(Duration.ofSeconds(timeoutInSeconds))
     if (headers.nonEmpty) builder.headers(headers: _*)
     client.send(builder.build(), HttpResponse.BodyHandlers.ofString)
   }
 
-  def POST(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
+  def post(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
     sendJson(uri, body, "POST", headers)
 
-  def PUT(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
+  def put(uri: String, body: String, headers: Seq[String] = Seq.empty): HttpResponse[String] =
     sendJson(uri, body, "PUT", headers)
 
   private def sendJson(
       uri: String,
-      body: String,
+      json: String,
       method: String,
       headers: Seq[String],
   ): HttpResponse[String] = {
@@ -45,10 +45,10 @@ case class THttpClient(followRedirects: String = "NEVER", connectTimeoutInSecond
 
     val request: HttpRequest = HttpRequest
       .newBuilder()
-      .method(method, HttpRequest.BodyPublishers.ofString(body))
+      .method(method, HttpRequest.BodyPublishers.ofString(json))
       .uri(URI.create(uri))
       .headers(hdrs: _*)
-      .timeout(Duration.ofSeconds(connectTimeoutInSeconds))
+      .timeout(Duration.ofSeconds(timeoutInSeconds))
       .build()
 
     client.send(request, HttpResponse.BodyHandlers.ofString)
