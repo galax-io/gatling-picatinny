@@ -18,7 +18,13 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDateTime, ZoneId}
+import scala.annotation.nowarn
 
+// "Legacy feeders from examples" deliberately demonstrates the deprecated Random*Feeder
+// surface so the README examples keep compiling/running until the deprecated objects are
+// removed. The companion "Faker-based feeders from examples" suite below covers the
+// successor API.
+@nowarn("cat=deprecation")
 class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl with TableDrivenPropertyChecks {
 
   override implicit def configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
