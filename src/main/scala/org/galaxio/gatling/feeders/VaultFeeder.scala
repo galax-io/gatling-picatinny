@@ -30,22 +30,24 @@ object VaultFeeder extends LazyLogging {
       roleId: String,
       secretId: String,
       keys: List[String],
+      timeoutInSeconds: Long = 5,
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
 
     implicit val formats: DefaultFormats = org.json4s.DefaultFormats
 
-    val body = approleLoginBody(roleId, secretId)
+    val body   = approleLoginBody(roleId, secretId)
+    val client = THttpClient(timeoutInSeconds = timeoutInSeconds)
 
-    val vaultTokenResponse: String = THttpClient()
-      .POST(s"""$vaultUrl/v1/auth/approle/login""", body)
+    val vaultTokenResponse: String = client
+      .post(s"""$vaultUrl/v1/auth/approle/login""", body)
       .body()
 
     val vaultToken = extractClientToken(parse(vaultTokenResponse))
 
     val getHeaders: Seq[String]   = Seq("X-Vault-Token", s"""$vaultToken""")
-    val vaultDataResponse: String = THttpClient()
-      .GET(s"""$vaultUrl/v1/$secretPath""", getHeaders)
+    val vaultDataResponse: String = client
+      .get(s"""$vaultUrl/v1/$secretPath""", getHeaders)
       .body()
 
     val vaultDataJson: JValue = parse(vaultDataResponse)
@@ -56,18 +58,21 @@ object VaultFeeder extends LazyLogging {
 
   /** Retrieves secrets from multiple Vault paths and merges them into a single record.
     *
-    * Useful when test data is spread across several Vault secrets. Uses [[DuplicateKeyStrategy.FailOnDuplicate]] by default.
-    * Java/Kotlin callers without default-argument support should call the 4-arg overload below.
+    * Uses [[DuplicateKeyStrategy.FailOnDuplicate]] by default.
+    *
+    * @param timeoutInSeconds
+    *   connect and per-request timeout for Vault HTTP calls (default 5s)
     */
   def fromPaths(
       vaultUrl: String,
       roleId: String,
       secretId: String,
       paths: List[(String, List[String])],
+      timeoutInSeconds: Long = 5,
   ): IndexedSeq[Record[String]] =
-    fromPaths(vaultUrl, roleId, secretId, paths, DuplicateKeyStrategy.FailOnDuplicate)
+    fromPaths(vaultUrl, roleId, secretId, paths, DuplicateKeyStrategy.FailOnDuplicate, timeoutInSeconds)
 
-  /** Retrieves secrets from multiple Vault paths with explicit duplicate-key strategy.
+  /** Retrieves secrets from multiple Vault paths with explicit duplicate-key strategy and default timeout.
     *
     * @param onDuplicate
     *   strategy when the same key appears in more than one path
@@ -78,10 +83,27 @@ object VaultFeeder extends LazyLogging {
       secretId: String,
       paths: List[(String, List[String])],
       onDuplicate: DuplicateKeyStrategy,
+  ): IndexedSeq[Record[String]] =
+    fromPaths(vaultUrl, roleId, secretId, paths, onDuplicate, 5L)
+
+  /** Retrieves secrets from multiple Vault paths with explicit duplicate-key strategy and timeout.
+    *
+    * @param onDuplicate
+    *   strategy when the same key appears in more than one path
+    * @param timeoutInSeconds
+    *   connect and per-request timeout for Vault HTTP calls
+    */
+  def fromPaths(
+      vaultUrl: String,
+      roleId: String,
+      secretId: String,
+      paths: List[(String, List[String])],
+      onDuplicate: DuplicateKeyStrategy,
+      timeoutInSeconds: Long,
   ): IndexedSeq[Record[String]] = {
     require(paths != null, "Paths list must not be null")
     val allPairs = paths.flatMap { case (secretPath, keys) =>
-      apply(vaultUrl, secretPath, roleId, secretId, keys).flatMap(_.toSeq)
+      apply(vaultUrl, secretPath, roleId, secretId, keys, timeoutInSeconds).flatMap(_.toSeq)
     }
     IndexedSeq(mergeWithStrategy(allPairs, onDuplicate))
   }
@@ -119,14 +141,15 @@ object VaultFeeder extends LazyLogging {
       secretPath: String,
       vaultToken: String,
       keys: List[String],
+      timeoutInSeconds: Long = 5,
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
 
     implicit val formats: DefaultFormats = org.json4s.DefaultFormats
 
     val getHeaders: Seq[String]   = Seq("X-Vault-Token", vaultToken)
-    val vaultDataResponse: String = THttpClient()
-      .GET(s"""$vaultUrl/v1/$secretPath""", getHeaders)
+    val vaultDataResponse: String = THttpClient(timeoutInSeconds = timeoutInSeconds)
+      .get(s"""$vaultUrl/v1/$secretPath""", getHeaders)
       .body()
 
     val vaultDataJson: JValue = parse(vaultDataResponse)

@@ -248,7 +248,18 @@ public final class Feeders {
             String secretId,
             List<String> keys
     ) {
-        return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.apply(vaultUrl, secretPath, roleId, secretId, asScala(keys).toList()));
+        return VaultFeeder(vaultUrl, secretPath, roleId, secretId, keys, 5L);
+    }
+
+    public static Iterator<Map<String, Object>> VaultFeeder(
+            String vaultUrl,
+            String secretPath,
+            String roleId,
+            String secretId,
+            List<String> keys,
+            long timeoutInSeconds
+    ) {
+        return toJavaFeeder(org.galaxio.gatling.feeders.VaultFeeder.apply(vaultUrl, secretPath, roleId, secretId, asScala(keys).toList(), timeoutInSeconds));
     }
 
     @SafeVarargs

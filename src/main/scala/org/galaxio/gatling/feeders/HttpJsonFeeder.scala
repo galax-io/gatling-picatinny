@@ -32,7 +32,7 @@ object HttpJsonFeeder {
     require(url.nonEmpty, "URL must be non-empty")
     require(keys != null, "Keys list must not be null")
 
-    val response = sharedClient.GET(url, headers).body()
+    val response = sharedClient.get(url, headers).body()
     val json     = JsonMethods.parse(response)
     val data     = extractFields(json)
     val keySet   = keys.toSet
