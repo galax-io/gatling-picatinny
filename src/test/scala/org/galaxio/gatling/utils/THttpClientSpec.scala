@@ -61,34 +61,34 @@ class THttpClientSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   "THttpClient" should {
 
     "return a 200 response on GET with default settings" in {
-      val response = THttpClient().GET(s"http://localhost:$port/get")
+      val response = THttpClient().get(s"http://localhost:$port/get")
       response.statusCode() shouldBe 200
       response.body() shouldBe "ok"
     }
 
     "send custom headers on GET" in {
-      THttpClient().GET(s"http://localhost:$port/get", Seq("X-Test", "hello"))
+      THttpClient().get(s"http://localhost:$port/get", Seq("X-Test", "hello"))
       lastRequestHeaders.map { case (k, v) => k.toLowerCase -> v } should contain key "x-test"
     }
 
     "return a 200 response on POST" in {
-      val response = THttpClient().POST(s"http://localhost:$port/post", """{"a":1}""")
+      val response = THttpClient().post(s"http://localhost:$port/post", """{"a":1}""")
       response.statusCode() shouldBe 200
     }
 
     "send Content-Type: application/json on POST" in {
-      THttpClient().POST(s"http://localhost:$port/post", """{"a":1}""")
+      THttpClient().post(s"http://localhost:$port/post", """{"a":1}""")
       lastRequestHeaders.map { case (k, v) => k.toLowerCase -> v } should contain key "content-type"
     }
 
     "send the JSON body on POST" in {
-      THttpClient().POST(s"http://localhost:$port/post", """{"x":"y"}""")
+      THttpClient().post(s"http://localhost:$port/post", """{"x":"y"}""")
       lastRequestBody shouldBe """{"x":"y"}"""
     }
 
     "respect custom connection timeout parameter" in {
-      val client   = THttpClient(connectTimeoutInSeconds = 5)
-      val response = client.GET(s"http://localhost:$port/get")
+      val client   = THttpClient(timeoutInSeconds = 5)
+      val response = client.get(s"http://localhost:$port/get")
       response.statusCode() shouldBe 200
     }
   }
