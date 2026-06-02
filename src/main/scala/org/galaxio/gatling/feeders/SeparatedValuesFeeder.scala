@@ -4,13 +4,16 @@ import io.gatling.core.Predef._
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.feeder.{FeederBuilderBase, _}
 
+import java.util.regex.Pattern
+
 object SeparatedValuesFeeder {
 
   private val CommaSeparator: Char      = ','
   private val SemicolonSeparator: Char  = ';'
   private val TabulationSeparator: Char = '\t'
 
-  private def splitter(source: String, separator: Char): IndexedSeq[String] = source.split(separator).toIndexedSeq
+  private def splitter(source: String, separator: Char): IndexedSeq[String] =
+    source.split(Pattern.quote(separator.toString)).toIndexedSeq
 
   /** Creates a feeder with separated values from the source String
     * @param paramName
@@ -109,7 +112,7 @@ object SeparatedValuesFeeder {
     val records = source
       .flatMap(m =>
         m.map { case (k, v) =>
-          splitter(v.toString, separator).map {
+          splitter(String.valueOf(v), separator).map {
             paramPrefix match {
               case None         => s => Map(k -> s)
               case Some(prefix) => s => Map(s"${prefix}_$k" -> s)
