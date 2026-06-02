@@ -7,6 +7,7 @@ import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.session.{Expression, Session}
 import io.gatling.core.structure.ScenarioContext
 
+import scala.annotation.nowarn
 import scala.util.Try
 
 object RedisActionBuilder {
@@ -307,9 +308,16 @@ object RedisActionBuilder {
 
   }
 
-  // Legacy builders (backward compatible)
+  // Legacy builders (backward compatible). The Action classes they delegate to are themselves
+  // deprecated, but these shims must preserve the original permissive failure semantics of
+  // RedisDelAction / RedisSremAction / RedisSaddAction (per-key failures logged at DEBUG and
+  // the operation proceeds with the successfully resolved subset). Routing through
+  // GenericRedisActionBuilder would flip those semantics to strict markAsFailed, breaking
+  // existing users. Until the deprecated Actions are removed, keep delegating and scope
+  // @nowarn to the call sites that intentionally reference them.
   case class RedisDelActionBuilder(clientPool: RedisClientPool, key: Expression[Any], keys: Seq[Expression[Any]])
       extends ActionBuilder {
+    @nowarn("cat=deprecation")
     override def build(ctx: ScenarioContext, next: Action): Action = RedisDelAction(ctx, next, clientPool, key, keys)
   }
 
@@ -319,6 +327,7 @@ object RedisActionBuilder {
       value: Expression[Any],
       values: Seq[Expression[Any]],
   ) extends ActionBuilder {
+    @nowarn("cat=deprecation")
     override def build(ctx: ScenarioContext, next: Action): Action = RedisSremAction(ctx, next, clientPool, key, value, values)
   }
 
@@ -328,6 +337,7 @@ object RedisActionBuilder {
       value: Expression[Any],
       values: Seq[Expression[Any]],
   ) extends ActionBuilder {
+    @nowarn("cat=deprecation")
     override def build(ctx: ScenarioContext, next: Action): Action = RedisSaddAction(ctx, next, clientPool, key, value, values)
   }
 

@@ -6,11 +6,15 @@ import org.galaxio.gatling.jmh.JmhBenchmark
 import org.galaxio.gatling.utils.phone.TypePhone
 import org.openjdk.jmh.annotations.Benchmark
 
+import scala.annotation.nowarn
+
 class FakerBenchmark extends JmhBenchmark {
 
-  private val legacyDigitFeeder = RandomDigitFeeder("digit")
-  private val legacyPanFeeder   = RandomPANFeeder("pan", "411111", "555555", "220220")
-  private val legacyPhoneFeeder = RandomPhoneFeeder("phone", TypePhone.E164PhoneNumber)
+  // Legacy feeders are deprecated; kept here only to baseline the new Faker/GeneratedFeeder
+  // path against the old Random*Feeder path. Suppression is scoped to these three references.
+  @nowarn("cat=deprecation") private val legacyDigitFeeder = RandomDigitFeeder("digit")
+  @nowarn("cat=deprecation") private val legacyPanFeeder   = RandomPANFeeder("pan", "411111", "555555", "220220")
+  @nowarn("cat=deprecation") private val legacyPhoneFeeder = RandomPhoneFeeder("phone", TypePhone.E164PhoneNumber)
 
   private val emailGenerator      = Faker.internet.email()
   private val usPhoneGenerator    = Faker.phone.mobile(Country.US)

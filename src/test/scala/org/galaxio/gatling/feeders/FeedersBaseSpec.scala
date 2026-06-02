@@ -6,6 +6,8 @@ import io.gatling.core.feeder._
 import org.scalacheck.Gen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.galaxio.gatling.feeders.faker.Predef._
+import org.galaxio.gatling.feeders.faker.{Faker, GeneratedFeeder}
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 class FeedersBaseSpec extends AnyWordSpec with Matchers with CoreDsl with ScalaCheckDrivenPropertyChecks {
@@ -42,7 +44,7 @@ class FeedersBaseSpec extends AnyWordSpec with Matchers with CoreDsl with ScalaC
   "Feeder finite-length syntax" should {
     "materialize the requested number of records" in {
       forAll(feederName, Gen.choose(1, 100)) { (name, size) =>
-        RandomDigitFeeder(name).toFiniteLength(size).readRecords should have size size
+        GeneratedFeeder(name -> Faker.number.int(0, 9)).toFiniteLength(size).readRecords should have size size
       }
     }
   }

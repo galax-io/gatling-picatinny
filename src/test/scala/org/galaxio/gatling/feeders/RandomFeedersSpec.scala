@@ -9,7 +9,12 @@ import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
 
 import java.time.temporal.{ChronoUnit, TemporalUnit}
 import java.time.{LocalDateTime, ZoneId}
+import scala.annotation.nowarn
 
+// Regression coverage for the deprecated Random*Feeder family. These tests intentionally
+// exercise the deprecated API for as long as it remains in the published surface; remove
+// this suite together with the deprecated objects.
+@nowarn("cat=deprecation")
 class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
   val positiveInt: Gen[Int] = Gen.posNum[Int]
