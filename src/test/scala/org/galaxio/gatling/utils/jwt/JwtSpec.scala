@@ -62,10 +62,31 @@ class JwtSpec extends AnyWordSpec with Matchers {
       }
     }
 
-    "throw on unsupported algorithm" in {
+    "defer unsupported algorithm validation to first token generation" in {
+      // Builder construction must NOT throw — validation happens at generation time
+      val gen = jwtPkg.jwt("INVALID", "secret").defaultHeader.payload("""{"sub":"user1"}""")
+      gen.algorithm shouldBe "INVALID"
+
+      // Resolving jwtAlgorithm (used during token generation) throws
       an[IllegalArgumentException] shouldBe thrownBy {
-        jwtPkg.jwt("INVALID", "secret")
+        gen.jwtAlgorithm
       }
+    }
+
+    "accept payload containing Gatling EL without parsing as JSON" in {
+      // Payloads with EL placeholders (`#{var}`) are not legal JSON and must be accepted by the builder;
+      // they are resolved at token generation time.
+      val gen = jwtPkg
+        .jwt("HS256", "secret")
+        .defaultHeader
+        .payload("""{"sub":"#{userId}","scope":"#{scope}"}""")
+      gen.payload.json should include("#{userId}")
+      gen.payload.json should include("#{scope}")
+    }
+
+    "accept header containing Gatling EL without parsing as JSON" in {
+      val gen = jwtPkg.jwt("HS256", "secret").header("""{"alg":"HS256","kid":"#{keyId}"}""")
+      gen.header.json should include("#{keyId}")
     }
 
     "load header from resource" in {
