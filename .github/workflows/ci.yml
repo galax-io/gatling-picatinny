@@ -280,7 +280,7 @@ jobs:
 
       - name: Upload coverage reports to Codecov
         if: always()
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
 
   redis-integration:
     name: Redis Integration
