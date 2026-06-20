@@ -71,7 +71,7 @@ object Dependencies {
   )
 
   lazy val testcontainers: Seq[ModuleID] = Seq(
-    "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.41.8" % "test,it",
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.1" % "test,it",
   )
 
   lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus ++ testcontainers
