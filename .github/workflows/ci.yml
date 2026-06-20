@@ -126,7 +126,7 @@ jobs:
           mkdir -p "$HOME/.ivy2/local" "$HOME/.cache/coursier/v1/local" "$HOME/.m2/repository/org"
           cp -r "${OUT}/ivy/org.galaxio" "$HOME/.ivy2/local/"
           cp -r "${OUT}/ivy/org.galaxio" "$HOME/.cache/coursier/v1/local/"
-          cp -r "${OUT}/m2/org.galaxio" "$HOME/.m2/repository/org/"
+          cp -r "${OUT}/m2/galaxio" "$HOME/.m2/repository/org/"
 
       - name: Java Maven Gatling project from template main
         if: matrix.template == 'java-maven'
