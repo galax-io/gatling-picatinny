@@ -12,3 +12,4 @@
 /results/
 **/.gradle/
 **/build/
+.claude/settings.local.json
