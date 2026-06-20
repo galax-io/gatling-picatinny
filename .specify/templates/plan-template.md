@@ -44,7 +44,7 @@
 - [ ] **II. Backward Compatibility** — No public API, DSL behavior, or serialized config/profile format broken without MAJOR bump and explicit authorization.
 - [ ] **III. Test Discipline** — Unit tests accompany all code paths; integration tests (Testcontainers) required for Redis, JWT, diagnostics; Gatling runtime not mocked where real path exists.
 - [ ] **IV. Small, Focused Changes** — No opportunistic refactors; new deps / API signature / config format changes explicitly authorized; complexity justified in table below if principle bent.
-- [ ] **V. Release Integrity** — Correct branch strategy; tag placement; no version reuse.
+- [ ] **V. Release Integrity** *(release PRs only)* — Correct branch strategy; tag placement; no version reuse.
 
 ## Project Structure
 

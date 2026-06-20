@@ -1,18 +1,3 @@
-<!--
-SYNC IMPACT REPORT
-==================
-Version change: [TEMPLATE] → 1.0.0 (initial fill-in)
-Modified principles: none (first population)
-Added sections: Core Principles (I–V), Stack Constraints, Development Workflow, Governance
-Removed sections: n/a
-Templates requiring updates:
-  ✅ .specify/templates/plan-template.md — Constitution Check gates updated
-  ✅ .specify/memory/constitution.md — this file
-  ⚠ .specify/templates/spec-template.md — generic, no constitution-specific refs; no change needed
-  ⚠ .specify/templates/tasks-template.md — generic; no change needed
-Follow-up TODOs: none
--->
-
 # Gatling Picatinny Constitution
 
 ## Core Principles
@@ -29,16 +14,16 @@ Scala layer is a constitution violation.
 
 Gatling Picatinny is a published Maven Central library consumed by external teams.
 All of the following are compatibility-sensitive and MUST NOT change without explicit
-authorization and a corresponding MAJOR or MINOR version bump:
+authorization and a corresponding version bump:
 
 - Public Scala and Java API signatures
 - DSL builder/syntax behavior
 - Serialized config and profile formats (PureConfig keys, JSON field names)
 - Feeder output shapes and session variable names
 
-Additions that are purely additive require MINOR bump. Any removal or behavioral
-redefinition requires MAJOR bump. Internal `private`/`package-private` refactors
-are exempt.
+Version bump rules: PATCH for trivial additive changes (new overload, deprecates nothing);
+MINOR for any addition that expands the public surface in a meaningful way; MAJOR for any
+removal or behavioral redefinition. Internal `private`/`package-private` refactors are exempt.
 
 ### III. Test Discipline
 
@@ -52,8 +37,8 @@ are MANDATORY for:
 - Any behavior that depends on external process state
 
 The Gatling runtime MUST NOT be mocked where a real integration path exists.
-Feeder determinism and transaction boundary behavior MUST be tested against an
-actual Gatling simulation run or a verified harness, not stubs.
+Feeder determinism and transaction boundary behavior MUST be covered by Testcontainers-backed
+integration tests, not stubs or hand-rolled fakes.
 
 ### IV. Small, Focused Changes
 
@@ -126,4 +111,4 @@ versioning policy below, and propagate changes to affected templates and AGENTS.
 Violations require explicit justification in the plan's Complexity Tracking table
 before merging.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-20
+**Version**: 1.0.1 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-20
