@@ -40,7 +40,11 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] **I. Scala DSL as Source of Truth** — Java/Kotlin facade changes delegate to Scala core; no logic duplication in facade layer.
+- [ ] **II. Backward Compatibility** — No public API, DSL behavior, or serialized config/profile format broken without MAJOR bump and explicit authorization.
+- [ ] **III. Test Discipline** — Unit tests accompany all code paths; integration tests (Testcontainers) required for Redis, JWT, diagnostics; Gatling runtime not mocked where real path exists.
+- [ ] **IV. Small, Focused Changes** — No opportunistic refactors; new deps / API signature / config format changes explicitly authorized; complexity justified in table below if principle bent.
+- [ ] **V. Release Integrity** — Correct branch strategy; tag placement; no version reuse.
 
 ## Project Structure
 
