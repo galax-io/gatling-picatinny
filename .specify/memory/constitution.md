@@ -21,18 +21,9 @@ Follow-up TODOs: none
 
 The Scala DSL and runtime are the canonical implementation of every feature.
 Java/Kotlin facades MUST be thin wrappers that delegate entirely to Scala core —
-they MUST NOT reimplement logic that already exists there.
-
-```scala
-// ✅ correct — thin delegation
-object JHttpFeeder { def apply(url: String): FeederBuilder = ScalaHttpFeeder(url) }
-
-// ❌ violation — duplicates Scala core logic
-object JHttpFeeder { def apply(url: String): FeederBuilder = { /* re-implemented logic */ } }
-```
-
-Any facade that adds business logic, conditional branching, or data transformation
-not present in the Scala layer is a constitution violation.
+they MUST NOT reimplement logic that already exists there. Any facade that adds
+business logic, conditional branching, or data transformation not present in the
+Scala layer is a constitution violation.
 
 ### II. Backward Compatibility (NON-NEGOTIABLE)
 
