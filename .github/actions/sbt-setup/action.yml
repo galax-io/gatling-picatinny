@@ -10,12 +10,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup Java (Temurin ${{ inputs.java-version }}) with sbt cache
+    - name: Setup Java (Temurin ${{ inputs.java-version }})
       uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: ${{ inputs.java-version }}
-        cache: sbt
 
     - name: Setup sbt
       uses: sbt/setup-sbt@v1

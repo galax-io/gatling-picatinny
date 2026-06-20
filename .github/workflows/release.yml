@@ -1,9 +1,8 @@
 name: Release
 
-# Automated trunk-based release.
-# Version tags (vX.Y.Z) are created by the CI `tag` job on every push to main.
-# Pushing a `vX.Y.Z` tag publishes to Maven Central (via sbt-ci-release / dynver)
-# and creates a GitHub Release with git-cliff notes.
+# Tag-driven release. Push a vX.Y.Z tag manually on main or release/* to trigger.
+# Publishes to Maven Central (via sbt-ci-release / dynver) and creates a GitHub
+# Release with git-cliff changelog notes.
 
 on:
   push:

@@ -39,6 +39,6 @@ commit_parsers = [
   { message = "^chore\\(deps\\)", group = "<!-- 05 -->Dependencies" },
   { message = "^(refactor|test|ci|build|chore|style|revert)", group = "<!-- 06 -->Maintenance" },
 ]
-filter_commits = false
+filter_commits = true
 tag_pattern = "v[0-9].*"
 sort_commits = "newest"

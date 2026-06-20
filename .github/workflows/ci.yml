@@ -72,6 +72,7 @@ jobs:
           name: picatinny-local
           path: ${{ github.workspace }}/ci-artifacts/
           retention-days: 1
+          if-no-files-found: error
 
   template-tests:
     name: Template / ${{ matrix.template }} (Java ${{ matrix.java-version }})
@@ -102,8 +103,8 @@ jobs:
           go-version: stable
           cache: false
 
-      - name: Install galaxio CLI from main
-        run: go install github.com/galax-io/galaxio-cli/cmd/galaxio@main
+      - name: Install galaxio CLI
+        run: go install github.com/galax-io/galaxio-cli/cmd/galaxio@latest
 
       - name: Cache Maven repository
         if: matrix.template == 'java-maven'
@@ -203,6 +204,10 @@ jobs:
       - name: Scala sbt Gatling project from template main
         if: matrix.template == 'scala-sbt'
         run: scripts/test-scala-sbt-template.sh
+
+      - name: Remove local artifact from M2 before cache save
+        if: always() && matrix.template == 'java-maven'
+        run: rm -rf ~/.m2/repository/org/galaxio
 
   coverage:
     name: Coverage
