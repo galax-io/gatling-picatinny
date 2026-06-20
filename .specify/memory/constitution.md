@@ -66,15 +66,16 @@ Rules that MUST be followed without exception:
 
 ## Stack Constraints
 
-Technology stack is fixed. Changes require explicit authorization.
+Technology stack is fixed. Exact versions are in `build.sbt` / `project/Dependencies.scala`
+(source of truth). Changes require explicit authorization.
 
 | Concern | Value |
 |---------|-------|
-| Language | Scala 2.13.18 |
+| Language | Scala 2.13.x |
 | Build tool | sbt |
 | Compile target | Java 17 (`--release 17`) |
 | CI runtime | Temurin 21 |
-| Gatling | 3.13.5 (`Provided` scope — MUST remain `Provided`) |
+| Gatling | 3.13.x (`Provided` scope — MUST remain `Provided`) |
 | Core deps | PureConfig, Circe, json4s, Jackson, Scala Logging, Generex, JWT, fast-uuid |
 | Test infra | ScalaTest, JUnit 5 (sbt-jupiter-interface), Testcontainers |
 | Benchmarks | JMH (`sbt Jmh/run`) |
@@ -111,4 +112,4 @@ versioning policy below, and propagate changes to affected templates and AGENTS.
 Violations require explicit justification in the plan's Complexity Tracking table
 before merging.
 
-**Version**: 1.0.1 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-20
+**Version**: 1.0.2 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-20
