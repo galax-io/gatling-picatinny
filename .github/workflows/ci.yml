@@ -62,7 +62,7 @@ jobs:
               'set ThisBuild / publishM2Configuration := publishM2Configuration.value.withOverwrite(true)' \
               publishLocal publishM2
 
-          OUT="${GITHUB_WORKSPACE}/.ci-artifacts"
+          OUT="${GITHUB_WORKSPACE}/ci-artifacts"
           mkdir -p "${OUT}/ivy" "${OUT}/m2"
           cp -r "$HOME/.ivy2/local/org.galaxio" "${OUT}/ivy/"
           cp -r "$HOME/.m2/repository/org/galaxio" "${OUT}/m2/"
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: picatinny-local
-          path: ${{ github.workspace }}/.ci-artifacts/
+          path: ${{ github.workspace }}/ci-artifacts/
           retention-days: 1
 
   template-tests:
@@ -116,13 +116,13 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: picatinny-local
-          path: ${{ github.workspace }}/.ci-artifacts/
+          path: ${{ github.workspace }}/ci-artifacts/
 
       - name: Restore local artifacts
         shell: bash
         run: |
           set -euo pipefail
-          OUT="${GITHUB_WORKSPACE}/.ci-artifacts"
+          OUT="${GITHUB_WORKSPACE}/ci-artifacts"
           mkdir -p "$HOME/.ivy2/local" "$HOME/.cache/coursier/v1/local" "$HOME/.m2/repository/org"
           cp -r "${OUT}/ivy/org.galaxio" "$HOME/.ivy2/local/"
           cp -r "${OUT}/ivy/org.galaxio" "$HOME/.cache/coursier/v1/local/"
