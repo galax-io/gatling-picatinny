@@ -57,10 +57,29 @@ jobs:
       - name: Publish local Picatinny artifact
         run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' 'set ThisBuild / publishM2Configuration := publishM2Configuration.value.withOverwrite(true)' publishLocal publishM2
       - name: Stage artifacts
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p .ci-artifacts/ivy .ci-artifacts/m2
-          cp -r ~/.ivy2/local/org.galaxio/ .ci-artifacts/ivy/
-          cp -r ~/.m2/repository/org/galaxio/ .ci-artifacts/m2/
+
+          # sbt + Coursier may publish to ~/.cache/coursier/v1/local instead of ~/.ivy2/local
+          IVY_SRC=""
+          for candidate in "$HOME/.ivy2/local/org.galaxio" "$HOME/.cache/coursier/v1/local/org.galaxio"; do
+            if find "$candidate" -name '*.jar' 2>/dev/null | grep -q .; then
+              IVY_SRC="$candidate"
+              break
+            fi
+          done
+          if [ -z "$IVY_SRC" ]; then
+            echo "::error::publishLocal artifact not found. Searched:"
+            echo "  $HOME/.ivy2/local/org.galaxio"
+            echo "  $HOME/.cache/coursier/v1/local/org.galaxio"
+            find "$HOME/.ivy2/local" "$HOME/.cache/coursier/v1/local" -maxdepth 3 2>/dev/null || true
+            exit 1
+          fi
+          cp -r "$IVY_SRC" .ci-artifacts/ivy/
+
+          cp -r "$HOME/.m2/repository/org/galaxio" .ci-artifacts/m2/
       - uses: actions/upload-artifact@v7
         with:
           name: picatinny-local
@@ -113,10 +132,14 @@ jobs:
           path: .ci-artifacts/
 
       - name: Restore local artifacts
+        shell: bash
         run: |
-          mkdir -p ~/.ivy2/local/org.galaxio ~/.m2/repository/org/galaxio
-          cp -r .ci-artifacts/ivy/org.galaxio/. ~/.ivy2/local/org.galaxio/
-          cp -r .ci-artifacts/m2/org.galaxio/. ~/.m2/repository/org/galaxio/
+          set -euo pipefail
+          # Restore to both ivy local locations for sbt + Coursier compatibility
+          mkdir -p "$HOME/.ivy2/local" "$HOME/.cache/coursier/v1/local" "$HOME/.m2/repository/org"
+          cp -r .ci-artifacts/ivy/org.galaxio "$HOME/.ivy2/local/"
+          cp -r .ci-artifacts/ivy/org.galaxio "$HOME/.cache/coursier/v1/local/"
+          cp -r .ci-artifacts/m2/org.galaxio "$HOME/.m2/repository/org/"
 
       - name: Java Maven Gatling project from template main
         if: matrix.template == 'java-maven'
