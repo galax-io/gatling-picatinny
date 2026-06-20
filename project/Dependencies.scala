@@ -77,8 +77,8 @@ object Dependencies {
   lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus ++ testcontainers
 
   lazy val junit: Seq[ModuleID] = Seq(
-    "org.junit.jupiter"    % "junit-jupiter"     % "5.10.5" % "test,it",
-    "com.github.sbt.junit" % "jupiter-interface" % "0.12.0" % "test,it",
+    "org.junit.jupiter"    % "junit-jupiter"     % "6.0.3"  % "test,it",
+    "com.github.sbt.junit" % "jupiter-interface" % "0.19.0" % "test,it",
     "org.assertj"          % "assertj-core"      % "3.27.6" % "test,it",
   )
 
