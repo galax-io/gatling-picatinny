@@ -1,0 +1,332 @@
+name: Release
+
+# Tag-driven release. Push a vX.Y.Z tag manually on main or release/* to trigger.
+# Publishes to Maven Central (via sbt-ci-release / dynver) and creates a GitHub
+# Release with git-cliff changelog notes.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  security-events: write
+
+env:
+  SBT_OPTS: -Dsbt.color=true -Dsbt.log.noformat=false -Dsbt.supershell=false
+  JAVA_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
+  JVM_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
+
+jobs:
+  release:
+    name: Release (tag-driven)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag & resolve changelog range
+        id: prep
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          git branch -r --contains "$TAG" | grep -qE 'origin/(release/|main$)' \
+            || { echo "::error::Tag $TAG is not on main or release/*"; exit 1; }
+          PREV=$(git describe --tags --abbrev=0 --first-parent "${TAG}^" --match 'v[0-9]*' 2>/dev/null || true)
+          echo "cliff_args=${PREV:+${PREV}..${TAG}} --strip header" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/sbt-setup
+
+      - name: Compile & test
+        # Integration tests (IntegrationTest/test) and template tests run in ci.yml on PRs
+        # before merge — no need to re-run with Docker/external services during release.
+        run: sbt compile Test/test
+
+      - name: Run Trivy vulnerability gate
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          hide-progress: true
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload Trivy scan results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Generate and submit release SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: github
+          output: dependency-results.sbom.json
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release SBOM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-sbom
+          path: dependency-results.sbom.json
+
+      - name: Publish to Maven Central via sbt-ci-release
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "Publishing version $VERSION (tag $TAG)"
+
+          if [ -n "${PGP_SECRET:-}" ]; then
+            echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
+          fi
+
+          if sbt 'show dynver' >/dev/null 2>&1; then
+            sbt ci-release
+          else
+            sbt "set ThisBuild/version := \"${VERSION}\"" ci-release
+          fi
+
+      - name: Generate release notes
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: ${{ steps.prep.outputs.cliff_args }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          body: ${{ steps.changelog.outputs.content }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  benchmarks-current:
+    name: JMH Benchmarks / current
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      JMH_WARMUP_ITERATIONS: "3"
+      JMH_MEASUREMENT_ITERATIONS: "5"
+      JMH_FORKS: "1"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/sbt-setup
+      - name: Run JMH benchmarks
+        run: |
+          mkdir -p .ci-artifacts/jmh/current
+          sbt "Test / compile" "Jmh / run -wi ${JMH_WARMUP_ITERATIONS} -i ${JMH_MEASUREMENT_ITERATIONS} -f ${JMH_FORKS} -rf json -rff .ci-artifacts/jmh/current/results.json .*"
+
+      - name: Build benchmark report
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          report_dir=".ci-artifacts/jmh/current"
+          results_file="$report_dir/results.json"
+          report_file="$report_dir/report.md"
+
+          {
+            echo "# JMH benchmark report"
+            echo
+            echo "| Benchmark | Mode | Score | Error | Unit |"
+            echo "| --- | --- | ---: | ---: | --- |"
+            jq -r '
+              sort_by(.benchmark)[] |
+              "| `\(.benchmark | split(".") | last)` | \(.mode) | \(.primaryMetric.score | tostring) | \(.primaryMetric.scoreError // 0 | tostring) | \(.primaryMetric.scoreUnit) |"
+            ' "$results_file"
+          } > "$report_file"
+
+          cat "$report_file" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload current benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jmh-benchmark-current
+          path: .ci-artifacts/jmh/current
+          if-no-files-found: error
+
+  benchmarks-base:
+    name: JMH Benchmarks / base branch
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      JMH_WARMUP_ITERATIONS: "3"
+      JMH_MEASUREMENT_ITERATIONS: "5"
+      JMH_FORKS: "1"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/sbt-setup
+      - name: Run base branch JMH benchmarks
+        working-directory: base-branch
+        run: |
+          mkdir -p ../.ci-artifacts/jmh/base
+          sbt "Test / compile" "Jmh / run -wi ${JMH_WARMUP_ITERATIONS} -i ${JMH_MEASUREMENT_ITERATIONS} -f ${JMH_FORKS} -rf json -rff base-jmh-results.json .*"
+          cp base-jmh-results.json ../.ci-artifacts/jmh/base/results.json
+
+      - name: Upload base benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jmh-benchmark-base
+          path: .ci-artifacts/jmh/base
+          if-no-files-found: error
+
+  benchmarks-report:
+    name: JMH Benchmarks / report
+    needs: [benchmarks-current, benchmarks-base]
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download current benchmark artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: jmh-benchmark-current
+          path: .ci-artifacts/jmh/current
+
+      - name: Publish current benchmark report
+        run: cat .ci-artifacts/jmh/current/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build benchmark comparison report
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_results=".ci-artifacts/jmh/current/results.json"
+          base_results=".ci-artifacts/jmh/base/results.json"
+          compare_file=".ci-artifacts/jmh/current/compare.md"
+
+          jq -n \
+            --slurpfile base "$base_results" \
+            --slurpfile current "$current_results" '
+            def normalize:
+              map({
+                key: (.benchmark + "|" + .mode),
+                value: {
+                  benchmark: .benchmark,
+                  shortName: (.benchmark | split(".") | last),
+                  mode: .mode,
+                  unit: .primaryMetric.scoreUnit,
+                  score: .primaryMetric.score,
+                  error: (.primaryMetric.scoreError // 0)
+                }
+              }) | from_entries;
+            ($base[0] | normalize) as $b
+            | ($current[0] | normalize) as $c
+            | ($b + $c | to_entries | map(.key) | unique | sort) as $keys
+            | $keys
+            | map({ key: ., base: $b[.], current: $c[.] })
+            | map(select(.base != null and .current != null))
+            | map(
+                . + {
+                  delta: (.current.score - .base.score),
+                  pct: (if .base.score == 0 then null else ((.current.score - .base.score) / .base.score * 100) end),
+                  status: (
+                    if (.current.mode | ascii_downcase) == "thrpt" then
+                      if .current.score > .base.score then "improved"
+                      elif .current.score < .base.score then "regressed"
+                      else "unchanged" end
+                    else
+                      if .current.score < .base.score then "improved"
+                      elif .current.score > .base.score then "regressed"
+                      else "unchanged" end
+                    end
+                  )
+                }
+              )
+          ' > .ci-artifacts/jmh/current/compare.json
+
+          {
+            echo "# Benchmark comparison vs base branch"
+            echo
+            echo "| Benchmark | Mode | Base | PR | Delta | Change | Status |"
+            echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
+            jq -r '
+              .[] |
+              "| `\(.current.shortName)` | \(.current.mode) | \(.base.score | tostring) \(.base.unit) | \(.current.score | tostring) \(.current.unit) | \(.delta | tostring) | " +
+              (if .pct == null then "n/a" else ((if .pct > 0 then "+" else "" end) + ((.pct * 100 | round) / 100 | tostring) + "%") end) +
+              " | \(.status) |"
+            ' .ci-artifacts/jmh/current/compare.json
+          } > "$compare_file"
+
+          cat "$compare_file" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert PR benchmark comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = fs.existsSync('.ci-artifacts/jmh/current/compare.md')
+              ? '.ci-artifacts/jmh/current/compare.md'
+              : '.ci-artifacts/jmh/current/report.md';
+            const body = fs.readFileSync(reportPath, 'utf8');
+            const marker = '<!-- jmh-benchmark-report -->';
+            const commentBody = `${marker}\n${body}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(comment =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: commentBody,
+              });
+            }
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jmh-benchmark-report
+          path: .ci-artifacts/jmh
+          if-no-files-found: error

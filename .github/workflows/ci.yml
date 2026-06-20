@@ -4,8 +4,7 @@ on:
   pull_request:
     branches: ['**']
   push:
-    branches: ['main']
-    tags: ['v*']
+    branches: ['main', 'release/**']
   workflow_dispatch:
 
 permissions:
@@ -19,48 +18,18 @@ env:
   SBT_OPTS: -Dsbt.color=true -Dsbt.log.noformat=false -Dsbt.supershell=false
   JAVA_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
   JVM_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
-  JMH_WARMUP_ITERATIONS: "3"
-  JMH_MEASUREMENT_ITERATIONS: "5"
-  JMH_FORKS: "1"
   FORCE_COLOR: "1"
   TERM: xterm-256color
 
 jobs:
   format:
-    name: Formatting
+    name: Check Formatting
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java (Temurin 21) with sbt cache
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
-
-      - name: Check Formatting
-        run: sbt scalafmtCheckAll scalafmtSbtCheck
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/sbt-setup
+      - run: sbt scalafmtCheckAll scalafmtSbtCheck
 
   test:
     name: Test (Java ${{ matrix.java-version }})
@@ -71,39 +40,43 @@ jobs:
       matrix:
         java-version: ['17', '21']
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/sbt-setup
         with:
-          fetch-depth: 0
-
-      - name: Setup Java (Temurin ${{ matrix.java-version }}) with sbt cache
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
           java-version: ${{ matrix.java-version }}
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
-
       - name: Test
         run: sbt Test/test
 
+  publish-local:
+    name: Publish Local
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/sbt-setup
+      - name: Publish local Picatinny artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          sbt 'set ThisBuild / version := "0.0.0-ci-local"' \
+              'set ThisBuild / publishM2Configuration := publishM2Configuration.value.withOverwrite(true)' \
+              publishLocal publishM2
+
+          OUT="${GITHUB_WORKSPACE}/ci-artifacts"
+          mkdir -p "${OUT}/ivy" "${OUT}/m2"
+          cp -r "$HOME/.ivy2/local/org.galaxio" "${OUT}/ivy/"
+          cp -r "$HOME/.m2/repository/org/galaxio" "${OUT}/m2/"
+          echo "Staged $(find "${OUT}" -type f | wc -l) files to ${OUT}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: picatinny-local
+          path: ${{ github.workspace }}/ci-artifacts/
+          retention-days: 1
+          if-no-files-found: error
+
   template-tests:
     name: Template / ${{ matrix.template }} (Java ${{ matrix.java-version }})
+    needs: [publish-local]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -112,20 +85,11 @@ jobs:
         java-version: ['21']
         template: [java-maven, kotlin-gradle, scala-sbt]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v6
 
-      - name: Setup Java (Temurin ${{ matrix.java-version }}) with sbt cache
-        uses: actions/setup-java@v5
+      - uses: ./.github/actions/sbt-setup
         with:
-          distribution: temurin
           java-version: ${{ matrix.java-version }}
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
 
       - name: Setup Gradle
         if: matrix.template == 'kotlin-gradle'
@@ -139,21 +103,8 @@ jobs:
           go-version: stable
           cache: false
 
-      - name: Install galaxio CLI from main
-        run: go install github.com/galax-io/galaxio-cli/cmd/galaxio@main
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
+      - name: Install galaxio CLI
+        run: go install github.com/galax-io/galaxio-cli/cmd/galaxio@latest
 
       - name: Cache Maven repository
         if: matrix.template == 'java-maven'
@@ -163,8 +114,20 @@ jobs:
           key: m2-${{ runner.os }}-${{ hashFiles('examples/java-maven-example/pom.xml') }}
           restore-keys: m2-${{ runner.os }}-
 
-      - name: Publish local Picatinny artifact
-        run: sbt 'set ThisBuild / version := "0.0.0-ci-local"' 'set ThisBuild / publishM2Configuration := publishM2Configuration.value.withOverwrite(true)' publishLocal publishM2
+      - uses: actions/download-artifact@v8
+        with:
+          name: picatinny-local
+          path: ${{ github.workspace }}/ci-artifacts/
+
+      - name: Restore local artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="${GITHUB_WORKSPACE}/ci-artifacts"
+          mkdir -p "$HOME/.ivy2/local" "$HOME/.cache/coursier/v1/local" "$HOME/.m2/repository/org"
+          cp -r "${OUT}/ivy/org.galaxio" "$HOME/.ivy2/local/"
+          cp -r "${OUT}/ivy/org.galaxio" "$HOME/.cache/coursier/v1/local/"
+          cp -r "${OUT}/m2/galaxio" "$HOME/.m2/repository/org/"
 
       - name: Java Maven Gatling project from template main
         if: matrix.template == 'java-maven'
@@ -242,42 +205,19 @@ jobs:
         if: matrix.template == 'scala-sbt'
         run: scripts/test-scala-sbt-template.sh
 
+      - name: Remove local artifact from M2 before cache save
+        if: always() && matrix.template == 'java-maven'
+        run: rm -rf ~/.m2/repository/org/galaxio
+
   coverage:
     name: Coverage
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java (Temurin 21) with sbt cache
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
-
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/sbt-setup
       - name: Coverage
         run: sbt clean coverage test "IntegrationTest/test" coverageOff coverageReport coverageAggregate
-
       - name: Upload coverage reports to Codecov
         if: always()
         uses: codecov/codecov-action@v7
@@ -287,502 +227,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java (Temurin 21) with sbt cache
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
-
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/sbt-setup
       - name: Run Redis integration tests
         run: sbt "IntegrationTest / test"
-
-  benchmarks-current:
-    name: JMH Benchmarks / current
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java (Temurin 21) with sbt cache
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
-
-      - name: Run JMH benchmarks
-        run: |
-          mkdir -p .ci-artifacts/jmh/current
-          sbt "Test / compile" "Jmh / run -wi ${JMH_WARMUP_ITERATIONS} -i ${JMH_MEASUREMENT_ITERATIONS} -f ${JMH_FORKS} -rf json -rff .ci-artifacts/jmh/current/results.json .*"
-
-      - name: Build benchmark report
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          report_dir=".ci-artifacts/jmh/current"
-          results_file="$report_dir/results.json"
-          report_file="$report_dir/report.md"
-
-          {
-            echo "# JMH benchmark report"
-            echo
-            echo "| Benchmark | Mode | Score | Error | Unit |"
-            echo "| --- | --- | ---: | ---: | --- |"
-            jq -r '
-              sort_by(.benchmark)[] |
-              "| `\(.benchmark | split(".") | last)` | \(.mode) | \(.primaryMetric.score | tostring) | \(.primaryMetric.scoreError // 0 | tostring) | \(.primaryMetric.scoreUnit) |"
-            ' "$results_file"
-          } > "$report_file"
-
-          cat "$report_file" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload current benchmark artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: jmh-benchmark-current
-          path: |
-            .ci-artifacts/jmh/current
-          if-no-files-found: error
-
-  benchmarks-base:
-    name: JMH Benchmarks / base branch
-    if: ${{ false }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - name: Checkout current branch
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Checkout base branch for comparison
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: base-branch
-
-      - name: Setup Java (Temurin 21) with sbt cache
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
-
-      - name: Copy benchmark sources to base branch
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          find src/main/scala -name '*Benchmark.scala' -print0 | while IFS= read -r -d '' benchmark; do
-            target="base-branch/$benchmark"
-            mkdir -p "$(dirname "$target")"
-            cp "$benchmark" "$target"
-          done
-
-      - name: Run base branch JMH benchmarks
-        working-directory: base-branch
-        run: |
-          mkdir -p ../.ci-artifacts/jmh/base
-          sbt "Test / compile" "Jmh / run -wi ${JMH_WARMUP_ITERATIONS} -i ${JMH_MEASUREMENT_ITERATIONS} -f ${JMH_FORKS} -rf json -rff base-jmh-results.json .*"
-          cp base-jmh-results.json ../.ci-artifacts/jmh/base/results.json
-
-      - name: Upload base benchmark artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: jmh-benchmark-base
-          path: |
-            .ci-artifacts/jmh/base
-          if-no-files-found: error
-
-  benchmarks-report:
-    name: JMH Benchmarks / report
-    needs: [benchmarks-current, benchmarks-base]
-    if: always() && needs.benchmarks-current.result == 'success' && (needs.benchmarks-base.result == 'success' || needs.benchmarks-base.result == 'skipped')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Download current benchmark artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: jmh-benchmark-current
-          path: .ci-artifacts/jmh/current
-
-      - name: Download base benchmark artifacts
-        if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@v8
-        with:
-          name: jmh-benchmark-base
-          path: .ci-artifacts/jmh/base
-
-      - name: Publish current benchmark report
-        run: cat .ci-artifacts/jmh/current/report.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Build benchmark comparison report
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          current_results=".ci-artifacts/jmh/current/results.json"
-          base_results=".ci-artifacts/jmh/base/results.json"
-          compare_file=".ci-artifacts/jmh/current/compare.md"
-
-          jq -n \
-            --slurpfile base "$base_results" \
-            --slurpfile current "$current_results" '
-            def normalize:
-              map({
-                key: (.benchmark + "|" + .mode),
-                value: {
-                  benchmark: .benchmark,
-                  shortName: (.benchmark | split(".") | last),
-                  mode: .mode,
-                  unit: .primaryMetric.scoreUnit,
-                  score: .primaryMetric.score,
-                  error: (.primaryMetric.scoreError // 0)
-                }
-              }) | from_entries;
-            ($base[0] | normalize) as $b
-            | ($current[0] | normalize) as $c
-            | ($b + $c | to_entries | map(.key) | unique | sort) as $keys
-            | $keys
-            | map({ key: ., base: $b[.], current: $c[.] })
-            | map(select(.base != null and .current != null))
-            | map(
-                . + {
-                  delta: (.current.score - .base.score),
-                  pct: (if .base.score == 0 then null else ((.current.score - .base.score) / .base.score * 100) end),
-                  status: (
-                    if (.current.mode | ascii_downcase) == "thrpt" then
-                      if .current.score > .base.score then "improved"
-                      elif .current.score < .base.score then "regressed"
-                      else "unchanged" end
-                    else
-                      if .current.score < .base.score then "improved"
-                      elif .current.score > .base.score then "regressed"
-                      else "unchanged" end
-                    end
-                  )
-                }
-              )
-          ' > .ci-artifacts/jmh/current/compare.json
-
-          {
-            echo "# Benchmark comparison vs base branch"
-            echo
-            echo "| Benchmark | Mode | Base | PR | Delta | Change | Status |"
-            echo "| --- | --- | ---: | ---: | ---: | ---: | --- |"
-            jq -r '
-              .[] |
-              "| `\(.current.shortName)` | \(.current.mode) | \(.base.score | tostring) \(.base.unit) | \(.current.score | tostring) \(.current.unit) | \(.delta | tostring) | " +
-              (if .pct == null then "n/a" else ((if .pct > 0 then "+" else "" end) + ((.pct * 100 | round) / 100 | tostring) + "%") end) +
-              " | \(.status) |"
-            ' .ci-artifacts/jmh/current/compare.json
-          } > "$compare_file"
-
-          cat "$compare_file" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upsert PR benchmark comment
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            const reportPath = fs.existsSync('.ci-artifacts/jmh/current/compare.md')
-              ? '.ci-artifacts/jmh/current/compare.md'
-              : '.ci-artifacts/jmh/current/report.md';
-            const body = fs.readFileSync(reportPath, 'utf8');
-            const marker = '<!-- jmh-benchmark-report -->';
-            const commentBody = `${marker}\n${body}`;
-            const { owner, repo } = context.repo;
-            const issue_number = context.payload.pull_request.number;
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner,
-              repo,
-              issue_number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(comment =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker)
-            );
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existing.id,
-                body: commentBody,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number,
-                body: commentBody,
-              });
-            }
-
-      - name: Upload benchmark artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: jmh-benchmark-report
-          path: |
-            .ci-artifacts/jmh
-          if-no-files-found: error
-
-  release:
-    name: Release
-    needs: [format, test, template-tests, coverage, redis-integration]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    permissions:
-      contents: write
-      security-events: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java (Temurin 21) with sbt cache
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: sbt
-
-      - name: Setup sbt
-        uses: sbt/setup-sbt@v1
-
-      - name: Cache Coursier
-        uses: coursier/cache-action@v8
-
-      - name: Cache Ivy/SBT
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-            ~/.cache/coursier
-          key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-          restore-keys: sbt-${{ runner.os }}-
-
-      - name: Compute next version & create tag on main
-        id: bump
-        if: github.ref == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          git fetch --tags --force --prune
-
-          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" --first-parent 2>/dev/null || echo "")
-          echo "last_tag=${LAST_TAG}" >> "$GITHUB_OUTPUT"
-          RANGE="${LAST_TAG:+${LAST_TAG}..HEAD}"
-
-          BUMP="patch"
-          COMMITS=$(git log --pretty=format:%s ${RANGE})
-          if echo "$COMMITS" | grep -Eiq 'BREAKING CHANGE|!:'; then
-            BUMP="major"
-          elif echo "$COMMITS" | grep -Eiq '^feat(\(.+\))?:'; then
-            BUMP="minor"
-          fi
-
-          if [ -z "$LAST_TAG" ]; then
-            MAJOR=0; MINOR=0; PATCH=0
-          else
-            IFS='.' read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
-          fi
-
-          case "$BUMP" in
-            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
-            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
-            patch) PATCH=$((PATCH+1)) ;;
-          esac
-
-          NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-
-          if git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; then
-            TAG_COMMIT=$(git rev-list -n 1 "${NEXT_TAG}")
-            HEAD_COMMIT=$(git rev-parse HEAD)
-            if [ "${TAG_COMMIT}" = "${HEAD_COMMIT}" ]; then
-              SKIP_TAG_CREATE=1
-            else
-              while git rev-parse -q --verify "refs/tags/${NEXT_TAG}" >/dev/null; do
-                IFS='.' read -r MAJOR MINOR PATCH <<< "${NEXT_TAG#v}"
-                PATCH=$((PATCH+1))
-                NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-              done
-            fi
-          fi
-
-          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
-          echo "tag=$NEXT_TAG" >> "$GITHUB_OUTPUT"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
-
-          if [ "${SKIP_TAG_CREATE:-0}" != "1" ]; then
-            git tag -a "$NEXT_TAG" -m "Release $NEXT_TAG"
-            git push origin "$NEXT_TAG"
-          fi
-
-      - name: Run Trivy vulnerability gate
-        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          hide-progress: true
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: '1'
-
-      - name: Upload Trivy scan results
-        if: always() && (startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag))
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-results.sarif
-
-      - name: Generate and submit release SBOM
-        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: github
-          output: dependency-results.sbom.json
-          github-pat: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload release SBOM artifact
-        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-sbom
-          path: dependency-results.sbom.json
-
-      - name: Publish to Sonatype via sbt-ci-release
-        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
-        env:
-          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-          PGP_SECRET: ${{ secrets.PGP_SECRET }}
-          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            TAG="${GITHUB_REF##*/}"
-          else
-            TAG="${{ steps.bump.outputs.tag }}"
-            export GITHUB_REF="refs/tags/${TAG}"
-            export GITHUB_REF_NAME="${TAG}"
-          fi
-
-          VERSION="${TAG#v}"
-          echo "Publishing version $VERSION (tag $TAG)"
-
-          if [ -n "${PGP_SECRET:-}" ]; then
-            echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
-          fi
-
-          if sbt 'show dynver' >/dev/null 2>&1; then
-            sbt ci-release
-          else
-            sbt "set ThisBuild/version := \"${VERSION}\"" ci-release
-          fi
-
-      - name: Generate Changelog
-        id: changelog
-        uses: mikepenz/release-changelog-builder-action@v6
-        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
-        with:
-          mode: "COMMIT"
-          fromTag: ${{ github.ref == 'refs/heads/main' && steps.bump.outputs.last_tag || '' }}
-          toTag:   ${{ github.ref == 'refs/heads/main' && steps.bump.outputs.tag || '' }}
-          configuration: .github/changelog/release-changelog-builder.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && steps.bump.outputs.tag)
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.ref == 'refs/heads/main' && steps.bump.outputs.tag || '' }}
-          body: ${{ steps.changelog.outputs.changelog }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
