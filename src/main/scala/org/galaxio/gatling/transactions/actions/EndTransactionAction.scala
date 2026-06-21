@@ -1,35 +1,34 @@
 package org.galaxio.gatling.transactions.actions
 
-import io.gatling.core.action.{Action, ChainableAction}
-import io.gatling.core.actor.ActorRef
-import io.gatling.core.controller.throttle.Throttler
+import io.gatling.commons.validation._
+import io.gatling.core.action.Action
 import io.gatling.core.session.{Expression, Session}
-import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
-import io.gatling.core.util.NameGen
-import org.galaxio.gatling.transactions.TransactionsProtocol
+import org.galaxio.gatling.transactions.Constants
 
 class EndTransactionAction(
     transactionName: Expression[String],
     stopTime: Expression[Long],
-    ctx: ScenarioContext,
+    protected val ctx: ScenarioContext,
     val next: Action,
-) extends ChainableAction with NameGen {
+) extends TransactionAction {
 
-  override def name: String                                  = genName("endTransactionAction")
-  private val components                                     = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
-  private val throttler: Option[ActorRef[Throttler.Command]] = ctx.coreComponents.throttler
+  override def name: String                 = genName("endTransactionAction")
+  override protected def crashLabel: String = Constants.EndLabel
 
-  override protected def execute(session: Session): Unit =
-    for {
-      resolvedName  <- transactionName(session)
-      stopTimestamp <- stopTime(session)
-    } yield throttler.fold(components.transactionTracker.endTransaction(resolvedName, stopTimestamp, session, next))(
-      _ ! Throttler.Command.ThrottledRequest(
-        session.scenario,
-        () => components.transactionTracker.endTransaction(resolvedName, stopTimestamp, session, next),
-      ),
-    )
+  override protected def execute(session: Session): Unit = {
+    val resolved =
+      for {
+        resolvedName  <- transactionName(session)
+        stopTimestamp <- stopTime(session)
+      } yield (resolvedName, stopTimestamp)
 
-  override def statsEngine: StatsEngine = ctx.coreComponents.statsEngine
+    resolved match {
+      case Failure(message)                       => crashAndAdvance(session, message)
+      case Success((resolvedName, stopTimestamp)) =>
+        throttled(session.scenario) {
+          components.transactionTracker.endTransaction(resolvedName, stopTimestamp, session, next)
+        }
+    }
+  }
 }

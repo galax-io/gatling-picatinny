@@ -1,34 +1,25 @@
 package org.galaxio.gatling.transactions.actions
 
 import io.gatling.commons.validation._
-import io.gatling.core.action.{Action, ChainableAction}
-import io.gatling.core.actor.ActorRef
-import io.gatling.core.controller.throttle.Throttler
+import io.gatling.core.action.Action
 import io.gatling.core.session.{Expression, Session}
-import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
-import io.gatling.core.util.NameGen
-import org.galaxio.gatling.transactions.TransactionsProtocol
+import org.galaxio.gatling.transactions.Constants
 
-class StartTransactionAction(transactionName: Expression[String], ctx: ScenarioContext, val next: Action)
-    extends ChainableAction with NameGen {
+class StartTransactionAction(transactionName: Expression[String], protected val ctx: ScenarioContext, val next: Action)
+    extends TransactionAction {
 
-  override def name: String                                  = genName("startTransactionAction")
-  private val components                                     = ctx.protocolComponentsRegistry.components(TransactionsProtocol.key)
-  private val throttler: Option[ActorRef[Throttler.Command]] = ctx.coreComponents.throttler
-
-  private def startAndNext(tName: String, startTimestamp: Long, session: Session): Unit = {
-    components.transactionTracker.startTransaction(tName, startTimestamp)
-    next ! session
-  }
+  override def name: String                 = genName("startTransactionAction")
+  override protected def crashLabel: String = Constants.StartLabel
 
   override protected def execute(session: Session): Unit =
-    for {
-      resolvedName   <- transactionName(session)
-      startTimestamp <- ctx.coreComponents.clock.nowMillis.success
-    } yield throttler.fold(startAndNext(resolvedName, startTimestamp, session))(
-      _ ! Throttler.Command.ThrottledRequest(session.scenario, () => startAndNext(resolvedName, startTimestamp, session)),
-    )
-
-  override def statsEngine: StatsEngine = ctx.coreComponents.statsEngine
+    transactionName(session) match {
+      case Failure(message)      => crashAndAdvance(session, message)
+      case Success(resolvedName) =>
+        val startTimestamp = ctx.coreComponents.clock.nowMillis
+        throttled(session.scenario) {
+          components.transactionTracker.startTransaction(resolvedName, startTimestamp)
+          next ! session
+        }
+    }
 }
