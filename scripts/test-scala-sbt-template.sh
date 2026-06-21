@@ -53,6 +53,10 @@ galaxio template init gatling/scala-sbt \
 cat >> "$PROJECT_DIR/build.sbt" <<'SBT'
 
 resolvers += Resolver.mavenLocal
+
+// Full Gatling e2e (test-model layer 4): WireMock backs HttpIntegrationCoverage — picatinny features driven over real HTTP,
+// responses validated with Gatling `check`. Test scope only; this is the example overlay (a real consumer), never the library.
+libraryDependencies += "org.wiremock" % "wiremock" % "3.13.2" % Test
 SBT
 
 rm -rf "$PROJECT_DIR/src/test/scala/org/galaxio/performance/picatinny"

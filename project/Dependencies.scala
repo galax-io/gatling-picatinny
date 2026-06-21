@@ -74,7 +74,14 @@ object Dependencies {
     "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.1" % "test,it",
   )
 
-  lazy val scalaTesting: Seq[ModuleID] = scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus ++ testcontainers
+  // Real PostgreSQL JDBC driver — integration-test only (drives JdbcStorageBackend against a real
+  // Postgres Testcontainers DB). Authorized 2026-06-21; MUST stay `it` scope, never published.
+  lazy val jdbcDrivers: Seq[ModuleID] = Seq(
+    "org.postgresql" % "postgresql" % "42.7.4" % "it",
+  )
+
+  lazy val scalaTesting: Seq[ModuleID] =
+    scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus ++ testcontainers ++ jdbcDrivers
 
   lazy val junit: Seq[ModuleID] = Seq(
     "org.junit.jupiter"    % "junit-jupiter"     % "6.1.0"  % "test,it",

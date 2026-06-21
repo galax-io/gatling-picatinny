@@ -22,7 +22,10 @@ lazy val root = (project in file("."))
     libraryDependencies ++= jwt,
     libraryDependencies ++= circeDeps,
     libraryDependencies ++= junit,
-    coverageMinimumStmtTotal            := 45,
+    // Coverage floor — data-driven (measured unit+it: 69.69% stmt / 63.37% branch on 2026-06-21).
+    // Set just under the measured level to lock in the gain and INTRODUCE a branch floor (none existed).
+    coverageMinimumStmtTotal            := 65,
+    coverageMinimumBranchTotal          := 60,
     coverageFailOnMinimum               := true,
     IntegrationTest / parallelExecution := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
