@@ -225,6 +225,45 @@ jobs:
         if: always() && matrix.template == 'java-maven'
         run: rm -rf ~/.m2/repository/org/galaxio
 
+  e2e:
+    name: E2E Simulations (Gatling)
+    needs: [publish-local]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/sbt-setup
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: picatinny-local
+          path: ${{ github.workspace }}/ci-artifacts/
+
+      - name: Restore local artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="${GITHUB_WORKSPACE}/ci-artifacts"
+          mkdir -p "$HOME/.ivy2/local" "$HOME/.cache/coursier/v1/local" "$HOME/.m2/repository/org"
+          cp -r "${OUT}/ivy/org.galaxio" "$HOME/.ivy2/local/"
+          cp -r "${OUT}/ivy/org.galaxio" "$HOME/.cache/coursier/v1/local/"
+          cp -r "${OUT}/m2/galaxio" "$HOME/.m2/repository/org/"
+
+      - name: Run E2E Gatling simulations
+        working-directory: examples/scala-sbt-example
+        env:
+          PICATINNY_VERSION: 0.0.0-ci-local
+        run: sbt Gatling/test
+
+      - name: Upload Gatling reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gatling-reports
+          path: examples/scala-sbt-example/target/gatling/
+          if-no-files-found: warn
+          retention-days: 7
+
   coverage:
     name: Coverage
     runs-on: ubuntu-24.04
