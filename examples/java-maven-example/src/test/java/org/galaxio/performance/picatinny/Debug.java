@@ -50,7 +50,7 @@ public final class Debug extends SimulationWithTransactions {
                 .exec(HttpIntegrationCases.echo())
                 .injectOpen(atOnceUsers(1))
                 .protocols(http.baseUrl("http://localhost:" + mock.port()))
-        ).assertions(global().failedRequests().count().is(0L));
+        ).assertions(PerformanceSupport.noFailedRequests());
     }
 
     @Override

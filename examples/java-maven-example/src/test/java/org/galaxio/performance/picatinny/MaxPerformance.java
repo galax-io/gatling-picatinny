@@ -25,6 +25,6 @@ public final class MaxPerformance extends SimulationWithTransactions {
             PicatinnyScenario.apply("Picatinny Max Performance", "java-max-performance")
                 .injectOpen(injectionProfile)
         ).maxDuration(PerformanceSupport.toScala(SimulationConfig.testDuration()))
-            .assertions(global().failedRequests().count().is(0L));
+            .assertions(PerformanceSupport.noFailedRequests());
     }
 }

@@ -4,7 +4,7 @@ import io.gatling.javaapi.core.ChainBuilder;
 import io.gatling.javaapi.http.HttpRequestActionBuilder;
 import org.galaxio.performance.picatinny.feeders.FeederValidationFeeders;
 
-import static io.gatling.javaapi.core.CoreDsl.exec;
+import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
 public final class FeederValidationCases {

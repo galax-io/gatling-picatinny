@@ -21,6 +21,6 @@ class Stability : SimulationWithTransactions() {
             PicatinnyScenario.apply("Picatinny Stability", "kotlin-stability")
                 .injectOpen(*injectionProfile),
         ).maxDuration(PerformanceSupport.toScala(SimulationConfig.testDuration()))
-            .assertions(global().failedRequests().count().shouldBe(0L))
+            .assertions(PerformanceSupport.noFailedRequests())
     }
 }

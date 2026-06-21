@@ -47,7 +47,7 @@ class Debug : SimulationWithTransactions() {
                 .exec(HttpIntegrationCases.echo())
                 .injectOpen(atOnceUsers(1))
                 .protocols(http.baseUrl("http://localhost:${mock.port()}"))
-        ).assertions(global().failedRequests().count().shouldBe(0L))
+        ).assertions(PerformanceSupport.noFailedRequests())
     }
 
     override fun after() {

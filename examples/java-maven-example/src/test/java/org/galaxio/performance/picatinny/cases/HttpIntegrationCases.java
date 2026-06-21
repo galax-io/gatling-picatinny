@@ -2,7 +2,7 @@ package org.galaxio.performance.picatinny.cases;
 
 import io.gatling.javaapi.core.ChainBuilder;
 
-import static io.gatling.javaapi.core.CoreDsl.exec;
+import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
 public final class HttpIntegrationCases {

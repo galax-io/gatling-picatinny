@@ -22,6 +22,6 @@ public final class Stability extends SimulationWithTransactions {
             PicatinnyScenario.apply("Picatinny Stability", "java-stability")
                 .injectOpen(injectionProfile)
         ).maxDuration(PerformanceSupport.toScala(SimulationConfig.testDuration()))
-            .assertions(global().failedRequests().count().is(0L));
+            .assertions(PerformanceSupport.noFailedRequests());
     }
 }

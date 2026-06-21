@@ -24,6 +24,6 @@ class MaxPerformance : SimulationWithTransactions() {
             PicatinnyScenario.apply("Picatinny Max Performance", "kotlin-max-performance")
                 .injectOpen(*injectionProfile),
         ).maxDuration(PerformanceSupport.toScala(SimulationConfig.testDuration()))
-            .assertions(global().failedRequests().count().shouldBe(0L))
+            .assertions(PerformanceSupport.noFailedRequests())
     }
 }
