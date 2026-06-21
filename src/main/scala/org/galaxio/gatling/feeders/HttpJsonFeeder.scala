@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import io.gatling.core.feeder.Record
-import org.galaxio.gatling.utils.THttpClient
+import org.galaxio.gatling.utils.{HttpGetter, THttpClient}
 import org.json4s.native.JsonMethods
 import org.json4s.{DefaultFormats, Formats, JValue}
 
@@ -28,11 +28,22 @@ object HttpJsonFeeder {
       url: String,
       keys: List[String],
       headers: Seq[String] = Seq.empty,
+  ): IndexedSeq[Record[String]] =
+    fetch(sharedClient, url, keys, headers)
+
+  /** Fetch + parse against an injected HTTP seam. Production calls go through [[sharedClient]]; tests pass a mocked
+    * [[HttpGetter]] so the JSON extraction logic is exercised without a real server.
+    */
+  private[feeders] def fetch(
+      client: HttpGetter,
+      url: String,
+      keys: List[String],
+      headers: Seq[String],
   ): IndexedSeq[Record[String]] = {
     require(url.nonEmpty, "URL must be non-empty")
     require(keys != null, "Keys list must not be null")
 
-    val response = sharedClient.get(url, headers).body
+    val response = client.get(url, headers).body
     val json     = JsonMethods.parse(response)
     val data     = extractFields(json)
     val keySet   = keys.toSet
