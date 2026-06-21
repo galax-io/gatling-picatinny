@@ -45,7 +45,7 @@ object TransactionTracker extends StrictLogging {
   * would re-introduce the #201 hang. A dropped `TransactionStarted` needs no advance — the later close hits the existing
   * "wasn't started" path, which already advances the VU.
   */
-class TransactionTracker(
+private[transactions] class TransactionTracker(
     transactionActor: ActorRef[TransactionsActor.TransactionMessage],
     inFlight: AtomicLong,
     droppedEvents: AtomicLong,
