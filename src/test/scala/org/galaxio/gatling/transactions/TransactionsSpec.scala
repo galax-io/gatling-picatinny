@@ -29,7 +29,7 @@ object TransactionsSpec {
       .endTransaction("t1", now + 500)
 
   val startBuilder: StartTransactionActionBuilder = StartTransactionActionBuilder("t1")
-  val endBuilder: EndTransactionActionBuilder     = EndTransactionActionBuilder("t1", now + 500)
+  val endBuilder: EndTransactionActionBuilder     = EndTransactionActionBuilder("t1", Some(now + 500))
 
   val transactionScenarioWithDefaultEndTime: ScenarioBuilder =
     scenario("Test transaction scenario").startTransaction("t1").exec(s => s).endTransaction("t1")
