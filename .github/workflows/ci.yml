@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: read
+  checks: write        # EnricoMi test-result publishing (FR-022)
+  pull-requests: write # surface per-gate test results on the PR
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -46,6 +48,20 @@ jobs:
           java-version: ${{ matrix.java-version }}
       - name: Test
         run: sbt Test/test
+      - name: Publish unit test results (Java ${{ matrix.java-version }})
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@283dea176069279a9076e77b548668a8e4f0c31b # v2.9.0
+        with:
+          check_name: "Unit test results (Java ${{ matrix.java-version }})"
+          junit_files: "**/target/test-reports/*.xml"
+      - name: Upload unit test report XML (Java ${{ matrix.java-version }})
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-unit-java${{ matrix.java-version }}
+          path: "**/target/test-reports/*.xml"
+          if-no-files-found: warn
+          retention-days: 7
 
   publish-local:
     name: Publish Local
@@ -218,6 +234,20 @@ jobs:
       - uses: ./.github/actions/sbt-setup
       - name: Coverage
         run: sbt clean coverage test "IntegrationTest/test" coverageOff coverageReport coverageAggregate
+      - name: Publish test results (unit + integration)
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@283dea176069279a9076e77b548668a8e4f0c31b # v2.9.0
+        with:
+          check_name: "Test results (unit + integration)"
+          junit_files: "**/target/test-reports/*.xml"
+      - name: Upload test report XML (coverage gate)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-coverage
+          path: "**/target/test-reports/*.xml"
+          if-no-files-found: warn
+          retention-days: 7
       - name: Upload coverage reports to Codecov
         if: always()
         uses: codecov/codecov-action@v7
@@ -231,3 +261,17 @@ jobs:
       - uses: ./.github/actions/sbt-setup
       - name: Run Redis integration tests
         run: sbt "IntegrationTest / test"
+      - name: Publish integration test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@283dea176069279a9076e77b548668a8e4f0c31b # v2.9.0
+        with:
+          check_name: "Integration test results"
+          junit_files: "**/target/test-reports/*.xml"
+      - name: Upload integration test report XML
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-integration
+          path: "**/target/test-reports/*.xml"
+          if-no-files-found: warn
+          retention-days: 7
