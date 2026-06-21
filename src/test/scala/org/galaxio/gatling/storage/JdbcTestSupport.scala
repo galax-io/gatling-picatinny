@@ -65,7 +65,10 @@ private[storage] object JdbcTestSupport {
         override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = method.getName match {
           case "execute"      =>
             val sql = args.headOption.map(_.asInstanceOf[String]).getOrElse("")
-            if (sql.startsWith("CREATE TABLE")) state.ddlCount.incrementAndGet()
+            if (sql.startsWith("CREATE TABLE")) {
+              state.ddlCount.incrementAndGet()
+              state.lastDdl = sql
+            }
             java.lang.Boolean.TRUE
           case "executeQuery" =>
             state.queryCount.incrementAndGet()
@@ -157,6 +160,7 @@ private[storage] object JdbcTestSupport {
 
   final class RecordingState(dataRows: Seq[String]) {
     val rows                        = dataRows
+    @volatile var lastDdl: String   = ""
     val ddlCount                    = new AtomicInteger(0)
     val queryCount                  = new AtomicInteger(0)
     val executeBatchCount           = new AtomicInteger(0)
