@@ -15,6 +15,8 @@ dep = (
 )
 
 pom = open(pom_path).read()
+if "org.wiremock" in pom:
+    sys.exit(0)  # idempotent: already injected, e.g. on a local re-run
 idx = pom.rfind("</dependencies>")
 assert idx >= 0, "No </dependencies> block found in pom.xml"
 open(pom_path, "w").write(pom[:idx] + dep + "\n  " + pom[idx:])
