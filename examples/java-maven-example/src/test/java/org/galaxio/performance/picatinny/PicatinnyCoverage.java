@@ -2,8 +2,8 @@ package org.galaxio.performance.picatinny;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.sun.net.httpserver.HttpServer;
 import io.gatling.javaapi.core.OpenInjectionStep;
+import io.gatling.javaapi.http.HttpProtocolBuilder;
 import org.galaxio.gatling.javaapi.SimulationConfig;
 import org.galaxio.gatling.javaapi.SimulationWithTransactions;
 import org.galaxio.gatling.javaapi.Utility;
@@ -11,32 +11,28 @@ import org.galaxio.performance.picatinny.scenarios.HttpIntegrationScenario;
 import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario;
 import org.galaxio.performance.picatinny.scenarios.TransactionScenario;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
-/** Single-run e2e gate (test-model layer 4): all picatinny Java DSL feature checks run as parallel scenarios in ONE
-  * Gatling simulation instead of five sequential JVM launches.
-  *
-  * Scenarios: debug / transaction / stability / maxPerformance / scenarioCoverage (JDK HTTP) / httpIntegration (WireMock).
-  */
+/** Single-run e2e gate (test-model layer 4): all picatinny Java DSL feature checks as parallel scenarios.
+ *
+ * One WireMock server stubs /health (scenarioCoverage) and /echo/... (httpIntegration).
+ */
 public final class PicatinnyCoverage extends SimulationWithTransactions {
 
-    private final HttpServer healthServer;
-    private final WireMockServer wireMock;
+    private final WireMockServer mock;
 
     {
-        healthServer = startHealthServer();
+        mock = new WireMockServer(WireMockConfiguration.options().dynamicPort().globalTemplating(true));
+        mock.start();
+        mock.stubFor(get(urlEqualTo("/health"))
+            .willReturn(aResponse().withStatus(200).withBody("ok")));
+        mock.stubFor(get(urlPathMatching("/echo/.+"))
+            .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json")
+                .withBody("{\"ts\":\"{{request.pathSegments.[1]}}\",\"auth\":\"{{request.headers.Authorization}}\"}")));
 
-        wireMock = new WireMockServer(WireMockConfiguration.options().dynamicPort().globalTemplating(true));
-        wireMock.start();
-        wireMock.stubFor(get(urlPathMatching("/echo/.*")).willReturn(
-            aResponse().withStatus(200).withHeader("Content-Type", "application/json")
-                .withBody("{\"ts\":\"{{request.pathSegments.[1]}}\",\"auth\":\"{{request.headers.Authorization}}\"}")
-        ));
+        HttpProtocolBuilder httpProtocol = http.baseUrl("http://localhost:" + mock.port());
 
         OpenInjectionStep[] stabilityProfile = {
             rampUsersPerSec(0).to(SimulationConfig.intensity()).during(SimulationConfig.rampDuration()),
@@ -64,33 +60,16 @@ public final class PicatinnyCoverage extends SimulationWithTransactions {
             PicatinnyScenario.apply("Picatinny Scenario Coverage")
                 .exec(http("java-scenario-coverage").get("/health").check(status().is(200)))
                 .injectOpen(atOnceUsers(1))
-                .protocols(http.baseUrl("http://127.0.0.1:" + healthServer.getAddress().getPort())),
+                .protocols(httpProtocol),
             HttpIntegrationScenario.apply()
                 .injectOpen(constantUsersPerSec(2.0).during(2))
-                .protocols(http.baseUrl("http://localhost:" + wireMock.port()))
+                .protocols(httpProtocol)
         ).maxDuration(PerformanceSupport.toScala(SimulationConfig.testDuration()))
             .assertions(global().failedRequests().count().is(0L));
     }
 
     @Override
     public void after() {
-        healthServer.stop(0);
-        wireMock.stop();
-    }
-
-    private static HttpServer startHealthServer() {
-        try {
-            HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-            server.createContext("/health", exchange -> {
-                byte[] body = "ok".getBytes();
-                exchange.sendResponseHeaders(200, body.length);
-                exchange.getResponseBody().write(body);
-                exchange.close();
-            });
-            server.start();
-            return server;
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot start health server", e);
-        }
+        mock.stop();
     }
 }

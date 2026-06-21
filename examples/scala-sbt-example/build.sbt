@@ -7,8 +7,9 @@ ThisBuild / scalaVersion := "2.13.18"
 
 enablePlugins(GatlingPlugin)
 
-// Simulations live in src/test/scala (galaxio-gatling-pro layout)
-Gatling / scalaSource := (Test / scalaSource).value
+// Simulations and resources live in src/test/ (galaxio-gatling-pro layout)
+Gatling / scalaSource    := (Test / scalaSource).value
+Gatling / resourceDirectory := (Test / resourceDirectory).value
 
 libraryDependencies ++= Seq(
   "org.galaxio"           %% "gatling-picatinny"         % picatinnyVersion % Test,
