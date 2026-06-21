@@ -37,6 +37,19 @@ object JHttpFeeder { def apply(url: String): FeederBuilder = { /* duplicate logi
 
 Review runtime-sensitive behavior carefully: transaction boundaries, feeder determinism, JWT generation, Redis side effects, startup diagnostics, masking, profile expansion.
 
+## Test Model
+
+Authoritative: **[TESTING.md](TESTING.md)** (constitution §III). Test-first; assert exact values + ≥1 negative case; ScalaMock (not Mockito) for leaf deps only. Six layers, apply what fits:
+
+1. Unit/functional (`Test`) — pure fns + HTTP (`HttpJsonFeeder`/`THttpClient`) via ScalaMock; no server in the library.
+2. DSL/action component (conditional, `Test`) — `transactions/Mocks` ActorSystem harness; feeder-determinism + tx boundaries.
+3. External integration (`it`) — Testcontainers Redis/Vault/JDBC; JWT/diagnostics non-container.
+4. E2e — real `Simulation` driving picatinny DSL (feeders/JWT/transactions/converters) over real HTTP vs **WireMock** in `examples/`, `sbt Gatling/test`. Assert RESPONSES with Gatling `check` (values round-trip via the mock echo); never `WireMock.verify`/re-decode the request (mock-testing-mock). WireMock overlay-only.
+5. Compile guard (`Test`).
+6. Facade delegation (`Test`, JUnit 5).
+
+Coverage floor 65/60 (stmt/branch). Every `/speckit-plan` fills the code-free "Test Model" table (gate).
+
 ## Boundaries
 
 **Always:** format before commit, branch from `main`, keep commits semantic and green, preserve backward compat for published Scala/Java APIs and example overlays. `build.sbt`/`project/` = dependency truth, `.github/workflows/` = CI/release truth.
