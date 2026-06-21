@@ -1,28 +1,27 @@
 package org.galaxio.performance.picatinny;
 
-import org.galaxio.gatling.javaapi.SimulationConfig;
-import org.galaxio.gatling.javaapi.Utility;
-import org.galaxio.gatling.javaapi.SimulationWithTransactions;
-import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario;
 import io.gatling.javaapi.core.OpenInjectionStep;
+import org.galaxio.gatling.javaapi.SimulationConfig;
+import org.galaxio.gatling.javaapi.SimulationWithTransactions;
+import org.galaxio.gatling.javaapi.Utility;
+import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario;
 
-import static io.gatling.javaapi.core.CoreDsl.constantUsersPerSec;
-import static io.gatling.javaapi.core.CoreDsl.rampUsersPerSec;
+import static io.gatling.javaapi.core.CoreDsl.*;
 
 public final class Stability extends SimulationWithTransactions {
     {
         OpenInjectionStep[] injectionProfile = {
-                rampUsersPerSec(0).to(SimulationConfig.intensity()).during(SimulationConfig.rampDuration()),
-                constantUsersPerSec(SimulationConfig.intensity()).during(SimulationConfig.stageDuration())
+            rampUsersPerSec(0).to(SimulationConfig.intensity()).during(SimulationConfig.rampDuration()),
+            constantUsersPerSec(SimulationConfig.intensity()).during(SimulationConfig.stageDuration()),
         };
 
         Utility.banner(injectionProfile);
         Utility.diagnostics();
 
         setUp(
-                PicatinnyScenario.apply("Picatinny Stability", "java-stability")
-                        .injectOpen(injectionProfile)
+            PicatinnyScenario.apply("Picatinny Stability", "java-stability")
+                .injectOpen(injectionProfile)
         ).maxDuration(PerformanceSupport.toScala(SimulationConfig.testDuration()))
-                .assertions(PerformanceSupport.noFailedRequests());
+            .assertions(PerformanceSupport.noFailedRequests());
     }
 }

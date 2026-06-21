@@ -59,7 +59,7 @@ object AssertionsBuilder {
     *
     * Public, backward-compatible signature (unchanged since v1.16.0): inside a running simulation the implicit
     * `io.gatling.core.Predef.configuration` (brought in by `import io.gatling.core.Predef._`) resolves the configuration, as
-    * before. Unit tests cannot use that implicit (it throws outside a running simulation), so they call the [[assertionsFrom]]
+    * before. Unit tests cannot use that implicit (it throws outside a running simulation), so they call the `assertionsFrom`
     * seam with `GatlingConfiguration.loadForTest()`.
     */
   def assertionFromYaml(path: String): Iterable[Assertion] =

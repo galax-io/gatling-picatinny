@@ -18,7 +18,8 @@ class MaxPerformance extends SimulationWithTransactions {
   Utility.diagnostics()
 
   setUp(
-    PicatinnyScenario("Picatinny Max Performance", "scala-max-performance").inject(injectionProfile),
+    PicatinnyScenario("Picatinny Max Performance", "scala-max-performance")
+      .inject(injectionProfile),
   ).maxDuration(testDuration)
     .assertions(global.failedRequests.count.is(0))
 }

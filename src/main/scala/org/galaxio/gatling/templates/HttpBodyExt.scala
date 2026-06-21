@@ -5,7 +5,7 @@ import io.gatling.core.session.el._
 import io.gatling.http.request.builder.HttpRequestBuilder
 import org.galaxio.gatling.templates.Syntax._
 
-/** Extension methods for [[io.gatling.http.request.builder.HttpRequestBuilder]] that add `jsonBody` and `xmlBody` DSL support.
+/** Extension methods for `io.gatling.http.request.builder.HttpRequestBuilder` that add `jsonBody` and `xmlBody` DSL support.
   *
   * {{{
   * import org.galaxio.gatling.templates.HttpBodyExt._
@@ -26,7 +26,7 @@ import org.galaxio.gatling.templates.Syntax._
   */
 object HttpBodyExt {
 
-  /** Enriches [[HttpRequestBuilder]] with template body methods.
+  /** Enriches `HttpRequestBuilder` with template body methods.
     *
     * @param httpRequestBuilder
     *   the builder to extend

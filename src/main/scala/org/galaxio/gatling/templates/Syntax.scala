@@ -113,13 +113,13 @@ object Syntax {
     /** Creates a field with a nested object from the given child fields. */
     def -(fs: Field*): Field = Field(fieldName, ObjectVal(fs.toList))
 
-    /** Creates a field referencing a Gatling session string variable. Alias for [[~]]. */
+    /** Creates a field referencing a Gatling session string variable. Alias for `~`. */
     def asSessionVar(str: String): Field = Field(fieldName, InterpolateStrVal(str))
 
     /** Creates a field referencing a Gatling session string variable `#{str}`. */
     def ~(str: String): Field = Field(fieldName, InterpolateStrVal(str))
 
-    /** Creates a field referencing a Gatling session non-string variable. Alias for [[~]]. */
+    /** Creates a field referencing a Gatling session non-string variable. Alias for `~`. */
     def asSessionVar[T](t: T): Field = Field(fieldName, InterpolateGenVal(t))
 
     /** Creates a field referencing a Gatling session non-string variable `#{t}`. */
@@ -302,9 +302,9 @@ object Syntax {
     sb.toString
   }
 
-  /** Varargs convenience for [[makeXml(fields:List[org.galaxio.gatling.templates.Syntax.Field])* makeXml]]. */
+  /** Varargs convenience for `makeXml(List[Field])`. */
   def makeXml(fs: Field*): String = makeXml(fs.toList)
 
-  /** Varargs convenience for [[makeJson(fields:List[org.galaxio.gatling.templates.Syntax.Field])* makeJson]]. */
+  /** Varargs convenience for `makeJson(List[Field])`. */
   def makeJson(fs: Field*): String = makeJson(fs.toList)
 }

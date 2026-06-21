@@ -16,7 +16,8 @@ class Stability extends SimulationWithTransactions {
   Utility.diagnostics()
 
   setUp(
-    PicatinnyScenario("Picatinny Stability", "scala-stability").inject(injectionProfile._1, injectionProfile._2),
+    PicatinnyScenario("Picatinny Stability", "scala-stability")
+      .inject(injectionProfile._1, injectionProfile._2),
   ).maxDuration(testDuration)
     .assertions(global.failedRequests.count.is(0))
 }
