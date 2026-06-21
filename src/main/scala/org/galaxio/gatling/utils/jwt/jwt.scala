@@ -57,7 +57,7 @@ package object jwt {
   def jwt(algorithm: String, privateKey: PrivateKey): JwtGeneratorBuilder =
     JwtGeneratorBuilder(Header(), Payload(), algorithm, SigningKey.AsymmetricKey(privateKey))
 
-  /** Implicit enrichment adding JWT operations to Gatling [[Session]]. */
+  /** Implicit enrichment adding JWT operations to Gatling `Session`. */
   implicit class SessionAppender(s: Session) {
 
     /** Generate a JWT token and store it in the session under `tokenName`. */

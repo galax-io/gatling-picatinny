@@ -13,7 +13,7 @@ sealed trait DuplicateKeyStrategy
 
 object DuplicateKeyStrategy {
 
-  /** Throw [[IllegalArgumentException]] listing the colliding keys. */
+  /** Throw [[java.lang.IllegalArgumentException]] listing the colliding keys. */
   case object FailOnDuplicate extends DuplicateKeyStrategy
 
   /** Keep the value from the last path in the list (last-writer-wins). Logs a warning. */

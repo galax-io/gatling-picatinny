@@ -24,4 +24,4 @@ ThisBuild / developers := List(
 
 // Remove all additional repository other than Maven Central from POM
 ThisBuild / pomIncludeRepository := { _ => false }
-ThisBuild / licenses             := List("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
+ThisBuild / licenses             := List("Apache 2" -> java.net.URI.create("http://www.apache.org/licenses/LICENSE-2.0.txt").toURL())

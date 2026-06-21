@@ -11,7 +11,7 @@ import scala.io.Source
 
 /** Builder for configuring JWT token generation.
   *
-  * Construct via the [[jwt]] package object factory methods:
+  * Construct via the `jwt` package object factory methods:
   * {{{
   * // HMAC
   * val gen = jwt("HS256", "my-secret")

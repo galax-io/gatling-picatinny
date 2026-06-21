@@ -24,7 +24,7 @@ import scala.concurrent.duration.FiniteDuration
   *   .claim("role", "admin")
   * }}}
   *
-  * Java/Kotlin — use [[org.galaxio.gatling.javaapi.utils.Jwt.claims]] factory:
+  * Java/Kotlin — use `Jwt.claims()` factory:
   * {{{
   * Jwt.claims()
   *   .issuer("my-service")

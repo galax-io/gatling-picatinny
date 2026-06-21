@@ -116,6 +116,7 @@ class JavaApiExampleSmokeTest {
             assertThat(next(f).get("seq")).isEqualTo(110L);
         }
 
+        @SuppressWarnings("deprecation")
         @Test
         void regexFeederMatchesPattern() {
             var v = next(RegexFeeder("rx", "[A-Z]{2}[0-9]{4}")).get("rx").toString();
