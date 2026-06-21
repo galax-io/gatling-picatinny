@@ -34,10 +34,11 @@ commit_parsers = [
   { body = ".*BREAKING CHANGE", group = "<!-- 00 -->Breaking changes" },
   { message = "^feat", group = "<!-- 01 -->Features" },
   { message = "^fix", group = "<!-- 02 -->Fixes" },
-  { message = "^perf", group = "<!-- 03 -->Performance" },
-  { message = "^docs", group = "<!-- 04 -->Documentation" },
-  { message = "^chore\\(deps\\)", group = "<!-- 05 -->Dependencies" },
-  { message = "^(refactor|test|ci|build|chore|style|revert)", group = "<!-- 06 -->Maintenance" },
+  { message = "^refactor", group = "<!-- 03 -->Refactoring" },
+  { message = "^perf", group = "<!-- 04 -->Performance" },
+  { message = "^docs", group = "<!-- 05 -->Documentation" },
+  { message = "^chore\\(deps\\)", group = "<!-- 06 -->Dependencies" },
+  { message = "^(test|ci|build|chore|style|revert)", group = "<!-- 07 -->Maintenance" },
 ]
 filter_commits = true
 tag_pattern = "v[0-9].*"
