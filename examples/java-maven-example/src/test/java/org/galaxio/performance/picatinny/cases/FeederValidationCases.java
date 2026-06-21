@@ -19,7 +19,7 @@ public final class FeederValidationCases {
             final String field   = e.getKey();
             final String pattern = e.getValue();
             req = req.header("X" + field, "#{" + field + "}")
-                     .check(jsonPath("$." + field).is("#{" + field + "}"))
+                     .check(jsonPath("$." + field).isEL("#{" + field + "}"))
                      .check(jsonPath("$." + field).<Boolean>transform(v -> v.matches(pattern)).is(Boolean.TRUE));
         }
         return exec(req);

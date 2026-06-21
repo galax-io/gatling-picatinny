@@ -12,7 +12,7 @@ object FeederValidationCases {
         var req = http("validate-feeders").get("/echo").check(status().shouldBe(200))
         for ((field, pattern) in FeederValidationFeeders.PATTERNS) {
             req = req.header("X$field", "#{$field}")
-                .check(jsonPath("\$.$field").shouldBe("#{$field}"))
+                .check(jsonPath("\$.$field").isEL("#{$field}"))
                 .check(jsonPath("\$.$field").transform<Boolean> { it.matches(Regex(pattern)) }.shouldBe(true))
         }
         exec(req)
