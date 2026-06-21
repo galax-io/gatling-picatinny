@@ -32,6 +32,21 @@
 - [ ] CHK005 Item with specific criteria
 - [ ] CHK006 Final item in this category
 
+<!--
+  ALWAYS-INCLUDED GATE (do NOT delete — Constitution III / FR-006). The Test Model
+  Gate below is mandatory in every requirements checklist; it blocks /speckit-tasks
+  and /speckit-implement when the plan's "Test Model" section is absent or invalid.
+-->
+
+## Test Model Gate
+
+- [ ] A "Test Model" section exists in the plan
+- [ ] Every functional requirement has a row (real case + layer + sketch)
+- [ ] Each `Layer` value is one of the six defined model layers (see `TESTING.md`)
+- [ ] No test sketch contains implementation/code (no code fences / language syntax)
+- [ ] Each sketch names at least one negative/boundary or exact-value assertion
+- [ ] HTTP-emitting rows specify what is verified — the mock expectation (unit) or `WireMock.verify` (e2e)
+
 ## Notes
 
 - Check items off as completed: `[x]`

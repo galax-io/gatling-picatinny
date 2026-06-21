@@ -36,13 +36,36 @@
 
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
+## Test Model *(mandatory — real cases + test sketches, NO implementation)*
+
+<!--
+  GATE (Constitution III / FR-005/006): one row per functional requirement. This is
+  filled BEFORE implementation — think of the real case and the test before the code.
+  - `Layer` MUST be one of the six model layers in `TESTING.md`: Unit/Functional |
+    DSL/Action Component (conditional) | External Integration (Testcontainers /
+    non-container `it`) | Full Gatling e2e (examples) | Compile Guard | Facade
+    Delegation. Pick the layer(s) that FIT — they are not all mandatory per change;
+    never invent a component test where none is needed.
+  - `Test sketch` is PROSE ONLY — no code, no language syntax, no class/method bodies.
+    Each sketch names ≥1 negative/boundary or exact-value assertion. HTTP-emitting code
+    is unit-tested with ScalaMock (assert the value returned + the request issued); the
+    full HTTP wire is the e2e layer (WireMock in the overlay), where the sketch states
+    what `WireMock.verify` checks.
+  The planning checklist FAILS if this section is missing, empty, names no real case,
+  has an FR without a row, uses an invalid layer, or contains code.
+-->
+
+| Req | Real case to test | Layer | Test sketch (no code) |
+|-----|-------------------|-------|-----------------------|
+| FR-xxx | [concrete real-world case] | [one of the 6 model layers] | [prose: what is asserted, incl. the negative/boundary case; for HTTP units what the mock expectation checks, for e2e what `WireMock.verify` checks] |
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - [ ] **I. Scala DSL as Source of Truth** — Java/Kotlin facade changes delegate to Scala core; no logic duplication in facade layer.
 - [ ] **II. Backward Compatibility** — No public API, DSL behavior, or serialized config/profile format broken without MAJOR bump and explicit authorization.
-- [ ] **III. Test Discipline** — Unit tests accompany all code paths; integration tests (Testcontainers) required for Redis, JWT, diagnostics; Gatling runtime not mocked where real path exists.
+- [ ] **III. Test Discipline** — The Test Model section above is filled (real case + layer + code-free sketch per FR); work is test-first; layer choices follow `TESTING.md` (Testcontainers only for container-backed Redis/Vault/JDBC; JWT/diagnostics are non-container `it`; feeder-determinism/transaction-boundary are DSL-component; HTTP units use ScalaMock, e2e uses WireMock in the overlay); Gatling runtime not mocked where a real path exists; coverage ≥ the enforced floor (65%/60%).
 - [ ] **IV. Small, Focused Changes** — No opportunistic refactors; new deps / API signature / config format changes explicitly authorized; complexity justified in table below if principle bent.
 - [ ] **V. Release Integrity** *(release PRs only)* — Correct branch strategy; tag placement; no version reuse.
 

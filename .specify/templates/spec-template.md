@@ -21,6 +21,11 @@
   - Tested independently
   - Deployed independently
   - Demonstrated to users independently
+
+  TEST-MODEL HOOK (Constitution III): for each acceptance scenario below, keep in mind
+  the REAL case it exercises and the test LAYER it maps to (see TESTING.md: unit/functional,
+  DSL/action component, external integration, full Gatling e2e, compile guard, facade).
+  `/speckit-plan` will expand these into the plan's mandatory code-free "Test Model" table.
 -->
 
 ### User Story 1 - [Brief Title] (Priority: P1)

@@ -27,18 +27,51 @@ removal or behavioral redefinition. Internal `private`/`package-private` refacto
 
 ### III. Test Discipline
 
-Unit tests MUST accompany every new or modified code path (ScalaTest, JUnit via
-sbt-jupiter-interface). Integration tests using real infrastructure (Testcontainers)
-are MANDATORY for:
+Testing follows the authoritative layered model in `TESTING.md` (mirrors how
+`gatling/gatling` tests itself). Work is **test-first** (TDD): write the failing test
+before the code (red → green → refactor); assert exact real values with ≥1
+negative/boundary case; no empty test bodies; no skipped/disabled tests committed; no
+mock asserted against a mock. The Gatling runtime/DSL MUST NOT be mocked where a real
+path exists. Leaf-collaborator mocking is **plain ScalaMock only** (never Mockito).
 
-- Redis side effects and session state
-- JWT generation and verification
-- Startup diagnostics
-- Any behavior that depends on external process state
+The six layers — apply the one(s) that fit the change; they are NOT all mandatory per
+change:
 
-The Gatling runtime MUST NOT be mocked where a real integration path exists.
-Feeder determinism and transaction boundary behavior MUST be covered by Testcontainers-backed
-integration tests, not stubs or hand-rolled fakes.
+1. **Unit / functional** (`Test`, no Docker): pure functions AND HTTP-emitting code
+   (`HttpJsonFeeder`, `THttpClient`) — the HTTP collaborator is mocked with ScalaMock;
+   no real server in the library.
+2. **DSL / action component** *(conditional)* (`Test`): Gatling DSL pieces with runtime
+   behavior (actions, trackers, transactions, stateful builders) driven via a real
+   `ActorSystem` + `RecordingStatsEngine` (the `transactions/Mocks` harness), no app run.
+   **Feeder determinism and transaction-boundary behavior are covered HERE** (component
+   layer), NOT by Testcontainers.
+3. **External integration** (`it`, `IntegrationTest` config): two sub-classes —
+   - **Container-backed** (Testcontainers MANDATORY): Redis side effects/session state,
+     Vault feeders, JDBC storage — assert exact stored/read values against a real
+     container; never a recording-proxy fake as the target.
+   - **Non-container** (real state, no container): JWT generation/verification (real
+     keys/crypto) and startup diagnostics (real JVM/console state) — real tests
+     asserting real values (in `Test` or `it`), no Testcontainers required.
+4. **Full Gatling e2e** (in the `examples/` overlays, run by `sbt Gatling/test`): a real
+   `Simulation` exercises picatinny DSL (feeders, JWT, transactions, converters) over real
+   HTTP against a WireMock server that **echoes request values back**; Gatling **`check`**
+   validates the RESPONSES (the feeder value + JWT round-trip). Assert on RESPONSE handling
+   (`check`), NOT on what the mock received (`verify`) and NOT by re-decoding the request —
+   that would be mock-testing-mock (forbidden); the JWT's crypto correctness is unit-tested in
+   `JwtSpec`. WireMock lives ONLY in the overlay's test scope (injected by the template-tests
+   script), never in the library. The library stays `Provided`/non-runnable (no `GatlingPlugin`).
+5. **Compile guard** (`Test`): compile-only specs locking public DSL signatures.
+6. **Facade delegation** (`Test`, JUnit 5): facade output == Scala-core output; no
+   facade-only logic.
+
+Coverage gate (`sbt-scoverage`): statement ≥65% / branch ≥60% (`coverageFailOnMinimum`);
+floor is data-driven (set just under measured) and ratcheted up as real coverage rises —
+never padded with low-value tests on generated/benchmark code.
+
+**Per-feature Test Sketch (planning gate)**: every `/speckit-plan` MUST include a
+code-free "Test Model" section — for each functional requirement: the real case, the
+chosen layer, and a prose assertion sketch. The planning checklist FAILS if it is
+missing, empty, names no real case, or contains implementation/code.
 
 ### IV. Small, Focused Changes
 
@@ -112,4 +145,4 @@ versioning policy below, and propagate changes to affected templates and AGENTS.
 Violations require explicit justification in the plan's Complexity Tracking table
 before merging.
 
-**Version**: 1.0.2 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-20
+**Version**: 1.1.3 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-21
