@@ -195,19 +195,7 @@ jobs:
           rm -rf "$project_dir/src/test/resources"
           cp -R examples/java-maven-example/src/test/resources "$project_dir/src/test/resources"
 
-          python3 -c "
-pom = open('$project_dir/pom.xml').read()
-dep = '''
-    <dependency>
-      <groupId>org.wiremock</groupId>
-      <artifactId>wiremock</artifactId>
-      <version>3.13.2</version>
-      <scope>test</scope>
-    </dependency>'''
-idx = pom.rfind('</dependencies>')
-assert idx >= 0, 'No </dependencies> block found in pom.xml'
-open('$project_dir/pom.xml', 'w').write(pom[:idx] + dep + '\n  ' + pom[idx:])
-"
+          python3 scripts/inject-wiremock-pom.py "$project_dir"
 
           run_maven() {
             local attempt=1
