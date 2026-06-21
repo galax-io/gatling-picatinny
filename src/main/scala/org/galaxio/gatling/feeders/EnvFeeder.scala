@@ -20,11 +20,17 @@ object EnvFeeder {
     * @param prefix
     *   optional prefix to strip from environment variable names when creating feeder keys
     */
-  def apply(keys: List[String], prefix: String = ""): IndexedSeq[Record[String]] = {
+  def apply(keys: List[String], prefix: String = ""): IndexedSeq[Record[String]] =
+    fromEnv(keys, prefix, sys.env)
+
+  /** Test seam: same logic against an injected environment map (production passes `sys.env`). Lets unit tests use a
+    * deterministic environment instead of sampling the live, unspecified-order `sys.env`.
+    */
+  private[feeders] def fromEnv(keys: List[String], prefix: String, env: Map[String, String]): IndexedSeq[Record[String]] = {
     requireNonNull(keys, "Keys list must not be null")
 
     val record = keys.flatMap { key =>
-      sys.env.get(key).map { value =>
+      env.get(key).map { value =>
         val feederKey = if (prefix.nonEmpty && key.startsWith(prefix)) key.stripPrefix(prefix) else key
         feederKey -> value
       }
@@ -37,10 +43,14 @@ object EnvFeeder {
     *
     * The prefix is stripped from emitted feeder keys, so `PERF_TOKEN` with prefix `PERF_` becomes `TOKEN`.
     */
-  def withPrefix(prefix: String): IndexedSeq[Record[String]] = {
+  def withPrefix(prefix: String): IndexedSeq[Record[String]] =
+    withPrefixFrom(prefix, sys.env)
+
+  /** Test seam for [[withPrefix]] against an injected environment map (production passes `sys.env`). */
+  private[feeders] def withPrefixFrom(prefix: String, env: Map[String, String]): IndexedSeq[Record[String]] = {
     require(prefix.nonEmpty, "Prefix must be non-empty")
 
-    val record = sys.env.collect {
+    val record = env.collect {
       case (key, value) if key.startsWith(prefix) => key.stripPrefix(prefix) -> value
     }
 
