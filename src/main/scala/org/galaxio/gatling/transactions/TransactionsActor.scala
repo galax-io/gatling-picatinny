@@ -1,4 +1,6 @@
 package org.galaxio.gatling.transactions
+import java.util.concurrent.atomic.AtomicLong
+
 import io.gatling.commons.stats.{KO, OK}
 import io.gatling.core.action.Action
 import io.gatling.core.actor.{Actor, Behavior}
@@ -12,7 +14,8 @@ object TransactionsActor {
   final case class TransactionEnded(name: String, timestamp: Long, session: Session, next: Action) extends TransactionMessage
 }
 
-class TransactionsActor(name: String, statsEngine: StatsEngine) extends Actor[TransactionsActor.TransactionMessage](name) {
+private[transactions] class TransactionsActor(name: String, statsEngine: StatsEngine, inFlight: AtomicLong)
+    extends Actor[TransactionsActor.TransactionMessage](name) {
 
   private def crash(prefix: String, errorMsg: String, session: Session, next: Action): Unit = {
     statsEngine.logRequestCrash(session.scenario, session.groups, prefix, errorMsg)
@@ -35,27 +38,31 @@ class TransactionsActor(name: String, statsEngine: StatsEngine) extends Actor[Tr
 
   private def onTransaction(
       transactionsStack: List[TransactionsActor.TransactionStarted],
-  ): Behavior[TransactionsActor.TransactionMessage] = {
-    case t: TransactionsActor.TransactionStarted                            =>
-      become(onTransaction(t :: transactionsStack))
-    case TransactionsActor.TransactionEnded(name, timestamp, session, next) =>
-      transactionsStack match {
-        case Nil =>
-          crash(s"Transaction '$name' close error", s"transaction '$name' wasn't started", session, next)
-          stay
+  ): Behavior[TransactionsActor.TransactionMessage] = { message =>
+    // One decrement per processed message balances the tracker's one increment per enqueue (#70 in-flight bound).
+    inFlight.decrementAndGet()
+    message match {
+      case t: TransactionsActor.TransactionStarted                            =>
+        become(onTransaction(t :: transactionsStack))
+      case TransactionsActor.TransactionEnded(name, timestamp, session, next) =>
+        transactionsStack match {
+          case Nil =>
+            crash(s"Transaction '$name' close error", s"transaction '$name' wasn't started", session, next)
+            stay
 
-        case started :: newStack =>
-          if (started.timestamp > timestamp) {
-            crash(s"Transaction '$name' illegal state", s"transaction cannot end before it started", session, next)
-            stay
-          } else if (started.name == name) {
-            executeNext(name, started.timestamp, timestamp, session, next)
-            become(onTransaction(newStack))
-          } else {
-            crash(s"Transaction '$name' close error", s"has unclosed transaction ${started.name}", session, next)
-            stay
-          }
-      }
+          case started :: newStack =>
+            if (started.timestamp > timestamp) {
+              crash(s"Transaction '$name' illegal state", s"transaction cannot end before it started", session, next)
+              stay
+            } else if (started.name == name) {
+              executeNext(name, started.timestamp, timestamp, session, next)
+              become(onTransaction(newStack))
+            } else {
+              crash(s"Transaction '$name' close error", s"has unclosed transaction ${started.name}", session, next)
+              stay
+            }
+        }
+    }
   }
 
   override def init(): Behavior[TransactionsActor.TransactionMessage] = onTransaction(Nil)
