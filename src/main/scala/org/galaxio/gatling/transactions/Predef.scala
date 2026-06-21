@@ -1,6 +1,5 @@
 package org.galaxio.gatling.transactions
 
-import io.gatling.commons.validation.SuccessWrapper
 import io.gatling.core.Predef.Simulation
 import io.gatling.core.protocol.Protocol
 import io.gatling.core.session.Expression
@@ -42,10 +41,14 @@ object Predef {
     def startTransaction(tName: Expression[String]): ScenarioBuilder =
       scenarioBuilder.exec(StartTransactionActionBuilder(tName))
 
-    def endTransaction(
-        tName: Expression[String],
-        stopTime: Expression[Long] = _ => System.currentTimeMillis().success,
-    ): ScenarioBuilder =
-      scenarioBuilder.exec(EndTransactionActionBuilder(tName, stopTime))
+    /** Close a transaction; the end timestamp is sourced from the Gatling clock — the single monotonic-epoch source shared with
+      * the start timestamp (#69 / #201 two-clock). No wall-clock involved.
+      */
+    def endTransaction(tName: Expression[String]): ScenarioBuilder =
+      scenarioBuilder.exec(EndTransactionActionBuilder(tName))
+
+    /** Close a transaction at an explicit caller-supplied end timestamp (epoch millis). */
+    def endTransaction(tName: Expression[String], stopTime: Expression[Long]): ScenarioBuilder =
+      scenarioBuilder.exec(EndTransactionActionBuilder(tName, Some(stopTime)))
   }
 }

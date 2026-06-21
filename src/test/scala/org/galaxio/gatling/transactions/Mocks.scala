@@ -1,5 +1,4 @@
 package org.galaxio.gatling.transactions
-import io.gatling.commons.util.DefaultClock
 import io.gatling.core.CoreComponents
 import io.gatling.core.actor.ActorSystem
 import io.gatling.core.pause.Disabled
@@ -29,11 +28,9 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
 
     val statsEngine: StatsEngine = new RecordingStatsEngine(events)
 
-    val testTransactionsActor = testActorSystem.actorOf(new TransactionsActor("test-transactions-actor", statsEngine))
-
-    private val protoComponents: TransactionsComponents = new TransactionsComponents(
-      new TransactionTracker(testTransactionsActor),
-    )
+    // Controllable clock seam (R6): drives deterministic start/end timestamps. The action path reads
+    // ctx.coreComponents.clock.nowMillis, so injecting it here governs both start and default-end timestamps.
+    val testClock: fixtures.TestClock = new fixtures.TestClock(System.currentTimeMillis())
 
     private val testCoreComponents = new CoreComponents(
       testActorSystem,
@@ -41,7 +38,7 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
       null,
       None,
       statsEngine,
-      new DefaultClock,
+      testClock,
       fixtures.noAction,
       null,
     )

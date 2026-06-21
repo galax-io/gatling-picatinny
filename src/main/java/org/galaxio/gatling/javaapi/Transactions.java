@@ -15,11 +15,11 @@ public final class Transactions {
     }
 
     static ActionBuilder endTransactionActionBuilder(String tname, Long time) {
-        return new builders.EndTransactionActionBuilder(Expressions.toStringExpression(tname), Expressions.toStaticValueExpression(time));
+        return new builders.EndTransactionActionBuilder(Expressions.toStringExpression(tname), new scala.Some<>(Expressions.toStaticValueExpression(time)));
     }
 
     static ActionBuilder endTransactionActionBuilder(String tname) {
-        return new builders.EndTransactionActionBuilderWithoutTime(Expressions.toStringExpression(tname));
+        return new builders.EndTransactionActionBuilder(Expressions.toStringExpression(tname), scala.Option.empty());
     }
 
     private static scala.collection.immutable.List<ActionBuilder> getCollection(ActionBuilder myAction) {

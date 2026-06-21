@@ -10,12 +10,12 @@ object builders {
     override def build(ctx: ScenarioContext, next: Action): Action = new StartTransactionAction(tName, ctx, next)
   }
 
-  final case class EndTransactionActionBuilder(tName: Expression[String], stopTime: Expression[Long]) extends ActionBuilder {
-    override def build(ctx: ScenarioContext, next: Action): Action = new EndTransactionAction(tName, stopTime, ctx, next)
-  }
-
-  final case class EndTransactionActionBuilderWithoutTime(tName: Expression[String]) extends ActionBuilder {
-    val stopTime: Expression[Long]                                 = { _ => System.currentTimeMillis().success }
-    override def build(ctx: ScenarioContext, next: Action): Action = new EndTransactionAction(tName, stopTime, ctx, next)
+  /** `stopTime = None` → the end timestamp is read from the Gatling clock (the same uniform source as the start); `Some(expr)`
+    * → the caller-supplied end timestamp. One builder covers both since the time source is now uniform.
+    */
+  final case class EndTransactionActionBuilder(tName: Expression[String], stopTime: Option[Expression[Long]] = None)
+      extends ActionBuilder {
+    override def build(ctx: ScenarioContext, next: Action): Action =
+      new EndTransactionAction(tName, stopTime.getOrElse(_ => ctx.coreComponents.clock.nowMillis.success), ctx, next)
   }
 }
