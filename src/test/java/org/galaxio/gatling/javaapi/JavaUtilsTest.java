@@ -61,8 +61,8 @@ class JavaUtilsTest {
         assertThat(RandomDataGenerators.randomOGRN()).hasSize(13).containsOnlyDigits();
         assertThat(RandomDataGenerators.randomPSRNSP()).hasSize(15).containsOnlyDigits();
         assertThat(RandomDataGenerators.randomKPP()).hasSize(9).containsOnlyDigits();
-        assertThat(RandomDataGenerators.randomNatITN()).hasSize(10).containsOnlyDigits();
-        assertThat(RandomDataGenerators.randomJurITN()).hasSize(12).containsOnlyDigits();
+        assertThat(RandomDataGenerators.randomNatITN()).hasSize(12).containsOnlyDigits(); // natural person = 12 digits
+        assertThat(RandomDataGenerators.randomJurITN()).hasSize(10).containsOnlyDigits(); // legal entity = 10 digits
         assertThat(RandomDataGenerators.randomSNILS()).hasSize(11).containsOnlyDigits();
         assertThat(RandomDataGenerators.randomRusPassport()).hasSize(10).containsOnlyDigits();
     }
