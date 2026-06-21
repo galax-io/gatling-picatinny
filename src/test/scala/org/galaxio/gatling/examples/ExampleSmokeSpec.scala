@@ -127,8 +127,8 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl with Table
 
     val govIdFeeders = Table(
       ("name", "feeder", "length", "prefix"),
-      ("NatITN", () => RandomNatITNFeeder("v").next()("v").toString, 10, ""),
-      ("JurITN", () => RandomJurITNFeeder("v").next()("v").toString, 12, ""),
+      ("NatITN", () => RandomNatITNFeeder("v").next()("v").toString, 12, ""), // natural person = 12 digits
+      ("JurITN", () => RandomJurITNFeeder("v").next()("v").toString, 10, ""), // legal entity = 10 digits
       ("OGRN", () => RandomOGRNFeeder("v").next()("v").toString, 13, ""),
       ("PSRNSP", () => RandomPSRNSPFeeder("v").next()("v").toString, 15, "3"),
       ("KPP", () => RandomKPPFeeder("v").next()("v").toString, 9, ""),
@@ -184,7 +184,7 @@ class ExampleSmokeSpec extends AnyWordSpec with Matchers with CoreDsl with Table
 
     val govIds = Table(
       ("field", "generator", "length", "regex"),
-      ("inn", Faker.ru.inn.person(), 10, AllDigitsRegex),
+      ("inn", Faker.ru.inn.person(), 12, AllDigitsRegex), // natural person = 12 digits
       ("snils", Faker.ru.snils(), 11, AllDigitsRegex),
       ("cpf", Faker.br.cpf(formatted = true), -1, """\d{3}\.\d{3}\.\d{3}-\d{2}"""),
     )

@@ -122,7 +122,7 @@ object SeparatedValuesFeeder {
         val parts = String.valueOf(v).split(separator)
         var i     = 0
         while (i < parts.length) {
-          buf += Map(key -> parts(i))
+          buf += Map(key -> parts(i).trim) // trim for parity with the String/Seq[String] overloads
           i += 1
         }
       }
