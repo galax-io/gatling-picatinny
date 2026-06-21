@@ -35,7 +35,13 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           git branch -r --contains "$TAG" | grep -qE 'origin/(release/|main$)' \
             || { echo "::error::Tag $TAG is not on main or release/*"; exit 1; }
-          PREV=$(git describe --tags --abbrev=0 --first-parent "${TAG}^" --match 'v[0-9]*' 2>/dev/null || true)
+          # In TBD with release branches, previous tags live on sibling release/* branches
+          # and are not reachable via --first-parent. Find the previous version tag by
+          # sorting all semver tags and picking the one immediately before the current tag.
+          PREV=$(git tag --sort=-version:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | grep -A1 "^${TAG}$" \
+            | tail -1 || true)
           echo "cliff_args=${PREV:+${PREV}..${TAG}} --strip header" >> "$GITHUB_OUTPUT"
 
       - uses: ./.github/actions/sbt-setup
