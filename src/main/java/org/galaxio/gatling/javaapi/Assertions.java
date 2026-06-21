@@ -127,6 +127,10 @@ public final class Assertions {
         return assertionList;
     }
     
+    // NOTE: this mirrors the canonical, unit-tested Scala org.galaxio.gatling.assertions.AssertionsBuilder. It cannot delegate
+    // to it because the Java io.gatling.javaapi.core.Assertion wrap constructor is package-private (no public way to convert a
+    // core Assertion into a Java one), so the facade builds via the Java DSL (global()/details()). Keep the NFR-key mapping
+    // here in sync with AssertionsBuilder.scala.
     public static  List<Assertion> assertionFromYaml(String path) {
 
         List<Assertion> assertionList = new LinkedList<>();
