@@ -192,8 +192,13 @@ jobs:
           rm -rf "$project_dir/src/test/java/org/galaxio/performance/picatinny"
           cp -R examples/java-maven-example/src/test/java/org/galaxio/performance/picatinny \
             "$project_dir/src/test/java/org/galaxio/performance/picatinny"
-          # Keep the template's rendered resources (logback.xml quiets debug,
-          # gatling.conf, simulation.conf via --set). Inject sources only.
+          # Keep the template's rendered config resources (logback.xml quiets
+          # debug, gatling.conf, simulation.conf via --set). Inject only the
+          # data resources the overlay sims read by classpath path.
+          cp -R examples/java-maven-example/src/test/resources/jwtTemplates \
+            "$project_dir/src/test/resources/jwtTemplates"
+          cp -R examples/java-maven-example/src/test/resources/phoneTemplates \
+            "$project_dir/src/test/resources/phoneTemplates"
 
           python3 scripts/inject-wiremock-pom.py "$project_dir"
 

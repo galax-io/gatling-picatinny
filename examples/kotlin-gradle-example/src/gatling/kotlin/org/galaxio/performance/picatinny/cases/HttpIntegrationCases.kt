@@ -1,7 +1,7 @@
 package org.galaxio.performance.picatinny.cases
 
 import io.gatling.javaapi.core.ChainBuilder
-import io.gatling.javaapi.core.CoreDsl.exec
+import io.gatling.javaapi.core.CoreDsl.*
 
 import io.gatling.javaapi.http.HttpDsl.*
 

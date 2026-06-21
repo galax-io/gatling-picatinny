@@ -1,6 +1,6 @@
 package org.galaxio.performance.picatinny.cases
 
-import io.gatling.javaapi.core.CoreDsl.exec
+import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.http.HttpDsl.*
 import org.galaxio.performance.picatinny.feeders.FeederValidationFeeders
 

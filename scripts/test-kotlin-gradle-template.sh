@@ -54,8 +54,13 @@ rm -rf "$PROJECT_DIR/src/gatling/kotlin/org/galaxio/performance/picatinny"
 cp -R "$ROOT_DIR/examples/kotlin-gradle-example/src/gatling/kotlin/org/galaxio/performance/picatinny" \
   "$PROJECT_DIR/src/gatling/kotlin/org/galaxio/performance/picatinny"
 
-# Keep the template's rendered resources (logback.xml quiets debug,
-# gatling.conf, simulation.conf via --set). Inject sources only.
+# Keep the template's rendered config resources (logback.xml quiets debug,
+# gatling.conf, simulation.conf via --set). Inject only the data resources
+# the overlay sims read by classpath path.
+cp -R "$ROOT_DIR/examples/kotlin-gradle-example/src/gatling/resources/jwtTemplates" \
+  "$PROJECT_DIR/src/gatling/resources/jwtTemplates"
+cp -R "$ROOT_DIR/examples/kotlin-gradle-example/src/gatling/resources/phoneTemplates" \
+  "$PROJECT_DIR/src/gatling/resources/phoneTemplates"
 
 # WireMock for the e2e HTTP integration simulation (Debug)
 cat >> "$PROJECT_DIR/build.gradle.kts" <<'GRADLE'
