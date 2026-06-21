@@ -245,32 +245,12 @@ object RandomDataGenerators {
     s"""$revenueServiceCode$reasonForReg$idNum"""
   }
 
+  // Natural person (физлицо) ITN = 12 digits with TWO control digits.
+  // NOTE: corrected — earlier releases swapped this with randomJurITN (emitted a 10-digit legal-entity value).
   def randomNatITN(): String = {
 
     @tailrec
-    def itnNatRecursion(n: Int, sum: Int, results: List[Int]): String = {
-      val rnd: Int = results match {
-        case 0 :: Nil => randomValue(1, 10)
-        case _        => randomValue(0, 10)
-      }
-
-      val factors: List[Int] = List(2, 4, 10, 3, 5, 9, 4, 6, 8)
-
-      def checkSum: Int = sum + rnd * factors(9 - n)
-
-      n match {
-        case 1 => (results :+ rnd :+ (if (checkSum % 11 == 10) 0 else checkSum % 11)).mkString("")
-        case _ => itnNatRecursion(n - 1, checkSum, results :+ rnd)
-      }
-    }
-
-    itnNatRecursion(9, 0, List.empty[Int])
-  }
-
-  def randomJurITN(): String = {
-
-    @tailrec
-    def itnJurRecursion(n: Int, sum1: Int, sum2: Int, results: List[Int]): String = {
+    def itnNatRecursion(n: Int, sum1: Int, sum2: Int, results: List[Int]): String = {
       val rnd: Int                 = randomValue(0, 10)
       val firstFactors: List[Int]  = List(7, 2, 4, 10, 3, 5, 9, 4, 6, 8)
       val secondFactors: List[Int] = List(3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8)
@@ -285,7 +265,7 @@ object RandomDataGenerators {
                        else
                          (sum2 + results.last * secondFactors(11 - n))   % 11)).mkString("")
         case 2 =>
-          itnJurRecursion(
+          itnNatRecursion(
             n - 1,
             checkSum1,
             checkSum2,
@@ -293,11 +273,35 @@ object RandomDataGenerators {
                                else
                                  checkSum1   % 11),
           )
-        case _ => itnJurRecursion(n - 1, checkSum1, checkSum2, results :+ rnd)
+        case _ => itnNatRecursion(n - 1, checkSum1, checkSum2, results :+ rnd)
       }
     }
 
-    itnJurRecursion(11, 0, 0, List.empty[Int])
+    itnNatRecursion(11, 0, 0, List.empty[Int])
+  }
+
+  // Legal entity (юрлицо) ITN = 10 digits with ONE control digit.
+  // NOTE: corrected — earlier releases swapped this with randomNatITN (emitted a 12-digit natural-person value).
+  def randomJurITN(): String = {
+
+    @tailrec
+    def itnJurRecursion(n: Int, sum: Int, results: List[Int]): String = {
+      val rnd: Int = results match {
+        case 0 :: Nil => randomValue(1, 10)
+        case _        => randomValue(0, 10)
+      }
+
+      val factors: List[Int] = List(2, 4, 10, 3, 5, 9, 4, 6, 8)
+
+      def checkSum: Int = sum + rnd * factors(9 - n)
+
+      n match {
+        case 1 => (results :+ rnd :+ (if (checkSum % 11 == 10) 0 else checkSum % 11)).mkString("")
+        case _ => itnJurRecursion(n - 1, checkSum, results :+ rnd)
+      }
+    }
+
+    itnJurRecursion(9, 0, List.empty[Int])
   }
 
   def randomSNILS(): String = {

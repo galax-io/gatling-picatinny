@@ -751,16 +751,19 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
   }
 
   "Russian government identifiers" should {
-    "generate INN (person) with correct format" in {
+    "generate INN (person) with 12 digits and valid control digits" in {
       (1 to sampleCount).foreach { _ =>
         val inn = Faker.ru.inn.person().sample()
-        inn should fullyMatch regex "[0-9][1-9]\\d{8}|[1-9][0-9]\\d{8}"
+        inn should fullyMatch regex "\\d{12}"
+        withClue(s"person INN $inn checksum: ")(org.galaxio.gatling.feeders.GovIdValidators.validNatInn(inn) shouldBe true)
       }
     }
 
-    "generate INN (company) with correct format" in {
+    "generate INN (company) with 10 digits and a valid control digit" in {
       (1 to sampleCount).foreach { _ =>
-        Faker.ru.inn.company().sample() should fullyMatch regex "\\d{12}"
+        val inn = Faker.ru.inn.company().sample()
+        inn should fullyMatch regex "\\d{10}"
+        withClue(s"company INN $inn checksum: ")(org.galaxio.gatling.feeders.GovIdValidators.validJurInn(inn) shouldBe true)
       }
     }
 
@@ -790,9 +793,11 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       }
     }
 
-    "generate SNILS with correct format" in {
+    "generate SNILS with 11 digits and a valid control number" in {
       (1 to sampleCount).foreach { _ =>
-        Faker.ru.snils().sample() should fullyMatch regex "\\d{11}"
+        val snils = Faker.ru.snils().sample()
+        snils should fullyMatch regex "\\d{11}"
+        withClue(s"SNILS $snils checksum: ")(org.galaxio.gatling.feeders.GovIdValidators.validSnils(snils) shouldBe true)
       }
     }
 
