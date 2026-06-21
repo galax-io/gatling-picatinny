@@ -58,6 +58,14 @@ rm -rf "$PROJECT_DIR/src/gatling/resources"
 cp -R "$ROOT_DIR/examples/kotlin-gradle-example/src/gatling/resources" \
   "$PROJECT_DIR/src/gatling/resources"
 
+# WireMock for e2e HTTP integration simulation (PicatinnyCoverage)
+cat >> "$PROJECT_DIR/build.gradle.kts" <<'GRADLE'
+
+dependencies {
+    gatling("org.wiremock:wiremock:3.13.2")
+}
+GRADLE
+
 (
   cd "$PROJECT_DIR"
   gradle clean gatlingRun --all
