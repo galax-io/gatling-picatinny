@@ -1,11 +1,10 @@
 package org.galaxio.performance.picatinny
 
-import io.gatling.javaapi.core.CoreDsl.constantUsersPerSec
-import io.gatling.javaapi.core.CoreDsl.rampUsersPerSec
+import io.gatling.javaapi.core.CoreDsl.*
 import io.gatling.javaapi.core.OpenInjectionStep
 import org.galaxio.gatling.javaapi.SimulationConfig
-import org.galaxio.gatling.javaapi.Utility
 import org.galaxio.gatling.javaapi.SimulationWithTransactions
+import org.galaxio.gatling.javaapi.Utility
 import org.galaxio.performance.picatinny.scenarios.PicatinnyScenario
 
 class Stability : SimulationWithTransactions() {

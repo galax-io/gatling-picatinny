@@ -23,7 +23,7 @@ import scala.jdk.CollectionConverters._
   * }}}
   *
   * Templates are lazily loaded on first access. If `resources/templates` does not exist, the template map is empty and
-  * `postTemplate` throws [[NoSuchElementException]].
+  * `postTemplate` throws [[java.util.NoSuchElementException]].
   */
 trait Templates {
 

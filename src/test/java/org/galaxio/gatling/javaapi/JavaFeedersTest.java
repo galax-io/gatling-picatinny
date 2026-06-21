@@ -71,6 +71,7 @@ public class JavaFeedersTest extends Simulation {
     Iterator<Map<String, Object>> randomStringFeeder1 = RandomStringFeeder("randomStringFeeder", 1);
 
     Iterator<Map<String, Object>> randomUUIDFeeder = RandomUUIDFeeder("randomUUIDFeeder");
+    @SuppressWarnings("deprecation")
     Iterator<Map<String, Object>> regexFeeder = RegexFeeder("regexFeeder", "[a-z]");
 
     Iterator<Map<String, Object>> separatedValuesFeeder = SeparatedValuesFeeder.apply("someValues", "v21;v22;v23", ';');

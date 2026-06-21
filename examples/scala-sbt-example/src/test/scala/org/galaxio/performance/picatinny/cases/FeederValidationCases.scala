@@ -8,8 +8,8 @@ import org.galaxio.performance.picatinny.feeders.FeederValidationFeeders
 /** Atomic HTTP action for the feeder-validation e2e (test-model layer 4). Request only (galaxio-gatling-pro boundaries).
   *
   * ONE request carries EVERY zipped feeder value (a header per field); the mock echoes them back; each echoed value is
-  * `check`ed against its EXPECTED pattern — proving every faker feeder produced a contract-shaped value over real HTTP, all
-  * from a single `.feed()`.
+  * `check`ed twice — exact round-trip (echoed == fed value, before/after) AND its EXPECTED pattern — proving every faker
+  * feeder produced a contract-shaped value that survives real HTTP, all from a single `.feed()`.
   */
 object FeederValidationCases {
 
@@ -18,7 +18,10 @@ object FeederValidationCases {
       case (req, (field, _)) => req.header(s"X$field", s"#{$field}")
     }
     val withChecks  = FeederValidationFeeders.patterns.foldLeft(withHeaders.check(status.is(200))) {
-      case (req, (field, pattern)) => req.check(jsonPath(s"$$.$field").transform(_.matches(pattern)).is(true))
+      case (req, (field, pattern)) =>
+        req
+          .check(jsonPath(s"$$.$field").is(s"#{$field}"))
+          .check(jsonPath(s"$$.$field").transform(_.matches(pattern)).is(true))
     }
     exec(withChecks)
   }

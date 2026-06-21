@@ -7,7 +7,7 @@ import java.security.PrivateKey
   * Use [[SigningKey.StringSecret]] for HMAC algorithms (HS256, HS384, HS512) and [[SigningKey.AsymmetricKey]] for RSA/EC
   * algorithms (RS256, ES256, etc.).
   *
-  * Typically constructed via factory methods in the [[jwt]] package object:
+  * Typically constructed via factory methods in the `jwt` package object:
   * {{{
   * jwt("HS256", "my-secret")         // StringSecret
   * jwt("RS256", rsaPrivateKey)       // AsymmetricKey
