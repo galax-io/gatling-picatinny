@@ -192,8 +192,8 @@ jobs:
           rm -rf "$project_dir/src/test/java/org/galaxio/performance/picatinny"
           cp -R examples/java-maven-example/src/test/java/org/galaxio/performance/picatinny \
             "$project_dir/src/test/java/org/galaxio/performance/picatinny"
-          rm -rf "$project_dir/src/test/resources"
-          cp -R examples/java-maven-example/src/test/resources "$project_dir/src/test/resources"
+          # Keep the template's rendered resources (logback.xml quiets debug,
+          # gatling.conf, simulation.conf via --set). Inject sources only.
 
           python3 scripts/inject-wiremock-pom.py "$project_dir"
 
