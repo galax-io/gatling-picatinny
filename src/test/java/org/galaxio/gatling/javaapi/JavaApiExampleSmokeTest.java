@@ -130,8 +130,8 @@ class JavaApiExampleSmokeTest {
 
         static Stream<Arguments> govIdFeeders() {
             return Stream.of(
-                    Arguments.of("NatITN", RandomNatITNFeeder("v"), 10),
-                    Arguments.of("JurITN", RandomJurITNFeeder("v"), 12),
+                    Arguments.of("NatITN", RandomNatITNFeeder("v"), 12),
+                    Arguments.of("JurITN", RandomJurITNFeeder("v"), 10),
                     Arguments.of("OGRN", RandomOGRNFeeder("v"), 13),
                     Arguments.of("KPP", RandomKPPFeeder("v"), 9),
                     Arguments.of("SNILS", RandomSNILSFeeder("v"), 11),
@@ -180,8 +180,8 @@ class JavaApiExampleSmokeTest {
 
         static Stream<Arguments> govIdGenerators() {
             return Stream.of(
-                    Arguments.of("innPerson", innPerson(), 10, "\\d+"),
-                    Arguments.of("innCompany", innCompany(), 12, "\\d+"),
+                    Arguments.of("innPerson", innPerson(), 12, "\\d+"),
+                    Arguments.of("innCompany", innCompany(), 10, "\\d+"),
                     Arguments.of("kpp", kpp(), 9, "\\d+"),
                     Arguments.of("ogrn", ogrn(), 13, "\\d+"),
                     Arguments.of("snils", snils(), 11, "\\d+"),

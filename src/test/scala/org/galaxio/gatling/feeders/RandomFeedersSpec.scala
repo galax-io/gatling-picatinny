@@ -336,6 +336,7 @@ class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenP
           .foreach { record =>
             withClue(s"Invalid random snilsFeeder: $record, ") {
               record(paramName) should fullyMatch regex "\\d{11}"
+              GovIdValidators.validSnils(record(paramName)) shouldBe true // honest: control number is correct
             }
           }
       }
@@ -430,7 +431,9 @@ class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenP
           .take(50)
           .foreach { record =>
             withClue(s"Invalid random NatITNFeeder: $record, ") {
-              record(paramName) should fullyMatch regex "[0-9][1-9]\\d{8}|[1-9][0-9]\\d{8}"
+              // natural-person ITN is 12 digits with two valid control digits (honest generation)
+              record(paramName) should fullyMatch regex "\\d{12}"
+              GovIdValidators.validNatInn(record(paramName)) shouldBe true
             }
           }
       }
@@ -442,7 +445,9 @@ class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenP
           .take(50)
           .foreach { record =>
             withClue(s"Invalid random JurITNFeeder: $record, ") {
-              record(paramName) should fullyMatch regex "\\d{12}"
+              // legal-entity ITN is 10 digits with one valid control digit (honest generation)
+              record(paramName) should fullyMatch regex "\\d{10}"
+              GovIdValidators.validJurInn(record(paramName)) shouldBe true
             }
           }
       }
