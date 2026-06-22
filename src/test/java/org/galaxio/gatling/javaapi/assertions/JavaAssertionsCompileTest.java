@@ -6,6 +6,8 @@ import static org.galaxio.gatling.javaapi.Assertions.assertionFromYaml;
 import io.gatling.javaapi.core.Simulation;
 import io.gatling.javaapi.http.HttpProtocolBuilder;
 
+// Signature-lock / compile guard for the (now deprecated) assertionFromYaml facade; the deprecation notice is expected.
+@SuppressWarnings("deprecation")
 public class JavaAssertionsCompileTest extends Simulation {
 
     HttpProtocolBuilder httpProtocol =
