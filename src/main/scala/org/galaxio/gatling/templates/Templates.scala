@@ -22,17 +22,25 @@ import scala.jdk.CollectionConverters._
   * }
   * }}}
   *
-  * Templates are lazily loaded on first access. If `resources/templates` does not exist, the template map is empty and
-  * `postTemplate` throws [[java.util.NoSuchElementException]].
+  * Templates are lazily loaded on first access. If the `templates` resource directory is absent from the classpath, the first
+  * access fails fast with an [[IllegalStateException]] naming the missing directory (rather than silently yielding an empty
+  * map). A present-but-empty directory yields an empty registry.
   */
 trait Templates {
 
-  /** Map of template name (filename without extension) to Gatling EL file body. Lazily initialized from `resources/templates`
-    * directory.
+  /** Map of template name (filename without extension) to Gatling EL file body. Lazily initialized from the `templates`
+    * resource directory. Fails fast with an [[IllegalStateException]] if that directory is absent from the classpath; a
+    * present-but-empty directory yields an empty map.
     */
   protected lazy val templates: Map[String, Body with Expression[String]] =
-    Option(Thread.currentThread.getContextClassLoader.getResource("templates"))
-      .fold(Map.empty[String, Body with Expression[String]]) { resource =>
+    Option(Thread.currentThread.getContextClassLoader.getResource("templates")) match {
+      case None           =>
+        throw new IllegalStateException(
+          "Templates directory 'templates' was not found on the classpath. Expected a 'templates' resource directory " +
+            "(e.g. src/main/resources/templates or src/test/resources/templates). Check the directory name and that it " +
+            "is present on the runtime classpath.",
+        )
+      case Some(resource) =>
         Files
           .list(Paths.get(resource.toURI))
           .iterator()
@@ -46,7 +54,7 @@ trait Templates {
             (key, ElFileBody(f.getCanonicalPath))
           }
           .toMap
-      }
+    }
 
   private def resolveTemplate(templateName: String): Body with Expression[String] =
     templates.getOrElse(
