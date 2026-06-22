@@ -22,15 +22,28 @@ class Debug extends SimulationWithTransactions {
   private val mock = new WireMockServer(options().dynamicPort().globalTemplating(true))
   mock.start()
 
-  mock.stubFor(WM.get(WM.urlPathEqualTo("/echo"))
-    .willReturn(WM.aResponse().withStatus(200).withHeader("Content-Type", "application/json")
-      .withBody(FeederValidationFeeders.patterns
-        .map { case (field, _) => s""""$field":"{{request.headers.X$field}}"""" }
-        .mkString("{", ",", "}"))))
+  mock.stubFor(
+    WM.get(WM.urlPathEqualTo("/echo"))
+      .willReturn(
+        WM.aResponse()
+          .withStatus(200)
+          .withHeader("Content-Type", "application/json")
+          .withBody(
+            FeederValidationFeeders.patterns.map { case (field, _) => s""""$field":"{{request.headers.X$field}}"""" }
+              .mkString("{", ",", "}"),
+          ),
+      ),
+  )
 
-  mock.stubFor(WM.get(WM.urlPathMatching("/echo/.+"))
-    .willReturn(WM.aResponse().withStatus(200).withHeader("Content-Type", "application/json")
-      .withBody("""{"ts":"{{request.pathSegments.[1]}}","auth":"{{request.headers.Authorization}}"}""")))
+  mock.stubFor(
+    WM.get(WM.urlPathMatching("/echo/.+"))
+      .willReturn(
+        WM.aResponse()
+          .withStatus(200)
+          .withHeader("Content-Type", "application/json")
+          .withBody("""{"ts":"{{request.pathSegments.[1]}}","auth":"{{request.headers.Authorization}}"}"""),
+      ),
+  )
 
   setUp(
     PicatinnyScenario("Picatinny Debug", "scala-debug")

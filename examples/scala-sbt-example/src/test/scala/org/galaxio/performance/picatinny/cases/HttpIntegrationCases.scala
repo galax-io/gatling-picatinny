@@ -19,10 +19,10 @@ object HttpIntegrationCases {
         .get("/echo/#{ts}")
         .header("Authorization", "Bearer #{jwt}")
         .check(status.is(200))
-        .check(jsonPath("$.ts").is("#{ts}"))                                   // picatinny feeder value round-tripped
-        .check(jsonPath("$.ts").transform(_.matches("\\d{17}")).is(true))      // ...and is a yyyyMMddHHmmssSSS timestamp
-        .check(jsonPath("$.auth").is("Bearer #{jwt}"))                         // picatinny JWT round-tripped
-        .check(                                                                // ...and is a 3-segment JWT
+        .check(jsonPath("$.ts").is("#{ts}"))                              // picatinny feeder value round-tripped
+        .check(jsonPath("$.ts").transform(_.matches("\\d{17}")).is(true)) // ...and is a yyyyMMddHHmmssSSS timestamp
+        .check(jsonPath("$.auth").is("Bearer #{jwt}"))                    // picatinny JWT round-tripped
+        .check(                                                           // ...and is a 3-segment JWT
           jsonPath("$.auth").transform(_.matches("Bearer [\\w-]+\\.[\\w-]+\\.[\\w-]+")).is(true),
         ),
     )

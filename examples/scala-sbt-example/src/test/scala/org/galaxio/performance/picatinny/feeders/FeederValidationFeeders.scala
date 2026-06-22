@@ -17,8 +17,8 @@ object FeederValidationFeeders {
   val fakerPatterns: List[(String, String)] = List(
     "uuid"       -> "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", // RFC-4122 v4, lowercase
     "str"        -> "[a-zA-Z0-9]{12}",
-    "innPerson"  -> "\\d{12}", // natural person = 12 digits
-    "innCompany" -> "\\d{10}", // legal entity = 10 digits
+    "innPerson"  -> "\\d{12}",                                                             // natural person = 12 digits
+    "innCompany" -> "\\d{10}",                                                             // legal entity = 10 digits
     "snils"      -> "\\d{11}",
     "pan"        -> "\\d{16}",
     "ogrn"       -> "\\d{13}",
@@ -29,9 +29,9 @@ object FeederValidationFeeders {
   )
 
   /** Non-deprecated picatinny-core feeders ([[org.galaxio.gatling.feeders]]) — values already in the session, fed by
-    * `PicatinnyScenario`. Keys here are the ones that do NOT collide with `fakerPatterns` (uuid/pan/ogrn/kpp/snils/passport
-    * are round-tripped under those same keys by the faker set); `RegexFeeder` is deprecated and the zipped/split feeders
-    * carry composite keys, so all three are omitted. Loose-format phones assert non-blank round-trip only.
+    * `PicatinnyScenario`. Keys here are the ones that do NOT collide with `fakerPatterns` (uuid/pan/ogrn/kpp/snils/passport are
+    * round-tripped under those same keys by the faker set); `RegexFeeder` is deprecated and the zipped/split feeders carry
+    * composite keys, so all three are omitted. Loose-format phones assert non-blank round-trip only.
     */
   val picatinnyPatterns: List[(String, String)] = List(
     "currentDate"    -> "\\d{4}-\\d{2}-\\d{2}", // CurrentDateFeeder, ISO_LOCAL_DATE
