@@ -21,8 +21,8 @@ object Dependencies {
   )
 
   lazy val json4s: Seq[ModuleID] = Seq(
-    "org.json4s" %% "json4s-native"  % "4.1.0-M8",
-    "org.json4s" %% "json4s-jackson" % "4.1.0-M8",
+    "io.github.json4s" %% "json4s-native"  % "4.1.1",
+    "io.github.json4s" %% "json4s-jackson" % "4.1.1",
   )
 
   lazy val pureConfig: Seq[ModuleID] = Seq(
