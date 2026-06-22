@@ -370,5 +370,33 @@ class SyntaxSpec extends AnyWordSpec with Matchers {
     "keep Double RawValGen raw (regression)" in {
       makeArrJson(List(RawValGen(3.14))) shouldBe "[3.14]"
     }
+
+    "keep finite Float RawValGen raw (regression)" in {
+      makeArrJson(List(RawValGen(1.5f))) shouldBe "[1.5]"
+    }
+
+    "render NaN Double as JSON null (no invalid token)" in {
+      makeArrJson(List(RawValGen(Double.NaN))) shouldBe "[null]"
+    }
+
+    "render positive Infinity Double as JSON null" in {
+      makeArrJson(List(RawValGen(Double.PositiveInfinity))) shouldBe "[null]"
+    }
+
+    "render negative Infinity Double as JSON null" in {
+      makeArrJson(List(RawValGen(Double.NegativeInfinity))) shouldBe "[null]"
+    }
+
+    "render NaN Float as JSON null" in {
+      makeArrJson(List(RawValGen(Float.NaN))) shouldBe "[null]"
+    }
+
+    "render NaN Double as an empty XML body" in {
+      makeXmlArray(List(RawValGen(Double.NaN))) shouldBe "<item></item>"
+    }
+
+    "render Infinity Float as an empty XML body" in {
+      makeXmlArray(List(RawValGen(Float.PositiveInfinity))) shouldBe "<item></item>"
+    }
   }
 }

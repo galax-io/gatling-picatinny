@@ -174,19 +174,25 @@ object Syntax {
     sb.toString
   }
 
-  /** Renders a [[RawValGen]] value into JSON: genuine scalars (numbers, booleans) are emitted raw, `null` becomes the JSON
-    * `null` literal, and anything stringy is quoted and JSON-escaped.
+  /** Renders a [[RawValGen]] value into JSON: finite numbers and booleans are emitted raw; `null` and non-finite floating point
+    * (`NaN`, `±Infinity` — which have no valid JSON numeric form) become the JSON `null` literal; anything stringy is quoted
+    * and JSON-escaped.
     */
   private def appendRawJson(sb: StringBuilder, v: Any): Unit = v match {
     case null                             => sb.append("null")
+    case d: Double if !d.isFinite         => sb.append("null")
+    case f: Float if !f.isFinite          => sb.append("null")
     case _: java.lang.Number | _: Boolean => sb.append(v.toString)
     case other                            => sb.append('"').append(escapeJson(other.toString)).append('"')
   }
 
-  /** Renders a [[RawValGen]] value into XML body text: scalars raw, `null` as an empty body, anything stringy XML-escaped.
+  /** Renders a [[RawValGen]] value into XML body text: finite numbers and booleans raw; `null` and non-finite floating point
+    * (`NaN`, `±Infinity`) as an empty body; anything stringy XML-escaped.
     */
   private def appendRawXml(sb: StringBuilder, v: Any): Unit = v match {
     case null                             => ()
+    case d: Double if !d.isFinite         => ()
+    case f: Float if !f.isFinite          => ()
     case _: java.lang.Number | _: Boolean => sb.append(v.toString)
     case other                            => sb.append(escapeXml(other.toString))
   }
