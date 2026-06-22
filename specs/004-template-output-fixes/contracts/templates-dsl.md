@@ -33,9 +33,13 @@ Method signatures are **not** changing. Only output bytes for the affected input
 | `makeXml("k" - someStringRawValGen)` | raw string into element body | `escapeXml`-ed body | FR-004 |
 | `makeArrJson(List(RawValGen("")))` | `[""]` (empty raw → malformed) | `[""]` ✅ quoted empty | FR-004 empty-string edge |
 | `makeArrJson(List(RawValGen(null)))` | `[null]` (raw `null` literal) / NPE risk under naive escape | `[null]` ✅ explicit `null`, no NPE | FR-004 null edge |
+| `makeArrJson(List(RawValGen(Double.NaN)))` | `[NaN]` ⚠ invalid JSON | `[null]` ✅ | FR-004 non-finite |
+| `makeArrJson(List(RawValGen(Double.PositiveInfinity)))` | `[Infinity]` ⚠ invalid JSON | `[null]` ✅ | FR-004 non-finite |
+| `makeXmlArray(List(RawValGen(Double.NaN)))` | `<item>NaN</item>` | `<item></item>` ✅ empty body | FR-004 non-finite |
 
 > Scalar detection set: `Int, Long, Short, Byte, Double, Float, BigInt, BigDecimal, Boolean` →
-> raw. `null` → `null` (JSON) / empty body (XML), guarded against NPE. Everything else → stringy
+> raw. `null` and non-finite floating point (`NaN`, `±Infinity`, which have no valid JSON numeric
+> form) → `null` (JSON) / empty body (XML), guarded against NPE. Everything else → stringy
 > (escaped; quoted in JSON).
 
 ## XML element-name escaping
