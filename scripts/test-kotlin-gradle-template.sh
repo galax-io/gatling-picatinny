@@ -19,7 +19,7 @@ if ! command -v galaxio >/dev/null 2>&1; then
   exit 1
 fi
 
-git clone --depth 1 https://github.com/galax-io/templates-gatling.git "$TEMPLATES_DIR"
+git clone --depth 1 --branch v0.15.0 https://github.com/galax-io/templates-gatling.git "$TEMPLATES_DIR"
 
 mkdir -p "$REGISTRY_DIR"
 cat > "$REGISTRY_DIR/galaxio-registry.yaml" <<YAML
