@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK_DIR="${PICATINNY_KOTLIN_GRADLE_TEMPLATE_WORKDIR:-$(mktemp -d)}"
+TEMPLATES_GATLING_VERSION="${TEMPLATES_GATLING_VERSION:-v0.15.0}"
 TEMPLATES_DIR="$WORK_DIR/templates-gatling"
 REGISTRY_DIR="$WORK_DIR/registry"
 PROJECT_DIR="$WORK_DIR/kotlin-gradle-example"
@@ -19,7 +20,7 @@ if ! command -v galaxio >/dev/null 2>&1; then
   exit 1
 fi
 
-git clone --depth 1 --branch v0.15.0 https://github.com/galax-io/templates-gatling.git "$TEMPLATES_DIR"
+git clone --depth 1 --branch "${TEMPLATES_GATLING_VERSION}" https://github.com/galax-io/templates-gatling.git "$TEMPLATES_DIR"
 
 mkdir -p "$REGISTRY_DIR"
 cat > "$REGISTRY_DIR/galaxio-registry.yaml" <<YAML

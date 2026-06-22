@@ -22,6 +22,7 @@ env:
   JVM_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
   FORCE_COLOR: "1"
   TERM: xterm-256color
+  TEMPLATES_GATLING_VERSION: v0.15.0
 
 jobs:
   format:
@@ -158,7 +159,7 @@ jobs:
           registry_dir="$work_dir/registry"
           project_dir="$work_dir/java-maven-example"
 
-          git clone --depth 1 --branch v0.15.0 https://github.com/galax-io/templates-gatling.git "$templates_dir"
+          git clone --depth 1 --branch "${TEMPLATES_GATLING_VERSION}" https://github.com/galax-io/templates-gatling.git "$templates_dir"
 
           mkdir -p "$registry_dir"
           cat > "$registry_dir/galaxio-registry.yaml" <<YAML
