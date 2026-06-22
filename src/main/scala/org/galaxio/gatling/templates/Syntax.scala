@@ -67,7 +67,7 @@ object Syntax {
     */
   def obj(fs: Field*): ObjectVal = ObjectVal(fs.toList)
 
-  private val interpolateRegExpr = "#\\{(\\w+)\\}".r
+  private val interpolateRegExpr = "#\\{([\\w.\\-]+)\\}".r
 
   /** Creates an [[ArrayVal]] from the given values, auto-detecting Gatling EL expressions in strings.
     *
@@ -80,7 +80,12 @@ object Syntax {
       case a: ArrayVal  => a
       case f: Field     => ObjectVal(List(f))
       case s: String    =>
-        interpolateRegExpr.findFirstMatchIn(s).fold[FieldVal](RawValString(s))(m => InterpolateStrVal(m.group(1)))
+        // A string that is *entirely* an EL reference (`#{name}`, incl. dotted/hyphenated names) is an
+        // EL value; any other string — including literal text mixed with EL — is kept whole and escaped.
+        s match {
+          case interpolateRegExpr(name) => InterpolateStrVal(name)
+          case _                        => RawValString(s)
+        }
       case other        => RawValGen(other)
     }.toList)
 
@@ -169,6 +174,29 @@ object Syntax {
     sb.toString
   }
 
+  /** Renders a [[RawValGen]] value into JSON: finite numbers and booleans are emitted raw; `null` and non-finite floating point
+    * (`NaN`, `±Infinity` — which have no valid JSON numeric form) become the JSON `null` literal; anything stringy is quoted
+    * and JSON-escaped.
+    */
+  private def appendRawJson(sb: StringBuilder, v: Any): Unit = v match {
+    case null                             => sb.append("null")
+    case d: Double if !d.isFinite         => sb.append("null")
+    case f: Float if !f.isFinite          => sb.append("null")
+    case _: java.lang.Number | _: Boolean => sb.append(v.toString)
+    case other                            => sb.append('"').append(escapeJson(other.toString)).append('"')
+  }
+
+  /** Renders a [[RawValGen]] value into XML body text: finite numbers and booleans raw; `null` and non-finite floating point
+    * (`NaN`, `±Infinity`) as an empty body; anything stringy XML-escaped.
+    */
+  private def appendRawXml(sb: StringBuilder, v: Any): Unit = v match {
+    case null                             => ()
+    case d: Double if !d.isFinite         => ()
+    case f: Float if !f.isFinite          => ()
+    case _: java.lang.Number | _: Boolean => sb.append(v.toString)
+    case other                            => sb.append(escapeXml(other.toString))
+  }
+
   /** Serializes a list of fields to a JSON object string.
     *
     * String values are escaped for JSON-special characters. Gatling EL expressions (`#{var}`) are preserved.
@@ -193,7 +221,7 @@ object Syntax {
     case Field(name, RawValString(s))       =>
       sb.append('"').append(escapeJson(name)).append("\": \"").append(escapeJson(s)).append('"')
     case Field(name, RawValGen(s))          =>
-      sb.append('"').append(escapeJson(name)).append("\": ").append(s)
+      sb.append('"').append(escapeJson(name)).append("\": "); appendRawJson(sb, s)
     case Field(name, InterpolateStrVal(in)) =>
       sb.append('"').append(escapeJson(name)).append("\": \"#{").append(in).append("}\"")
     case Field(name, InterpolateGenVal(in)) =>
@@ -230,7 +258,7 @@ object Syntax {
 
   private def appendJsonValue(sb: StringBuilder, v: FieldVal): Unit = v match {
     case RawValString(s)       => sb.append('"').append(escapeJson(s)).append('"')
-    case RawValGen(s)          => sb.append(s)
+    case RawValGen(s)          => appendRawJson(sb, s)
     case InterpolateStrVal(in) => sb.append("\"#{").append(in).append("}\"")
     case InterpolateGenVal(in) => sb.append("#{").append(in).append('}')
     case ObjectVal(f)          => appendJsonObject(sb, f)
@@ -265,25 +293,31 @@ object Syntax {
 
   private def appendXmlField(sb: StringBuilder, field: Field): Unit = field match {
     case Field(name, RawValString(s))       =>
-      sb.append('<').append(name).append('>').append(escapeXml(s)).append("</").append(name).append('>')
+      val n = escapeXml(name)
+      sb.append('<').append(n).append('>').append(escapeXml(s)).append("</").append(n).append('>')
     case Field(name, RawValGen(s))          =>
-      sb.append('<').append(name).append('>').append(s).append("</").append(name).append('>')
+      val n = escapeXml(name)
+      sb.append('<').append(n).append('>'); appendRawXml(sb, s); sb.append("</").append(n).append('>')
     case Field(name, InterpolateStrVal(in)) =>
-      sb.append('<').append(name).append(">#{").append(in).append("}</").append(name).append('>')
+      val n = escapeXml(name)
+      sb.append('<').append(n).append(">#{").append(in).append("}</").append(n).append('>')
     case Field(name, InterpolateGenVal(in)) =>
-      sb.append('<').append(name).append(">#{").append(in).append("}</").append(name).append('>')
+      val n = escapeXml(name)
+      sb.append('<').append(n).append(">#{").append(in).append("}</").append(n).append('>')
     case Field(name, ObjectVal(f))          =>
-      sb.append('<').append(name).append('>'); f.foreach(appendXmlField(sb, _)); sb.append("</").append(name).append('>')
+      val n = escapeXml(name)
+      sb.append('<').append(n).append('>'); f.foreach(appendXmlField(sb, _)); sb.append("</").append(n).append('>')
     case Field(name, ArrayVal(vs))          =>
-      sb.append('<').append(name).append('>'); appendXmlArray(sb, vs); sb.append("</").append(name).append('>')
+      val n = escapeXml(name)
+      sb.append('<').append(n).append('>'); appendXmlArray(sb, vs); sb.append("</").append(n).append('>')
     case Field(name, NullVal)               =>
-      sb.append('<').append(name).append("/>")
+      sb.append('<').append(escapeXml(name)).append("/>")
   }
 
   private def appendXmlArray(sb: StringBuilder, vs: List[FieldVal]): Unit =
     vs.foreach {
       case RawValString(s)       => sb.append("<item>").append(escapeXml(s)).append("</item>")
-      case RawValGen(s)          => sb.append("<item>").append(s).append("</item>")
+      case RawValGen(s)          => sb.append("<item>"); appendRawXml(sb, s); sb.append("</item>")
       case InterpolateStrVal(in) => sb.append("<item>#{").append(in).append("}</item>")
       case InterpolateGenVal(in) => sb.append("<item>#{").append(in).append("}</item>")
       case ObjectVal(f)          => sb.append("<item>"); f.foreach(appendXmlField(sb, _)); sb.append("</item>")

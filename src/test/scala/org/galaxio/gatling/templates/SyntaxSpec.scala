@@ -271,4 +271,152 @@ class SyntaxSpec extends AnyWordSpec with Matchers {
       emptyArr shouldBe "[]"
     }
   }
+
+  // ---- v1.19.0 output-correctness fixes ----
+
+  "arr EL detection (FR-001)" should {
+
+    "classify a dotted EL name as EL and render it whole" in {
+      val a = arr("#{user.id}")
+      a.vs should contain(InterpolateStrVal("user.id"))
+      makeArrJson(a.vs) shouldBe """["#{user.id}"]"""
+    }
+
+    "classify a hyphenated EL name as EL and render it whole" in {
+      val a = arr("#{tenant-name}")
+      a.vs should contain(InterpolateStrVal("tenant-name"))
+      makeArrJson(a.vs) shouldBe """["#{tenant-name}"]"""
+    }
+
+    "render a plain string as a literal (not EL)" in {
+      val a = arr("plain")
+      a.vs should contain(RawValString("plain"))
+      makeArrJson(a.vs) shouldBe """["plain"]"""
+    }
+  }
+
+  "arr literal-text preservation (FR-002)" should {
+
+    "not truncate literal text around an EL expression" in {
+      makeArrJson(arr("hello #{name}!").vs) shouldBe """["hello #{name}!"]"""
+    }
+
+    "keep a full string with multiple EL expressions" in {
+      makeArrJson(arr("#{a} #{b}").vs) shouldBe """["#{a} #{b}"]"""
+    }
+
+    "render a pure single EL string unchanged (regression)" in {
+      makeArrJson(arr("#{name}").vs) shouldBe """["#{name}"]"""
+    }
+
+    "treat a numeric EL name consistently" in {
+      makeArrJson(arr("#{0}").vs) shouldBe """["#{0}"]"""
+    }
+
+    "render an empty string element" in {
+      makeArrJson(arr("").vs) shouldBe """[""]"""
+    }
+
+    "escape quotes in a mixed literal-plus-EL string" in {
+      makeArrJson(arr("say \"#{x}\"").vs) shouldBe "[\"say \\\"#{x}\\\"\"]"
+    }
+  }
+
+  "XML element name escaping (FR-003)" should {
+
+    "escape < and > in element names" in {
+      makeXml(Field("a<b", RawValString("v"))) shouldBe "<a&lt;b>v</a&lt;b>"
+    }
+
+    "escape & in element names" in {
+      makeXml(Field("a&b", RawValString("v"))) shouldBe "<a&amp;b>v</a&amp;b>"
+    }
+
+    "leave plain element names unchanged (regression)" in {
+      makeXml("name" - "foo") shouldBe "<name>foo</name>"
+    }
+  }
+
+  "RawValGen value escaping (FR-004)" should {
+
+    "quote and escape a stringy RawValGen in JSON" in {
+      makeArrJson(List(RawValGen("a\"b"))) shouldBe "[\"a\\\"b\"]"
+    }
+
+    "escape a stringy RawValGen in XML" in {
+      makeXmlArray(List(RawValGen("<x>"))) shouldBe "<item>&lt;x&gt;</item>"
+    }
+
+    "render an empty stringy RawValGen as an empty quoted string in JSON" in {
+      makeArrJson(List(RawValGen(""))) shouldBe """[""]"""
+    }
+
+    "render a null RawValGen as JSON null without error" in {
+      makeArrJson(List(RawValGen(null))) shouldBe "[null]"
+    }
+
+    "render a null RawValGen as an empty XML body without error" in {
+      makeXmlArray(List(RawValGen(null))) shouldBe "<item></item>"
+    }
+
+    "keep Int RawValGen raw (regression)" in {
+      makeArrJson(List(RawValGen(42))) shouldBe "[42]"
+    }
+
+    "keep Boolean RawValGen raw (regression)" in {
+      makeArrJson(List(RawValGen(true))) shouldBe "[true]"
+    }
+
+    "keep Double RawValGen raw (regression)" in {
+      makeArrJson(List(RawValGen(3.14))) shouldBe "[3.14]"
+    }
+
+    "keep finite Float RawValGen raw (regression)" in {
+      makeArrJson(List(RawValGen(1.5f))) shouldBe "[1.5]"
+    }
+
+    "render NaN Double as JSON null (no invalid token)" in {
+      makeArrJson(List(RawValGen(Double.NaN))) shouldBe "[null]"
+    }
+
+    "render positive Infinity Double as JSON null" in {
+      makeArrJson(List(RawValGen(Double.PositiveInfinity))) shouldBe "[null]"
+    }
+
+    "render negative Infinity Double as JSON null" in {
+      makeArrJson(List(RawValGen(Double.NegativeInfinity))) shouldBe "[null]"
+    }
+
+    "render NaN Float as JSON null" in {
+      makeArrJson(List(RawValGen(Float.NaN))) shouldBe "[null]"
+    }
+
+    "render NaN Double as an empty XML body" in {
+      makeXmlArray(List(RawValGen(Double.NaN))) shouldBe "<item></item>"
+    }
+
+    "render Infinity Float as an empty XML body" in {
+      makeXmlArray(List(RawValGen(Float.PositiveInfinity))) shouldBe "<item></item>"
+    }
+
+    "keep Short RawValGen raw" in {
+      makeArrJson(List(RawValGen(42.toShort))) shouldBe "[42]"
+      makeXmlArray(List(RawValGen(42.toShort))) shouldBe "<item>42</item>"
+    }
+
+    "keep Byte RawValGen raw" in {
+      makeArrJson(List(RawValGen(42.toByte))) shouldBe "[42]"
+      makeXmlArray(List(RawValGen(42.toByte))) shouldBe "<item>42</item>"
+    }
+
+    "keep BigInt RawValGen raw" in {
+      makeArrJson(List(RawValGen(BigInt(123)))) shouldBe "[123]"
+      makeXmlArray(List(RawValGen(BigInt(123)))) shouldBe "<item>123</item>"
+    }
+
+    "keep BigDecimal RawValGen raw" in {
+      makeArrJson(List(RawValGen(BigDecimal("3.14")))) shouldBe "[3.14]"
+      makeXmlArray(List(RawValGen(BigDecimal("3.14")))) shouldBe "<item>3.14</item>"
+    }
+  }
 }

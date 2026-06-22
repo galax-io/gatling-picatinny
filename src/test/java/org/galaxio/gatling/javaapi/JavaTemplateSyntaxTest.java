@@ -103,4 +103,36 @@ class JavaTemplateSyntaxTest {
         String xml = makeXml(field("data", "<b>bold & cool</b>"));
         assertThat(xml).isEqualTo("<data>&lt;b&gt;bold &amp; cool&lt;/b&gt;</data>");
     }
+
+    // ---- v1.19.0 fixes flow through the facade via delegation (no facade-side logic) ----
+
+    @Test
+    void fieldArrPreservesLiteralTextAroundEl() {
+        // FR-002: fieldArr delegates to Syntax.arr — full string survives, no truncation
+        String json = makeJson(fieldArr("k", "hello #{name}!"));
+        assertThat(json).isEqualTo("{\"k\": [\"hello #{name}!\"]}");
+    }
+
+    @Test
+    void fieldArrDetectsDottedElName() {
+        // FR-001: dotted EL name is rendered whole
+        String json = makeJson(fieldArr("k", "#{user.id}"));
+        assertThat(json).isEqualTo("{\"k\": [\"#{user.id}\"]}");
+    }
+
+    @Test
+    void makeXmlEscapesElementName() {
+        // FR-003: element name is escaped, just like the JSON path already escapes it
+        String xml = makeXml(field("a<b", "v"));
+        assertThat(xml).isEqualTo("<a&lt;b>v</a&lt;b>");
+    }
+
+    @Test
+    void fieldStringEscapingDelegatesToCore() {
+        // FR-004: string-value escaping flows through the facade to core. The Java API exposes
+        // RawValString via field(String); RawValGen<String> is not constructible from Java, so the
+        // stringy-escape path is exercised here through field(String).
+        String json = makeJson(field("k", "a\"b<>"));
+        assertThat(json).isEqualTo("{\"k\": \"a\\\"b<>\"}");
+    }
 }
