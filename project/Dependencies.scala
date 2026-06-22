@@ -36,7 +36,7 @@ object Dependencies {
   )
 
   lazy val scalaLogging: Seq[ModuleID] = Seq(
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
