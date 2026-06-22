@@ -40,7 +40,7 @@ object Dependencies {
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
-    "org.scalatest" %% "scalatest" % "3.2.19" % "test,it",
+    "org.scalatest" %% "scalatest" % "3.2.20" % "test,it",
   )
 
   lazy val scalaCheck: Seq[ModuleID] = Seq(
