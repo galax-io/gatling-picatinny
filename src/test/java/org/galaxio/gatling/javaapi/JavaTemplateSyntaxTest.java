@@ -126,4 +126,13 @@ class JavaTemplateSyntaxTest {
         String xml = makeXml(field("a<b", "v"));
         assertThat(xml).isEqualTo("<a&lt;b>v</a&lt;b>");
     }
+
+    @Test
+    void fieldStringEscapingDelegatesToCore() {
+        // FR-004: string-value escaping flows through the facade to core. The Java API exposes
+        // RawValString via field(String); RawValGen<String> is not constructible from Java, so the
+        // stringy-escape path is exercised here through field(String).
+        String json = makeJson(field("k", "a\"b<>"));
+        assertThat(json).isEqualTo("{\"k\": \"a\\\"b<>\"}");
+    }
 }

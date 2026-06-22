@@ -67,7 +67,9 @@ class TemplatesSpec extends AnyWordSpec with Matchers {
         Thread.currentThread.setContextClassLoader(new ClassLoader(null) {})
         val t  = new Templates { def force(): Unit = { templates; () } }
         val ex = intercept[IllegalStateException](t.force())
-        ex.getMessage.toLowerCase should include("templates")
+        ex.getMessage should include("Templates directory")
+        ex.getMessage should include("resources/templates")
+        ex.getMessage.toLowerCase should include("classpath")
       } finally Thread.currentThread.setContextClassLoader(original)
     }
 
@@ -75,13 +77,14 @@ class TemplatesSpec extends AnyWordSpec with Matchers {
       val original = Thread.currentThread.getContextClassLoader
       val root     = Files.createTempDirectory("tpl-root")
       Files.createDirectory(root.resolve("templates"))
+      val cl       = new java.net.URLClassLoader(Array(root.toUri.toURL), null)
       try {
-        val cl = new java.net.URLClassLoader(Array(root.toUri.toURL), null)
         Thread.currentThread.setContextClassLoader(cl)
-        val t  = new Templates { def names: Set[String] = templates.keySet }
+        val t = new Templates { def names: Set[String] = templates.keySet }
         t.names shouldBe empty
       } finally {
         Thread.currentThread.setContextClassLoader(original)
+        cl.close()
         Files.deleteIfExists(root.resolve("templates"))
         Files.deleteIfExists(root)
       }

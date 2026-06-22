@@ -398,5 +398,25 @@ class SyntaxSpec extends AnyWordSpec with Matchers {
     "render Infinity Float as an empty XML body" in {
       makeXmlArray(List(RawValGen(Float.PositiveInfinity))) shouldBe "<item></item>"
     }
+
+    "keep Short RawValGen raw" in {
+      makeArrJson(List(RawValGen(42.toShort))) shouldBe "[42]"
+      makeXmlArray(List(RawValGen(42.toShort))) shouldBe "<item>42</item>"
+    }
+
+    "keep Byte RawValGen raw" in {
+      makeArrJson(List(RawValGen(42.toByte))) shouldBe "[42]"
+      makeXmlArray(List(RawValGen(42.toByte))) shouldBe "<item>42</item>"
+    }
+
+    "keep BigInt RawValGen raw" in {
+      makeArrJson(List(RawValGen(BigInt(123)))) shouldBe "[123]"
+      makeXmlArray(List(RawValGen(BigInt(123)))) shouldBe "<item>123</item>"
+    }
+
+    "keep BigDecimal RawValGen raw" in {
+      makeArrJson(List(RawValGen(BigDecimal("3.14")))) shouldBe "[3.14]"
+      makeXmlArray(List(RawValGen(BigDecimal("3.14")))) shouldBe "<item>3.14</item>"
+    }
   }
 }
