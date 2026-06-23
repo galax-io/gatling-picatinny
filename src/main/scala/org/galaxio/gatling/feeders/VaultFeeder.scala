@@ -37,6 +37,7 @@ object VaultFeeder extends LazyLogging {
       timeoutInSeconds: Long = 5,
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
+    warnIfNotHttps(vaultUrl)
 
     Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
       val vaultToken = login(client, vaultUrl, roleId, secretId)
@@ -93,6 +94,7 @@ object VaultFeeder extends LazyLogging {
       timeoutInSeconds: Long,
   ): IndexedSeq[Record[String]] = {
     require(paths != null, "Paths list must not be null")
+    warnIfNotHttps(vaultUrl)
 
     Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
       val vaultToken = login(client, vaultUrl, roleId, secretId)
@@ -104,7 +106,7 @@ object VaultFeeder extends LazyLogging {
     }
   }
 
-  private def mergeWithStrategy(
+  private[feeders] def mergeWithStrategy(
       pairs: List[(String, String)],
       strategy: DuplicateKeyStrategy,
   ): Record[String] = {
@@ -140,6 +142,7 @@ object VaultFeeder extends LazyLogging {
       timeoutInSeconds: Long = 5,
   ): IndexedSeq[Record[String]] = {
     require(keys != null, "Keys list must not be null")
+    warnIfNotHttps(vaultUrl)
 
     Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
       val data = readSecret(client, vaultUrl, secretPath, vaultToken)
@@ -148,10 +151,14 @@ object VaultFeeder extends LazyLogging {
   }
 
   private def login(client: THttpClient, vaultUrl: String, roleId: String, secretId: String): String = {
-    val body      = approleLoginBody(roleId, secretId)
-    val loginUrl  = s"$vaultUrl/v1/auth/approle/login"
-    val response  = client.postOrThrow(loginUrl, body)
-    val loginJson = Try(parse(response.body)).fold(
+    val body     = approleLoginBody(roleId, secretId)
+    val loginUrl = s"$vaultUrl/v1/auth/approle/login"
+    val response = client.postOrThrow(loginUrl, body)
+    parseLoginResponse(response.body, loginUrl)
+  }
+
+  private[feeders] def parseLoginResponse(body: String, loginUrl: String): String = {
+    val loginJson = Try(parse(body)).fold(
       e => throw new RuntimeException(s"Failed to parse Vault login response as JSON from $loginUrl", e),
       identity,
     )
@@ -164,7 +171,11 @@ object VaultFeeder extends LazyLogging {
   private def readSecret(client: THttpClient, vaultUrl: String, secretPath: String, vaultToken: String): Record[String] = {
     val secretUrl = s"$vaultUrl/v1/$secretPath"
     val response  = client.getOrThrow(secretUrl, Seq("X-Vault-Token", vaultToken))
-    val json      = Try(parse(response.body)).fold(
+    parseSecretResponse(response.body, secretPath)
+  }
+
+  private[feeders] def parseSecretResponse(body: String, secretPath: String): Record[String] = {
+    val json = Try(parse(body)).fold(
       e => throw new RuntimeException(s"Failed to parse Vault secret response as JSON from '$secretPath'", e),
       identity,
     )
@@ -173,6 +184,32 @@ object VaultFeeder extends LazyLogging {
       identity,
     )
   }
+
+  private val loopbackHosts =
+    Set("localhost", "127.0.0.1", "[::1]", "[0:0:0:0:0:0:0:1]", "::1", "0:0:0:0:0:0:0:1")
+
+  /** True when the URL would send credentials in cleartext: scheme is http and the host is not loopback.
+    *
+    * For unbracketed IPv6 authorities (e.g. `http://0:0:0:0:0:0:0:1`) `URI.getHost` returns null, so we fall back to the
+    * authority with any `userinfo@` prefix stripped — that keeps loopback longhand from triggering a spurious warning.
+    */
+  private[feeders] def isUnsafeVaultUrl(vaultUrl: String): Boolean =
+    Try {
+      val uri    = new java.net.URI(vaultUrl)
+      val scheme = Option(uri.getScheme).map(_.toLowerCase).getOrElse("")
+      val host   = Option(uri.getHost)
+        .orElse(Option(uri.getAuthority).map(_.split("@").last))
+        .map(_.toLowerCase)
+        .getOrElse("")
+      scheme == "http" && !loopbackHosts.contains(host)
+    }.getOrElse(false)
+
+  private def warnIfNotHttps(vaultUrl: String): Unit =
+    if (isUnsafeVaultUrl(vaultUrl))
+      logger.warn(
+        s"VaultFeeder: vaultUrl '$vaultUrl' uses plaintext HTTP — credentials will be sent unencrypted. " +
+          "Use HTTPS for non-local hosts.",
+      )
 
   private def filterRecord(data: Record[String], keys: List[String]): Record[String] = {
     val selectedKeys = keys.toSet

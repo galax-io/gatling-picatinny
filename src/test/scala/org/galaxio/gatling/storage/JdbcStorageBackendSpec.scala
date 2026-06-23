@@ -7,6 +7,31 @@ class JdbcStorageBackendSpec extends AnyWordSpec with Matchers {
 
   "JdbcStorageBackend" should {
 
+    "reject tableName with SQL injection payload" in {
+      val thrown = intercept[IllegalArgumentException] {
+        JdbcStorageBackend("jdbc:recording:", tableName = "results; DROP TABLE results; --")
+      }
+      thrown.getMessage should include("Invalid tableName")
+    }
+
+    "reject empty tableName" in {
+      val thrown = intercept[IllegalArgumentException] {
+        JdbcStorageBackend("jdbc:recording:", tableName = "")
+      }
+      thrown.getMessage should include("Invalid tableName")
+    }
+
+    "reject tableName starting with a digit" in {
+      val thrown = intercept[IllegalArgumentException] {
+        JdbcStorageBackend("jdbc:recording:", tableName = "123bad")
+      }
+      thrown.getMessage should include("Invalid tableName")
+    }
+
+    "accept a valid tableName" in {
+      noException should be thrownBy JdbcStorageBackend("jdbc:recording:", tableName = "my_results_2024")
+    }
+
     "close the result set when load fails" in {
       val driver = new JdbcTestSupport.RecordingJdbcDriver("jdbc:recording:", Seq("not-json"))
 

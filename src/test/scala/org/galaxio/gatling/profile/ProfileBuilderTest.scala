@@ -63,9 +63,48 @@ class ProfileBuilderTest extends AnyWordSpec with Matchers {
 
       thrown.getMessage should include(s"Incorrect file content in $path")
     }
+
+    "reject a path that escapes the working directory via traversal" in {
+      val thrown = the[ProfileBuilderException] thrownBy {
+        ProfileBuilderNew.buildFromYaml("../../etc/passwd")
+      }
+
+      thrown.getMessage.toLowerCase should include("traversal")
+    }
+
+    "accept a path that normalizes back within the project" in {
+      val path = "src/test/resources/profileTemplates/../profileTemplates/profile1.yml"
+
+      ProfileBuilderNew.buildFromYaml(path) shouldBe expectedYaml
+    }
+
+    "reject an absolute path outside the working directory" in {
+      val thrown = the[ProfileBuilderException] thrownBy {
+        ProfileBuilderNew.buildFromYaml("/etc/passwd")
+      }
+
+      thrown.getMessage.toLowerCase should include("traversal")
+    }
   }
 
   "ProfileBuilderNew.buildFromYamlJava" should {
+
+    "reject a path that escapes the working directory via traversal" in {
+      val thrown = the[ProfileBuilderException] thrownBy {
+        ProfileBuilderNew.buildFromYamlJava("../../etc/passwd")
+      }
+
+      thrown.getMessage.toLowerCase should include("traversal")
+    }
+
+    "reject an absolute path outside the working directory" in {
+      val thrown = the[ProfileBuilderException] thrownBy {
+        ProfileBuilderNew.buildFromYamlJava("/etc/passwd")
+      }
+
+      thrown.getMessage.toLowerCase should include("traversal")
+    }
+
     "use the same error model as the Scala facade" in {
       Seq(
         "notExistsFile"                                            -> "File not found notExistsFile",
@@ -81,6 +120,30 @@ class ProfileBuilderTest extends AnyWordSpec with Matchers {
           thrown.getMessage should include(expectedMessage)
         }
       }
+    }
+  }
+
+  "Request.parsedHeaders" should {
+    "throw ProfileBuilderException on a header with no colon separator" in {
+      val request =
+        Request("r", "100 rph", None, Params("GET", "/", Some(List("bad-header-no-colon")), None))
+
+      val thrown = the[ProfileBuilderException] thrownBy request.parsedHeaders
+
+      thrown.getMessage should include("bad-header-no-colon")
+    }
+
+    "throw ProfileBuilderException on an empty header string" in {
+      val request = Request("r", "100 rph", None, Params("GET", "/", Some(List("")), None))
+
+      the[ProfileBuilderException] thrownBy request.parsedHeaders
+    }
+
+    "parse a well-formed header into a name to value pair" in {
+      val request =
+        Request("r", "100 rph", None, Params("GET", "/", Some(List("Content-Type: application/json")), None))
+
+      request.parsedHeaders shouldBe Map("Content-Type" -> "application/json")
     }
   }
 }
