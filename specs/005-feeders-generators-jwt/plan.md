@@ -36,7 +36,7 @@ Docker.
 
 **Constraints**: No new dependencies; no public API signature **removal**; Gatling stays `Provided`; coverage floor 65/60. FR-005 is a bug fix (#223) restoring intended type preservation — MINOR-appropriate. String session-claim output must stay byte-for-byte identical (only genuinely numeric/boolean values change, which is the fix).
 
-**Scale/Scope**: 5 production files edited (`GeneratorInstances.scala`, `Syntax.scala`, `Faker.scala`, `ClaimsBuilder.scala`, `jwt.scala`, `JwtKeys.scala`) + 1 facade (`Jwt.java`); 1 new generator test suite + extensions to `JwtSpec`, `JwtKeysSpec`, `GeneratedFeederSpec`, plus a facade delegation test.
+**Scale/Scope**: 6 production files edited (`GeneratorInstances.scala`, `Syntax.scala`, `Faker.scala`, `ClaimsBuilder.scala`, `jwt.scala`, `JwtKeys.scala`) + 1 facade (`Jwt.java`); 1 new generator test suite + extensions to `JwtSpec`, `JwtKeysSpec`, `GeneratedFeederSpec`, plus a facade delegation test.
 
 ## Test Model *(mandatory — real cases + test sketches, NO implementation)*
 
