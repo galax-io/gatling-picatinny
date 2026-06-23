@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import io.gatling.core.feeder.Feeder
-import org.galaxio.gatling.utils.RandomDataGenerators
+import org.galaxio.gatling.feeders.faker.GovIdGenerators
 
 @deprecated("Use org.galaxio.gatling.feeders.faker.Faker.ru.ogrnip with GeneratedFeeder instead", "faker-api")
 object RandomPSRNSPFeeder {
@@ -16,6 +16,6 @@ object RandomPSRNSPFeeder {
     *   random string PSRNSP feeder
     */
   def apply(paramName: String): Feeder[String] =
-    feeder[String](paramName)(RandomDataGenerators.randomPSRNSP())
+    feeder[String](paramName)(GovIdGenerators.ogrnip())
 
 }

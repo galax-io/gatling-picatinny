@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import io.gatling.core.feeder.Feeder
-import org.galaxio.gatling.utils.RandomDataGenerators
+import org.galaxio.gatling.feeders.faker.GovIdGenerators
 
 @deprecated("Use org.galaxio.gatling.feeders.faker.Faker.ru.inn.person with GeneratedFeeder instead", "faker-api")
 object RandomNatITNFeeder {
@@ -16,6 +16,6 @@ object RandomNatITNFeeder {
     *   random string ITN of the natural person feeder
     */
   def apply(paramName: String): Feeder[String] =
-    feeder[String](paramName)(RandomDataGenerators.randomNatITN())
+    feeder[String](paramName)(GovIdGenerators.natITN())
 
 }

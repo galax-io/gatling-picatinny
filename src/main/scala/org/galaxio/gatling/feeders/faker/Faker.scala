@@ -410,7 +410,7 @@ object Faker {
   /** Finance and commerce-friendly generators. */
   object finance {
     def pan(bins: String*): Generator[String] =
-      Generator.delay(RandomDataGenerators.randomPAN(bins: _*))
+      Generator.delay(GovIdGenerators.pan(bins: _*))
 
     def amount(min: BigDecimal, max: BigDecimal, scale: Int = 2): Generator[BigDecimal] = {
       require(min <= max, s"min must be <= max: $min > $max")
@@ -523,7 +523,7 @@ object Faker {
   /** Passport generators. */
   object passport {
     def ru(): Generator[String] =
-      Generator.delay(RandomDataGenerators.randomRusPassport())
+      Generator.delay(GovIdGenerators.rusPassport())
 
     def number(country: Country): Generator[String] = country match {
       case Country.RU => ru()
@@ -537,14 +537,14 @@ object Faker {
   /** Russian government and finance identifiers. */
   object ru {
     object inn {
-      def person(): Generator[String]  = Generator.delay(RandomDataGenerators.randomNatITN())
-      def company(): Generator[String] = Generator.delay(RandomDataGenerators.randomJurITN())
+      def person(): Generator[String]  = Generator.delay(GovIdGenerators.natITN())
+      def company(): Generator[String] = Generator.delay(GovIdGenerators.jurITN())
     }
 
-    def kpp(): Generator[String]    = Generator.delay(RandomDataGenerators.randomKPP())
-    def ogrn(): Generator[String]   = Generator.delay(RandomDataGenerators.randomOGRN())
-    def ogrnip(): Generator[String] = Generator.delay(RandomDataGenerators.randomPSRNSP())
-    def snils(): Generator[String]  = Generator.delay(RandomDataGenerators.randomSNILS())
+    def kpp(): Generator[String]    = Generator.delay(GovIdGenerators.kpp())
+    def ogrn(): Generator[String]   = Generator.delay(GovIdGenerators.ogrn())
+    def ogrnip(): Generator[String] = Generator.delay(GovIdGenerators.ogrnip())
+    def snils(): Generator[String]  = Generator.delay(GovIdGenerators.snils())
 
     // The 12 Cyrillic letters allowed on Russian plates (those with a Latin look-alike).
     private val plateLetters: Vector[String] = Vector("А", "В", "Е", "К", "М", "Н", "О", "Р", "С", "Т", "У", "Х")

@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import io.gatling.core.feeder.Feeder
-import org.galaxio.gatling.utils.RandomDataGenerators
+import org.galaxio.gatling.feeders.faker.GovIdGenerators
 
 @deprecated("Use org.galaxio.gatling.feeders.faker.Faker.passport.ru with GeneratedFeeder instead", "faker-api")
 object RandomRusPassportFeeder {
@@ -14,6 +14,6 @@ object RandomRusPassportFeeder {
     *   random string russian passport series and number feeder
     */
   def apply(paramName: String): Feeder[String] =
-    feeder[String](paramName)(RandomDataGenerators.randomRusPassport())
+    feeder[String](paramName)(GovIdGenerators.rusPassport())
 
 }
