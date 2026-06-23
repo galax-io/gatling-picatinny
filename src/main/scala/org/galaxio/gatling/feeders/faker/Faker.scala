@@ -656,7 +656,11 @@ object Faker {
   object it {
 
     private lazy val cities: Vector[CfCity] = {
-      val v = CfCityProvider.ofDefault().findAll().asScala.filter(_.getBelfiore.matches("[A-Z][0-9]{3}")).toVector
+      def validBelfiore(code: String): Boolean =
+        code.length == 4 && code.charAt(0).isLetter && code.charAt(1).isDigit && code.charAt(2).isDigit && code
+          .charAt(3)
+          .isDigit
+      val v                                    = CfCityProvider.ofDefault().findAll().asScala.filter(c => validBelfiore(c.getBelfiore)).toVector
       require(v.nonEmpty, "codice-fiscale city registry is empty — check library version")
       v
     }
