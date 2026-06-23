@@ -50,6 +50,33 @@ class JwtKeysSpec extends AnyWordSpec with Matchers {
       }
     }
 
+    "given malformed key material" should {
+
+      "throw a contextual IllegalArgumentException for invalid Base64" in {
+        val ex = the[IllegalArgumentException] thrownBy {
+          JwtKeys.rsaPrivateKeyFromResource("keys/malformed_base64.pem")
+        }
+        ex.getMessage should include("RSA")
+      }
+
+      "throw a contextual IllegalArgumentException with cause for truncated DER" in {
+        val ex = the[IllegalArgumentException] thrownBy {
+          JwtKeys.rsaPrivateKeyFromResource("keys/truncated_der.pem")
+        }
+        ex.getMessage should include("RSA")
+        ex.getCause should not be null
+      }
+
+      "throw a contextual IllegalArgumentException with cause for a wrong-algorithm key" in {
+        // An EC PKCS#8 key loaded as RSA must fail with context, not a bare InvalidKeySpecException.
+        val ex = the[IllegalArgumentException] thrownBy {
+          JwtKeys.rsaPrivateKeyFromResource("keys/ec_private_pkcs8.pem")
+        }
+        ex.getMessage should include("RSA")
+        ex.getCause should not be null
+      }
+    }
+
     "loading keys from filesystem" should {
 
       "load RSA private key from file path" in {

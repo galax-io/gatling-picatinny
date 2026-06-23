@@ -90,7 +90,8 @@ public final class Jwt {
                 scala.collection.immutable.Map$.MODULE$.empty(),
                 scala.Option.empty(),
                 false,
-                false
+                false,
+                scala.collection.immutable.Map$.MODULE$.empty()
         );
     }
 

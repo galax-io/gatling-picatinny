@@ -6,7 +6,7 @@ import io.gatling.core.session.el._
 import org.json4s.jackson.JsonMethods._
 import org.json4s._
 import pdi.jwt.{Jwt => PdiJwt, JwtAlgorithm}
-import pdi.jwt.algorithms.JwtAsymmetricAlgorithm
+import pdi.jwt.algorithms.{JwtAsymmetricAlgorithm, JwtHmacAlgorithm}
 
 import java.security.PrivateKey
 
@@ -107,8 +107,24 @@ package object jwt {
 
   private def encode(header: String, payload: String, key: SigningKey, algorithm: JwtAlgorithm): String =
     key match {
-      case SigningKey.StringSecret(secret) => PdiJwt.encode(header, payload, secret, algorithm)
-      case SigningKey.AsymmetricKey(pk)    => PdiJwt.encode(header, payload, pk, algorithm.asInstanceOf[JwtAsymmetricAlgorithm])
+      case SigningKey.StringSecret(secret) =>
+        algorithm match {
+          case hmac: JwtHmacAlgorithm => PdiJwt.encode(header, payload, secret, hmac)
+          case other                  =>
+            throw new IllegalArgumentException(
+              s"Algorithm '${other.name}' requires an asymmetric private key, but a string secret was supplied. " +
+                "Use an HMAC algorithm (HS256/HS384/HS512) with a string secret.",
+            )
+        }
+      case SigningKey.AsymmetricKey(pk)    =>
+        algorithm match {
+          case asym: JwtAsymmetricAlgorithm => PdiJwt.encode(header, payload, pk, asym)
+          case other                        =>
+            throw new IllegalArgumentException(
+              s"Algorithm '${other.name}' requires a string secret, but an asymmetric private key was supplied. " +
+                "Use an asymmetric algorithm (RS*/ES*/PS*) with a private key.",
+            )
+        }
     }
 
 }

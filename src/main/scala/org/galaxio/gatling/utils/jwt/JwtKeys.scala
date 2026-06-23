@@ -1,8 +1,8 @@
 package org.galaxio.gatling.utils.jwt
 
 import java.nio.file.{Files, Path}
-import java.security.spec.{PKCS8EncodedKeySpec, X509EncodedKeySpec}
-import java.security.{KeyFactory, PrivateKey, PublicKey}
+import java.security.spec.{InvalidKeySpecException, PKCS8EncodedKeySpec, X509EncodedKeySpec}
+import java.security.{KeyFactory, NoSuchAlgorithmException, PrivateKey, PublicKey}
 import java.util.Base64
 import scala.io.Source
 import scala.util.Using
@@ -56,25 +56,39 @@ object JwtKeys {
   def ecPublicKeyFromFile(path: String): PublicKey =
     publicKeyFromPem(Files.readString(Path.of(path)), "EC")
 
-  private def privateKeyFromPem(pem: String, algorithm: String): PrivateKey = {
-    val stripped = pem
-      .replaceAll("-----BEGIN .*-----", "")
-      .replaceAll("-----END .*-----", "")
-      .replaceAll("\\s", "")
-    val bytes    = Base64.getDecoder.decode(stripped)
-    val spec     = new PKCS8EncodedKeySpec(bytes)
-    KeyFactory.getInstance(algorithm).generatePrivate(spec)
-  }
+  private def privateKeyFromPem(pem: String, algorithm: String): PrivateKey =
+    try {
+      val stripped = pem
+        .replaceAll("-----BEGIN .*-----", "")
+        .replaceAll("-----END .*-----", "")
+        .replaceAll("\\s", "")
+      val bytes    = Base64.getDecoder.decode(stripped)
+      val spec     = new PKCS8EncodedKeySpec(bytes)
+      KeyFactory.getInstance(algorithm).generatePrivate(spec)
+    } catch {
+      case e @ (_: IllegalArgumentException | _: InvalidKeySpecException | _: NoSuchAlgorithmException) =>
+        throw new IllegalArgumentException(
+          s"Failed to load $algorithm private key from PEM (${e.getClass.getSimpleName}): ${e.getMessage}",
+          e,
+        )
+    }
 
-  private def publicKeyFromPem(pem: String, algorithm: String): PublicKey = {
-    val stripped = pem
-      .replaceAll("-----BEGIN .*-----", "")
-      .replaceAll("-----END .*-----", "")
-      .replaceAll("\\s", "")
-    val bytes    = Base64.getDecoder.decode(stripped)
-    val spec     = new X509EncodedKeySpec(bytes)
-    KeyFactory.getInstance(algorithm).generatePublic(spec)
-  }
+  private def publicKeyFromPem(pem: String, algorithm: String): PublicKey =
+    try {
+      val stripped = pem
+        .replaceAll("-----BEGIN .*-----", "")
+        .replaceAll("-----END .*-----", "")
+        .replaceAll("\\s", "")
+      val bytes    = Base64.getDecoder.decode(stripped)
+      val spec     = new X509EncodedKeySpec(bytes)
+      KeyFactory.getInstance(algorithm).generatePublic(spec)
+    } catch {
+      case e @ (_: IllegalArgumentException | _: InvalidKeySpecException | _: NoSuchAlgorithmException) =>
+        throw new IllegalArgumentException(
+          s"Failed to load $algorithm public key from PEM (${e.getClass.getSimpleName}): ${e.getMessage}",
+          e,
+        )
+    }
 
   private def readResourceString(path: String): String = {
     val url = getClass.getClassLoader.getResource(path)
