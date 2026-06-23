@@ -1000,6 +1000,12 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
         withClue(s"$pnr must be a valid personnummer: ")(_root_.dev.personnummer.Personnummer.valid(pnr) shouldBe true)
       }
     }
+    "never generate löpnummer 000 (reserved, fails validation)" in {
+      (1 to sampleCount).foreach { _ =>
+        val pnr = Faker.se.personnummer().sample()
+        pnr.substring(6, 9) should not be "000"
+      }
+    }
   }
 
   "Brazilian companies" should {
