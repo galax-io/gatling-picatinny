@@ -13,7 +13,7 @@ object ProfileBuilderNew {
     http(r.request)
       .httpRequest(r.params.method, r.params.path)
       .body(StringBody(r.requestBody))
-      .headers(CollectionConverters.asJava(r.requestHeaders.map { case r.regexHeader(a, b) => (a, b) }.toMap))
+      .headers(CollectionConverters.asJava(r.parsedHeaders))
   }
 
   def toExec(r: Request): ChainBuilder = io.gatling.javaapi.core.CoreDsl.exec(toRequest(r))

@@ -32,10 +32,14 @@ trait StorageBackend {
   def clear(): Unit
 }
 
+private[storage] object StorageFormats {
+  implicit val formats: Formats = DefaultFormats
+}
+
 final class StorageWriteException(message: String) extends RuntimeException(message)
 
 final case class JsonFileBackend(filePath: String) extends StorageBackend {
-  private implicit val formats: Formats = DefaultFormats
+  import StorageFormats.formats
 
   override def save(records: Seq[Record[Any]]): Unit =
     Files.writeString(Paths.get(filePath), writePretty(records))
@@ -57,7 +61,7 @@ final case class RedisBackend(
     storageKey: String = "gatling:auth:storage",
 ) extends StorageBackend {
   import com.redis.RedisClient
-  private implicit val formats: Formats = DefaultFormats
+  import StorageFormats.formats
 
   private def withClient[T](f: RedisClientLike => T): T = {
     val client  = new RedisClient(host, port)
@@ -113,9 +117,14 @@ final case class JdbcStorageBackend(
     username: String = "",
     password: String = "",
 ) extends StorageBackend {
-  private implicit val formats: Formats = DefaultFormats
-  private val tableInitialized          = new AtomicBoolean(false)
-  private val tableInitLock             = new AnyRef
+  import StorageFormats.formats
+  require(
+    tableName.matches("[A-Za-z_][A-Za-z0-9_]*"),
+    s"Invalid tableName: '$tableName'. Must be a valid SQL identifier " +
+      "(letters, digits, underscores, starting with a letter or underscore).",
+  )
+  private val tableInitialized = new AtomicBoolean(false)
+  private val tableInitLock    = new AnyRef
 
   private def withConnection[T](f: Connection => T): T = {
     val conn =

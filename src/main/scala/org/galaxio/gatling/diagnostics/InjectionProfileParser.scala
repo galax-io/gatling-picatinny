@@ -60,6 +60,7 @@ private[gatling] object InjectionProfileParser {
           case s: HeavisideOpenInjection    =>
             stressPeak(cursor, longField(s, 0), s.duration) -> currentRate
           case other                        =>
+            requireArity(other, 1)
             val duration = durationField(other)
             val rate     = rateFromUsers(longField(other, 0), duration)
             List(WorkloadSegment(cursor, cursor + duration, other.productPrefix, rate, rate)) -> rate
@@ -79,9 +80,14 @@ private[gatling] object InjectionProfileParser {
             val duration = durationField(s)
             List(WorkloadSegment(cursor, cursor + duration, "ramp", s.from.toDouble, s.to.toDouble))
           case other                               =>
-            val duration = durationField(other)
-            val start    = doubleField(other, 0)
-            val end      = doubleField(other, math.max(0, other.productArity - 2))
+            requireArity(other, 2)
+            val duration   = durationField(other)
+            // Field layout assumed: (start, [..], end, duration). end is second-to-last (-2 skips the trailing duration);
+            // when there is no distinct end field the segment is flat (start == end) by design.
+            val startIndex = 0
+            val endIndex   = math.max(startIndex, other.productArity - 2)
+            val start      = doubleField(other, startIndex)
+            val end        = doubleField(other, endIndex)
             List(WorkloadSegment(cursor, cursor + duration, other.productPrefix, start, end))
         }
         (segments ++ next, cursor + durationField(step))
@@ -131,6 +137,16 @@ private[gatling] object InjectionProfileParser {
 
   private def rateFromUsers(users: Long, duration: FiniteDuration): Double =
     users.toDouble / math.max(1.0, duration.toSeconds.toDouble)
+
+  /** Fails loudly when an injection step exposes fewer Product fields than the parser needs, instead of silently reading the
+    * wrong field (or throwing an opaque index error) and producing a wrong ramp shape.
+    */
+  private[diagnostics] def requireArity(product: Product, min: Int): Unit =
+    require(
+      product.productArity >= min,
+      s"Unsupported injection step '${product.productPrefix}' with productArity=${product.productArity}; " +
+        s"expected at least $min field(s) to derive its ramp shape.",
+    )
 
   private def durationField(product: Product): FiniteDuration =
     product.productIterator.collectFirst { case duration: FiniteDuration => duration }.getOrElse(0.seconds)
