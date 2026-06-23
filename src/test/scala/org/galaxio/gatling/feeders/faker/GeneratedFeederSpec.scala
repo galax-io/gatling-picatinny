@@ -768,6 +768,15 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       }
     }
 
+    "generate INN that passes Hibernate Validator's official @INN constraint" in {
+      val validator = InnHolder.validator()
+      (1 to sampleCount).foreach { _ =>
+        val holder     = new InnHolder(Faker.ru.inn.person().sample(), Faker.ru.inn.company().sample())
+        val violations = validator.validate(holder)
+        withClue(s"INN ${holder.individual} / ${holder.juridical} rejected by @INN: ")(violations.isEmpty shouldBe true)
+      }
+    }
+
     "generate KPP with correct format" in {
       (1 to sampleCount).foreach { _ =>
         Faker.ru.kpp().sample() should fullyMatch regex "\\d{9}"

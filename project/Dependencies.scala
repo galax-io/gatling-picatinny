@@ -80,9 +80,12 @@ object Dependencies {
       .exclude("org.apache.commons", "commons-csv"),
   )
 
-  // dev.personnummer is validate-only — TEST oracle confirming hand-generated Swedish personnummer are valid.
+  // Validate-only TEST oracles: dev.personnummer (Swedish personnummer) and Hibernate Validator's
+  // official @INN constraint (Russian INN, 10/12-digit FTS checksum). Used with ParameterMessageInterpolator
+  // so no Jakarta EL implementation is needed.
   lazy val idValidationTest: Seq[ModuleID] = Seq(
-    "dev.personnummer" % "personnummer" % "3.5.0" % "test,it",
+    "dev.personnummer"        % "personnummer"        % "3.5.0"       % "test,it",
+    "org.hibernate.validator" % "hibernate-validator" % "8.0.2.Final" % "test,it",
   )
 
   lazy val circeDeps: Seq[ModuleID] = Seq(
