@@ -21,6 +21,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= generex,
     libraryDependencies ++= jwt,
     libraryDependencies ++= idValidation,
+    libraryDependencies ++= idValidationTest,
     libraryDependencies ++= circeDeps,
     libraryDependencies ++= junit,
     // Coverage floor — data-driven (measured unit+it: 69.69% stmt / 63.37% branch on 2026-06-21).

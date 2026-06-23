@@ -63,13 +63,26 @@ object Dependencies {
     "com.github.jwt-scala" %% "jwt-core" % "11.0.4",
   )
 
-  // National-ID generation via libraries so Faker emits values with real, validator-passing checksums:
-  // iban4j builds valid IBANs (ISO 7064 Mod 97-10); codice-fiscale builds valid Italian tax codes from a
-  // Person + comune (correct control character). Runtime deps (used in main Faker). codice-fiscale pulls
-  // Guava transitively. Authorized 2026-06-23.
+  // National-ID generation via libraries so Faker emits values with real, validator-passing checksums.
+  // Runtime deps (used in main Faker). codice-fiscale pulls Guava transitively. Authorized 2026-06-23.
   lazy val idValidation: Seq[ModuleID] = Seq(
-    "org.iban4j"       % "iban4j"         % "3.2.11-RELEASE",
-    "it.kamaladafrica" % "codice-fiscale" % "1.6.0",
+    "org.iban4j"             % "iban4j"             % "3.2.11-RELEASE", // valid IBAN (ISO 7064 Mod 97-10)
+    "it.kamaladafrica"       % "codice-fiscale"     % "1.6.0",          // valid Italian codice fiscale
+    "io.github.viepovsky"    % "pesel"              % "2.0.2",          // valid Polish PESEL (gen + validate), 0 deps
+    "br.com.caelum.stella"   % "caelum-stella-core" % "2.2.1",          // valid Brazilian CPF / CNPJ (gen + validate), 0 deps
+    "com.github.mkyrychenko" % "vin-utils"          % "1.1.0",          // valid vehicle VIN (mod-11)
+    // commons-validator: ISBN / EAN / Luhn check-digit computation (routines.checkdigit). Exclude the
+    // transitive deps the check-digit routines don't use, to keep the published artifact lean.
+    ("commons-validator"     % "commons-validator"  % "1.10.1")
+      .exclude("commons-beanutils", "commons-beanutils")
+      .exclude("commons-digester", "commons-digester")
+      .exclude("commons-logging", "commons-logging")
+      .exclude("org.apache.commons", "commons-csv"),
+  )
+
+  // dev.personnummer is validate-only — TEST oracle confirming hand-generated Swedish personnummer are valid.
+  lazy val idValidationTest: Seq[ModuleID] = Seq(
+    "dev.personnummer" % "personnummer" % "3.5.0" % "test,it",
   )
 
   lazy val circeDeps: Seq[ModuleID] = Seq(
