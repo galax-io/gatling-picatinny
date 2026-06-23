@@ -322,6 +322,18 @@ class JwtSpec extends AnyWordSpec with Matchers {
       result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
     }
 
+    "fail (not overflow) when forcing a Long on a whole Double beyond Long range" in {
+      val session = emptySession.set("big", 9.223372036854776e18) // > Long.MaxValue
+      val result  = ClaimsBuilder().claimFromSession("big", "#{big}").as[Long].resolve(session)
+      result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
+    }
+
+    "fail (not overflow) when forcing a Long on a BigInt beyond Long range" in {
+      val session = emptySession.set("huge", BigInt("99999999999999999999"))
+      val result  = ClaimsBuilder().claimFromSession("huge", "#{huge}").as[Long].resolve(session)
+      result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
+    }
+
     "not NPE when forcing a type on a null session value" in {
       val session = emptySession.set("opt", null)
       // A null session value must resolve to JSON null (or a clean Failure) — never throw an NPE.
