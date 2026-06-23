@@ -925,6 +925,98 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     }
   }
 
+  "Standard product/book codes" should {
+    "generate EAN-13 with a valid check digit" in {
+      (1 to sampleCount).foreach { _ =>
+        val ean = Faker.finance.ean13().sample()
+        ean should fullyMatch regex "\\d{13}"
+        org.apache.commons.validator.routines.checkdigit.EAN13CheckDigit.EAN13_CHECK_DIGIT.isValid(ean) shouldBe true
+      }
+    }
+
+    "generate ISBN-13 with a valid check digit" in {
+      (1 to sampleCount).foreach { _ =>
+        val isbn = Faker.finance.isbn13().sample()
+        isbn should fullyMatch regex "(978|979)\\d{10}"
+        org.apache.commons.validator.routines.checkdigit.ISBNCheckDigit.ISBN13_CHECK_DIGIT.isValid(isbn) shouldBe true
+      }
+    }
+
+    "generate ISBN-10 with a valid check digit" in {
+      (1 to sampleCount).foreach { _ =>
+        val isbn = Faker.finance.isbn10().sample()
+        isbn should fullyMatch regex "\\d{9}[\\dX]"
+        org.apache.commons.validator.routines.checkdigit.ISBNCheckDigit.ISBN10_CHECK_DIGIT.isValid(isbn) shouldBe true
+      }
+    }
+  }
+
+  "Device identifiers" should {
+    "generate an IMEI with a valid Luhn check digit" in {
+      (1 to sampleCount).foreach { _ =>
+        val imei = Faker.device.imei().sample()
+        imei should fullyMatch regex "\\d{15}"
+        org.apache.commons.validator.routines.checkdigit.LuhnCheckDigit.LUHN_CHECK_DIGIT.isValid(imei) shouldBe true
+      }
+    }
+  }
+
+  "Vehicle identifiers" should {
+    "generate a VIN that passes vin-utils validation" in {
+      (1 to sampleCount).foreach { _ =>
+        val vin = Faker.vehicle.vin().sample()
+        vin should have length 17
+        _root_.de.kyrychenko.utils.vin.VinValidatorUtils.isValidVin(vin) shouldBe true
+      }
+    }
+  }
+
+  "Polish identifiers" should {
+    "generate a PESEL that passes viepovsky validation" in {
+      (1 to sampleCount).foreach { _ =>
+        val pesel = Faker.pl.pesel().sample()
+        pesel should fullyMatch regex "\\d{11}"
+        withClue(s"$pesel must be a valid PESEL: ") {
+          _root_.io.github.viepovsky.polishutils.pesel.PeselValidator.isPeselValid(pesel) shouldBe true
+        }
+      }
+    }
+  }
+
+  "Swedish identifiers" should {
+    "generate a personnummer that passes dev.personnummer validation" in {
+      (1 to sampleCount).foreach { _ =>
+        val pnr = Faker.se.personnummer().sample()
+        pnr should fullyMatch regex "\\d{10}"
+        withClue(s"$pnr must be a valid personnummer: ")(_root_.dev.personnummer.Personnummer.valid(pnr) shouldBe true)
+      }
+    }
+  }
+
+  "Brazilian companies" should {
+    "generate a CNPJ with valid check digits" in {
+      val validator = new _root_.br.com.caelum.stella.validation.CNPJValidator()
+      (1 to sampleCount).foreach { _ =>
+        val cnpj = Faker.br.cnpj().sample()
+        withClue(s"CNPJ $cnpj must be valid: ")(noException should be thrownBy validator.assertValid(cnpj))
+      }
+    }
+
+    "generate a formatted CNPJ" in {
+      (1 to sampleCount).foreach { _ =>
+        Faker.br.cnpj(formatted = true).sample() should fullyMatch regex "\\w{2}\\.\\w{3}\\.\\w{3}/\\w{4}-\\d{2}"
+      }
+    }
+  }
+
+  "Russian vehicle plates" should {
+    "generate a гос. номер in the standard format" in {
+      (1 to sampleCount).foreach { _ =>
+        Faker.ru.licensePlate().sample() should fullyMatch regex "[АВЕКМНОРСТУХ]\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2}"
+      }
+    }
+  }
+
   "German identifiers" should {
     "generate Steueridentifikationsnummer" in {
       (1 to sampleCount).foreach { _ =>
