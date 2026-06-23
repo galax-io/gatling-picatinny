@@ -578,7 +578,7 @@ object Faker {
         yy     <- number.int(0, 99)
         mm     <- number.int(1, 12)
         dd     <- number.int(1, 28)
-        serial <- number.int(0, 999)
+        serial <- number.int(1, 999) // löpnummer 001–999; 000 is reserved and fails validation
       } yield {
         val first9 = f"$yy%02d$mm%02d$dd%02d$serial%03d"
         first9 + LuhnCheckDigit.LUHN_CHECK_DIGIT.calculate(first9)
