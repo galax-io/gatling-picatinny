@@ -717,14 +717,15 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       bic.length should (be >= 8 and be <= 11)
     }
 
-    "generate IBAN for multiple countries" in {
-      Faker.finance.iban(Country.DE).sample() should startWith("DE89")
-      Faker.finance.iban(Country.GB).sample() should startWith("GB82")
-      Faker.finance.iban(Country.FR).sample() should startWith("FR14")
-      Faker.finance.iban(Country.ES).sample() should startWith("ES91")
-      Faker.finance.iban(Country.IT).sample() should startWith("IT60")
-      Faker.finance.iban(Country.RU).sample() should startWith("RU33")
-      Faker.finance.iban(Country.BR).sample() should startWith("BR18")
+    "generate IBANs with valid ISO 7064 check digits for multiple countries" in {
+      Seq(Country.DE, Country.GB, Country.FR, Country.ES, Country.IT, Country.RU, Country.BR).foreach { c =>
+        val iban = Faker.finance.iban(c).sample()
+        withClue(s"$c iban $iban: ") {
+          iban should startWith(c.iso2)
+          // iban4j Iban.valueOf throws InvalidCheckDigitException on a wrong checksum — must not throw.
+          noException should be thrownBy org.iban4j.Iban.valueOf(iban)
+        }
+      }
     }
 
     "generate transaction IDs with prefix" in {
@@ -899,6 +900,27 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
         val cf = Faker.it.codiceFiscale().sample()
         cf should have length 16
         cf should fullyMatch regex "[A-Z]{6}\\d{2}[A-Z]\\d{2}[A-Z]\\d{3}[A-Z]"
+      }
+    }
+
+    "generate Codice Fiscale with only valid day codes (01-31 or 41-71, never 32-40)" in {
+      val dayCodes = (1 to 10000).map(_ => Faker.it.codiceFiscale().sample().substring(9, 11).toInt)
+      dayCodes.foreach { d =>
+        withClue(s"day code $d must be in 01..31 or 41..71: ") {
+          ((d >= 1 && d <= 31) || (d >= 41 && d <= 71)) shouldBe true
+        }
+      }
+      dayCodes.exists(d => d >= 32 && d <= 40) shouldBe false
+      dayCodes.exists(_ <= 31) shouldBe true // at least one male code
+      dayCodes.exists(_ >= 41) shouldBe true // at least one female code
+    }
+
+    "generate Codice Fiscale whose control character passes the it.kamaladafrica validator" in {
+      (1 to 1000).foreach { _ =>
+        val cf = Faker.it.codiceFiscale().sample()
+        withClue(s"$cf must pass codice-fiscale format+control validation: ") {
+          _root_.it.kamaladafrica.codicefiscale.CodiceFiscale.isFormatValid(cf) shouldBe true
+        }
       }
     }
   }

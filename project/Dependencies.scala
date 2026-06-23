@@ -63,6 +63,15 @@ object Dependencies {
     "com.github.jwt-scala" %% "jwt-core" % "11.0.4",
   )
 
+  // National-ID generation via libraries so Faker emits values with real, validator-passing checksums:
+  // iban4j builds valid IBANs (ISO 7064 Mod 97-10); codice-fiscale builds valid Italian tax codes from a
+  // Person + comune (correct control character). Runtime deps (used in main Faker). codice-fiscale pulls
+  // Guava transitively. Authorized 2026-06-23.
+  lazy val idValidation: Seq[ModuleID] = Seq(
+    "org.iban4j"       % "iban4j"         % "3.2.11-RELEASE",
+    "it.kamaladafrica" % "codice-fiscale" % "1.6.0",
+  )
+
   lazy val circeDeps: Seq[ModuleID] = Seq(
     "io.circe" %% "circe-core"    % "0.15.0-M1",
     "io.circe" %% "circe-generic" % "0.15.0-M1",

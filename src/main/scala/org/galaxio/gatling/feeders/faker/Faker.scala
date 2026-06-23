@@ -3,6 +3,9 @@ package org.galaxio.gatling.feeders.faker
 import com.mifmif.common.regex.Generex
 import org.galaxio.gatling.utils.{RandomDataGenerators, RandomPhoneGenerator}
 import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
+// codice-fiscale library — aliased to avoid clashing with the enclosing `object it` and the `it.*` package root.
+import _root_.it.kamaladafrica.codicefiscale.{City => CfCity, CodiceFiscale, Person => CfPerson}
+import _root_.it.kamaladafrica.codicefiscale.city.{CityProvider => CfCityProvider}
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -10,6 +13,7 @@ import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
+import scala.jdk.CollectionConverters._
 import scala.math.BigDecimal.RoundingMode
 
 /** Faker facade for generating load-test data.
@@ -425,20 +429,16 @@ object Faker {
         branch       <- string.alphanumeric(3).map(_.toUpperCase)
       } yield s"$bank$country$locationCode$branch"
 
-    /** Generates IBAN-like strings. Check digits are hardcoded placeholders — values will not pass strict ISO 7064 validation
-      * but are structurally correct for load-test payloads.
+    /** Generates a valid IBAN with correct ISO 7064 Mod 97-10 check digits via iban4j for IBAN-system countries. For countries
+      * outside the IBAN system (e.g. US, AR), emits a structural placeholder of the form `&lt;ISO2&gt;00&lt;digits&gt;`.
       */
-    def iban(country: Country = Country.DE): Generator[String] = country match {
-      case Country.DE => string.numeric(18).map(value => s"DE89$value")
-      case Country.GB =>
-        string.alphanumeric(4).map(_.toUpperCase).zip(string.numeric(14)).map { case (bank, digits) => s"GB82$bank$digits" }
-      case Country.FR => string.numeric(23).map(value => s"FR14$value")
-      case Country.ES => string.numeric(20).map(value => s"ES91$value")
-      case Country.IT =>
-        string.alphabetic(1).map(_.toUpperCase).zip(string.numeric(22)).map { case (check, digits) => s"IT60$check$digits" }
-      case Country.RU => string.numeric(29).map(value => s"RU33$value")
-      case Country.BR => string.numeric(23).map(value => s"BR18$value")
-      case _          => string.alphanumeric(20).map(value => s"${country.iso2}00${value.toUpperCase}")
+    def iban(country: Country = Country.DE): Generator[String] = Generator.delay {
+      scala.util
+        .Try(org.iban4j.Iban.random(org.iban4j.CountryCode.valueOf(country.iso2)).toString)
+        .getOrElse {
+          val body = (1 to 20).map(_ => ThreadLocalRandom.current().nextInt(10)).mkString
+          s"${country.iso2}00$body"
+        }
     }
 
     def transactionId(prefix: String = "txn"): Generator[String] =
@@ -562,23 +562,38 @@ object Faker {
   /** Italian identifiers. */
   object it {
 
-    /** Generates a structurally valid Codice Fiscale (16 alphanumeric characters).
-      *
-      * The generated value follows the correct format (6 letters + 2 digits + 1 letter + 2 digits + 1 letter + 3 digits + 1
-      * letter) but uses random data rather than real name/date derivation. Suitable for load-test payloads where format matters
-      * more than semantic correctness.
+    // Italian comuni registry bundled with the codice-fiscale library; loaded once. One registry entry
+    // (SENALE) has a malformed 2-char Belfiore code that makes CodiceFiscale.of throw, so drop any entry
+    // whose Belfiore is not a well-formed `[A-MZ]ddd` code.
+    private lazy val cities: Vector[CfCity] =
+      CfCityProvider.ofDefault().findAll().asScala.iterator.filter(_.getBelfiore.matches("[A-MZ][0-9]{3}")).toVector
+
+    /** Generates a valid Italian Codice Fiscale via the `it.kamaladafrica` library: a random fake person (name, surname, birth
+      * date, sex) born in a random real comune. The 16-character result has a correctly computed control character and a valid
+      * day encoding (01..31 male, 41..71 female), so it passes codice-fiscale validation. The personal data is random — the
+      * code is not tied to a real person.
       */
     def codiceFiscale(): Generator[String] =
       for {
-        surname  <- string.alphabetic(3).map(_.toUpperCase)
-        name     <- string.alphabetic(3).map(_.toUpperCase)
-        year     <- string.numeric(2)
-        month    <- oneOf("A", "B", "C", "D", "E", "H", "L", "M", "P", "R", "S", "T")
-        day      <- number.int(1, 71).map(d => f"$d%02d")
-        town     <- string.alphabetic(1).map(_.toUpperCase)
-        townCode <- string.numeric(3)
-        check    <- string.alphabetic(1).map(_.toUpperCase)
-      } yield s"$surname$name$year$month$day$town$townCode$check"
+        firstname <- string.alphabetic(6).map(_.toUpperCase)
+        lastname  <- string.alphabetic(6).map(_.toUpperCase)
+        year      <- number.int(1950, 2005)
+        month     <- number.int(1, 12)
+        day       <- number.int(1, 28)
+        female    <- number.int(0, 1)
+        cityIndex <- number.int(0, cities.size - 1)
+      } yield CodiceFiscale
+        .of(
+          CfPerson
+            .builder()
+            .firstname(firstname)
+            .lastname(lastname)
+            .birthDate(LocalDate.of(year, month, day))
+            .isFemale(female == 1)
+            .city(cities(cityIndex))
+            .build(),
+        )
+        .getValue
   }
 
   /** German identifiers. */
