@@ -21,8 +21,10 @@ object Syntax {
   }
 
   case class SeparatorStep(gStr: Generator[String], n: Int) {
-    def separateBy(sep: String): Generator[String] =
+    def separateBy(sep: String): Generator[String] = {
+      require(n >= 1, s"separateBy requires n >= 1, but got $n")
       (1 to n).map(_ => gStr).reduce((x, y) => x.flatMap(xv => y.map(yv => s"$xv$sep$yv")))
+    }
   }
 
   final class GeneratorToFeeder[T](val g: Generator[T]) extends AnyVal {
@@ -43,11 +45,16 @@ object Syntax {
     def ~(char: Char): Generator[String] = gStr.map(s1 => s1.appended(char))
 
     @inline
-    def **(n: Int): Generator[String] = (1 to n).map(_ => gStr).reduce(_ |+| _)
+    def **(n: Int): Generator[String] = {
+      require(n >= 1, s"** requires n >= 1, but got $n")
+      (1 to n).map(_ => gStr).reduce(_ |+| _)
+    }
 
     @inline
-    def repeat(n: Int): SeparatorStep =
+    def repeat(n: Int): SeparatorStep = {
+      require(n >= 1, s"repeat requires n >= 1, but got $n")
       SeparatorStep(gStr, n)
+    }
 
   }
 
