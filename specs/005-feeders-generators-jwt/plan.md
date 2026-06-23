@@ -4,7 +4,7 @@
 
 **Input**: Feature specification from `specs/005-feeders-generators-jwt/spec.md`
 
-**Milestone**: [v1.21.0 — Feeders, Generators & JWT](https://github.com/galax-io/gatling-picatinny/milestone/5) | Issues: [#205](https://github.com/galax-io/gatling-picatinny/issues/205), [#206](https://github.com/galax-io/gatling-picatinny/issues/206), [#223](https://github.com/galax-io/gatling-picatinny/issues/223)
+**Milestone**: [v1.21.0 — Feeders, Generators & JWT](https://github.com/galax-io/gatling-picatinny/milestone/5) | Issues: [#205](https://github.com/galax-io/gatling-picatinny/issues/205), [#206](https://github.com/galax-io/gatling-picatinny/issues/206), [#223](https://github.com/galax-io/gatling-picatinny/issues/223) | **Released**: [v1.21.1](https://github.com/galax-io/gatling-picatinny/releases/tag/v1.21.1) (patch: Belfiore regex broadened to `[A-Z][0-9]{3}`)
 
 ## Summary
 
