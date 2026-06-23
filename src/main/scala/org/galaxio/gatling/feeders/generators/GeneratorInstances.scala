@@ -23,8 +23,8 @@ trait GeneratorInstances {
 
   final def long(min: Long, max: Long): Generator[Long] = Generator { ctx =>
     val res =
-      if (max < Int.MaxValue) ctx.gen.between(min, max + 1)
-      else if (min > Int.MinValue) ctx.gen.between(min - 1, max) + 1
+      if (max < Long.MaxValue) ctx.gen.between(min, max + 1)
+      else if (min > Long.MinValue) ctx.gen.between(min - 1, max) + 1
       else ctx.gen.nextLong()
 
     res
