@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import io.gatling.core.feeder.Feeder
-import org.galaxio.gatling.utils.RandomDataGenerators
+import org.galaxio.gatling.feeders.faker.GovIdGenerators
 
 @deprecated("Use org.galaxio.gatling.feeders.faker.Faker.finance.pan with GeneratedFeeder instead", "faker-api")
 object RandomPANFeeder {
@@ -17,6 +17,6 @@ object RandomPANFeeder {
     *   random string PAN feeder
     */
   def apply(paramName: String, bins: String*): Feeder[String] =
-    feeder[String](paramName)(RandomDataGenerators.randomPAN(bins: _*))
+    feeder[String](paramName)(GovIdGenerators.pan(bins: _*))
 
 }

@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders
 
 import io.gatling.core.feeder.Feeder
-import org.galaxio.gatling.utils.RandomDataGenerators
+import org.galaxio.gatling.feeders.faker.GovIdGenerators
 
 @deprecated("Use org.galaxio.gatling.feeders.faker.Faker.ru.snils with GeneratedFeeder instead", "faker-api")
 object RandomSNILSFeeder {
@@ -16,6 +16,6 @@ object RandomSNILSFeeder {
     *   random string SNILS feeder
     */
   def apply(paramName: String): Feeder[String] =
-    feeder[String](paramName)(RandomDataGenerators.randomSNILS())
+    feeder[String](paramName)(GovIdGenerators.snils())
 
 }
