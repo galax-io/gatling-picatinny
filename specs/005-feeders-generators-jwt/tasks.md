@@ -110,7 +110,7 @@ description: "Task list for Feeders, Generators & JWT Correctness (v1.21.0)"
 - [X] T013 [P] [US5] Add malformed-key PEM fixtures (invalid Base64, truncated DER, wrong-algorithm key) under `src/test/resources/keys/`.
 - [X] T014 [US5] Add failing tests to `src/test/scala/org/galaxio/gatling/utils/jwt/JwtKeysSpec.scala`: each malformed fixture loaded via `JwtKeys.rsaPrivateKeyFromResource`/`ecPrivateKeyFromResource` throws `IllegalArgumentException` naming algorithm + stage with cause attached (negative); a valid PEM still loads (positive).
 - [X] T015 [US5] Wrap `privateKeyFromPem`/`publicKeyFromPem` bodies in a contextual `try`/`catch` (algorithm + stage + cause) in `src/main/scala/org/galaxio/gatling/utils/jwt/JwtKeys.scala` (lines 59-77) → T014 green.
-- [X] T016 [US5] Add failing failure-path tests to `src/test/scala/org/galaxio/gatling/utils/jwt/JwtSpec.scala`: `setJwt`/`setJwtAsBearer` with a claim EL referencing a missing session key throw `IllegalStateException` carrying the underlying `Failure` detail (FR-008 is test-only; existing throw at `jwt.scala:67,77` already satisfies — confirm green).
+- [X] T016 [US5] Add tests confirming existing `IllegalStateException` throw contract for `setJwt`/`setJwtAsBearer` with unresolvable EL (production code already correct — test-coverage only, no fix needed) in `src/test/scala/org/galaxio/gatling/utils/jwt/JwtSpec.scala`: assert `IllegalStateException` carrying the underlying `Failure` detail for a claim EL referencing a missing session key (FR-008 is test-only; existing throw at `jwt.scala:67,77` already satisfies — confirm green).
 
 **Checkpoint**: Key-load and generation failures are actionable and pinned.
 
@@ -147,7 +147,7 @@ description: "Task list for Feeders, Generators & JWT Correctness (v1.21.0)"
 **Purpose**: FR-009/FR-010 guards, docs, coverage, release gate.
 
 - [X] T021 [P] FR-010 byte-stability: add a test asserting a `String` session claim serializes byte-for-byte identical to the pre-change quoted output, in `src/test/scala/org/galaxio/gatling/utils/jwt/JwtSpec.scala`.
-- [X] T022 [P] FR-010 compile guard: lock the new public generator/JWT method signatures (additive, none removed) — extend the existing compile-guard spec or add a minimal one under `src/test/scala/...`.
+- [X] T022 [P] FR-010 compile guard: lock the new public generator/JWT method signatures (additive, none removed) — extend the existing compile-guard spec or add a minimal one under `src/test/scala/...` (target: `src/test/scala/org/galaxio/gatling/utils/jwt/JwtApiCompileGuardSpec.scala`).
 - [X] T023 [P] Update scaladoc on `ClaimsBuilder.claimFromSession` and the new `claimFromSession*` overrides documenting JSON-type inference + override behavior, in `src/main/scala/org/galaxio/gatling/utils/jwt/ClaimsBuilder.scala`.
 - [X] T024 Run `sbt scalafmtAll scalafmtSbt` (format) then `sbt scalafmtCheckAll scalafmtSbtCheck compile test` (full unit gate) — all green. FR-009 check: confirm each behavioral fix (T003/T005-T006/T011/T014/T017/T019) carries ≥1 negative/boundary AND ≥1 positive assertion.
 - [X] T025 Verify coverage ≥ 65% stmt / 60% branch (`sbt coverage test coverageReport`); confirm `feeders.generators` is now covered.
