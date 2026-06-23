@@ -659,8 +659,11 @@ object Faker {
     // comuni except the single registry row with a malformed Belfiore code (SENALE has a 2-char "ND"
     // instead of the standard letter+3-digits) — that one entry makes CodiceFiscale.of throw, and no
     // valid codice fiscale can be built from a malformed Belfiore anyway.
-    private lazy val cities: Vector[CfCity] =
-      CfCityProvider.ofDefault().findAll().asScala.iterator.filter(_.getBelfiore.matches("[A-MZ][0-9]{3}")).toVector
+    private lazy val cities: Vector[CfCity] = {
+      val v = CfCityProvider.ofDefault().findAll().asScala.iterator.filter(_.getBelfiore.matches("[A-MZ][0-9]{3}")).toVector
+      require(v.nonEmpty, "codice-fiscale city registry is empty after Belfiore filter — check library version")
+      v
+    }
 
     /** Generates a valid Italian Codice Fiscale via the `it.kamaladafrica` library: a random fake person (name, surname, birth
       * date, sex) born in a random real comune. The 16-character result has a correctly computed control character and a valid

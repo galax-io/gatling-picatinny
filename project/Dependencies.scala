@@ -64,20 +64,22 @@ object Dependencies {
   )
 
   // National-ID generation via libraries so Faker emits values with real, validator-passing checksums.
-  // Runtime deps (used in main Faker). codice-fiscale pulls Guava transitively. Authorized 2026-06-23.
+  // Runtime deps (used in main Faker). Authorized 2026-06-23.
   lazy val idValidation: Seq[ModuleID] = Seq(
     "org.iban4j"             % "iban4j"             % "3.2.11-RELEASE", // valid IBAN (ISO 7064 Mod 97-10)
     "it.kamaladafrica"       % "codice-fiscale"     % "1.6.0",          // valid Italian codice fiscale
     "io.github.viepovsky"    % "pesel"              % "2.0.2",          // valid Polish PESEL (gen + validate), 0 deps
     "br.com.caelum.stella"   % "caelum-stella-core" % "2.2.1",          // valid Brazilian CPF / CNPJ (gen + validate), 0 deps
     "com.github.mkyrychenko" % "vin-utils"          % "1.1.0",          // valid vehicle VIN (mod-11)
-    // commons-validator: ISBN / EAN / Luhn check-digit computation (routines.checkdigit). Exclude the
-    // transitive deps the check-digit routines don't use, to keep the published artifact lean.
+    // commons-validator: ISBN / EAN / Luhn check-digit computation (routines.checkdigit). Exclude
+    // transitive deps unused by the check-digit routines. Also exclude commons-collections 3.2.2
+    // (CVE-2015-6420 gadget) — the check-digit package does not use the collections API.
     ("commons-validator"     % "commons-validator"  % "1.10.1")
       .exclude("commons-beanutils", "commons-beanutils")
       .exclude("commons-digester", "commons-digester")
       .exclude("commons-logging", "commons-logging")
-      .exclude("org.apache.commons", "commons-csv"),
+      .exclude("org.apache.commons", "commons-csv")
+      .exclude("commons-collections", "commons-collections"),
   )
 
   // Validate-only TEST oracles: dev.personnummer (Swedish personnummer) and Hibernate Validator's
