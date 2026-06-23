@@ -147,13 +147,17 @@ final case class ClaimsBuilder(
   }
 
   private def coerceLong(raw: Any): Validation[JValue] = raw match {
-    case l: Long                => Success(JLong(l))
-    case i: Int                 => Success(JLong(i.toLong))
-    case s: Short               => Success(JLong(s.toLong))
-    case b: Byte                => Success(JLong(b.toLong))
-    case bi: BigInt             => Success(JLong(bi.toLong))
-    case d: Double if d.isWhole => Success(JLong(d.toLong))
-    case other                  =>
+    case l: Long                                                                             => Success(JLong(l))
+    case i: Int                                                                              => Success(JLong(i.toLong))
+    case s: Short                                                                            => Success(JLong(s.toLong))
+    case b: Byte                                                                             => Success(JLong(b.toLong))
+    case bi: BigInt if bi.isValidLong                                                        => Success(JLong(bi.toLong))
+    case bi: BigInt                                                                          => Failure(s"BigInt value '$bi' is out of Long range for a numeric claim")
+    // Long.MaxValue.toDouble == 2^63 (rounds up), so strict < prevents silent saturation.
+    // Long.MinValue.toDouble == -2^63 exactly, so >= is correct for the lower bound.
+    case d: Double if d.isWhole && d >= Long.MinValue.toDouble && d < Long.MaxValue.toDouble =>
+      Success(JLong(d.toLong))
+    case other                                                                               =>
       try Success(JLong(other.toString.trim.toLong))
       catch { case _: NumberFormatException => Failure(s"Cannot coerce session value '$other' to a numeric (Long) claim") }
   }
