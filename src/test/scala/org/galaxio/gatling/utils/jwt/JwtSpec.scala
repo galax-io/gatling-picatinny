@@ -24,6 +24,12 @@ class JwtSpec extends AnyWordSpec with Matchers {
     kpg.generateKeyPair()
   }
 
+  private def resolveJson(cb: ClaimsBuilder, s: io.gatling.core.session.Session): String =
+    cb.resolve(s) match {
+      case io.gatling.commons.validation.Success(json) => json
+      case io.gatling.commons.validation.Failure(msg)  => fail(s"resolve failed: $msg")
+    }
+
   "jwt factory" should {
     "create builder with string secret" in {
       val gen = jwtPkg.jwt("HS256", "secret")
@@ -252,6 +258,115 @@ class JwtSpec extends AnyWordSpec with Matchers {
       decoded.isSuccess shouldBe true
       decoded.get.content should include("\"scope\":\"overridden\"")
       decoded.get.content should not include "\"scope\":\"original\""
+    }
+  }
+
+  "claimFromSession typing" should {
+    "serialize a numeric session value as a JSON number" in {
+      val session = emptySession.set("uid", 42L)
+      val json    = resolveJson(ClaimsBuilder().claimFromSession("uid", "#{uid}"), session)
+      json should include("\"uid\":42")
+      json should not include "\"uid\":\"42\""
+    }
+
+    "serialize a boolean session value as a JSON boolean" in {
+      val session = emptySession.set("flag", true)
+      val json    = resolveJson(ClaimsBuilder().claimFromSession("flag", "#{flag}"), session)
+      json should include("\"flag\":true")
+      json should not include "\"flag\":\"true\""
+    }
+
+    "keep a String session value as a JSON string" in {
+      val session = emptySession.set("name", "alice")
+      resolveJson(ClaimsBuilder().claimFromSession("name", "#{name}"), session) should include("\"name\":\"alice\"")
+    }
+
+    "keep a numeric-looking String as a JSON string (no silent retyping)" in {
+      val session = emptySession.set("uid", "42")
+      resolveJson(ClaimsBuilder().claimFromSession("uid", "#{uid}"), session) should include("\"uid\":\"42\"")
+    }
+
+    "force a JSON string via .as[String] on a numeric value" in {
+      val session = emptySession.set("uid", 42L)
+      resolveJson(ClaimsBuilder().claimFromSession("uid", "#{uid}").as[String], session) should include("\"uid\":\"42\"")
+    }
+
+    "force a JSON number via .as[Long] on a numeric string" in {
+      val session = emptySession.set("uid", "42")
+      val json    = resolveJson(ClaimsBuilder().claimFromSession("uid", "#{uid}").as[Long], session)
+      json should include("\"uid\":42")
+      json should not include "\"uid\":\"42\""
+    }
+
+    "force a JSON number via .as[Double] on a numeric string" in {
+      val session = emptySession.set("ratio", "1.5")
+      resolveJson(ClaimsBuilder().claimFromSession("ratio", "#{ratio}").as[Double], session) should include("\"ratio\":1.5")
+    }
+
+    "force a JSON boolean via .as[Boolean] on a string" in {
+      val session = emptySession.set("ok", "true")
+      val json    = resolveJson(ClaimsBuilder().claimFromSession("ok", "#{ok}").as[Boolean], session)
+      json should include("\"ok\":true")
+      json should not include "\"ok\":\"true\""
+    }
+
+    "parse a JSON-string session value as a JSON array via .as[JValue]" in {
+      val session = emptySession.set("aud", """["svc-1","svc-2"]""")
+      val json    = resolveJson(ClaimsBuilder().claimFromSession("aud", "#{aud}").as[org.json4s.JValue], session)
+      json should include("\"aud\":[\"svc-1\",\"svc-2\"]")
+    }
+
+    "fail generation when forcing a Long on a non-numeric value" in {
+      val session = emptySession.set("uid", "not-a-number")
+      val result  = ClaimsBuilder().claimFromSession("uid", "#{uid}").as[Long].resolve(session)
+      result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
+    }
+
+    "not NPE when forcing a type on a null session value" in {
+      val session = emptySession.set("opt", null)
+      // A null session value must resolve to JSON null (or a clean Failure) — never throw an NPE.
+      noException should be thrownBy ClaimsBuilder().claimFromSession("opt", "#{opt}").as[Boolean].resolve(session)
+    }
+  }
+
+  "string claim output stability (FR-010)" should {
+    "serialize a String session claim byte-for-byte as a quoted JSON string" in {
+      val session = emptySession.set("uid", "abc-123")
+      resolveJson(ClaimsBuilder().claimFromSession("uid", "#{uid}"), session) shouldBe """{"uid":"abc-123"}"""
+    }
+  }
+
+  "algorithm/key validation" should {
+    "throw IllegalArgumentException for an HMAC algorithm with an asymmetric key" in {
+      val kp  = initRsaKeyPair()
+      val gen = jwtPkg.jwt("HS256", kp.getPrivate).defaultHeader.payload("""{"sub":"x"}""")
+      val ex  = the[IllegalArgumentException] thrownBy emptySession.setJwt(gen, "jwt")
+      ex.getMessage should include("HS256")
+    }
+
+    "throw IllegalArgumentException for an asymmetric algorithm with a string secret" in {
+      val gen = jwtPkg.jwt("RS256", "secret").defaultHeader.payload("""{"sub":"x"}""")
+      val ex  = the[IllegalArgumentException] thrownBy emptySession.setJwt(gen, "jwt")
+      ex.getMessage should include("RS256")
+    }
+  }
+
+  "setJwt failure path (FR-008)" should {
+    "throw IllegalStateException when a claim EL is unresolvable" in {
+      val gen = jwtPkg
+        .jwt("HS256", "secret")
+        .defaultHeader
+        .claims(ClaimsBuilder().claimFromSession("uid", "#{missing}"))
+      val ex  = the[IllegalStateException] thrownBy emptySession.setJwt(gen, "jwt")
+      ex.getMessage should include("JWT generation failed")
+    }
+
+    "throw IllegalStateException for setJwtAsBearer with an unresolvable EL" in {
+      val gen = jwtPkg
+        .jwt("HS256", "secret")
+        .defaultHeader
+        .claims(ClaimsBuilder().claimFromSession("uid", "#{missing}"))
+      an[IllegalStateException] should be thrownBy emptySession.setJwtAsBearer(gen)
     }
   }
 
