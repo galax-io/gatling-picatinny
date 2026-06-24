@@ -1,5 +1,7 @@
 package org.galaxio.gatling.storage
 
+import com.typesafe.scalalogging.StrictLogging
+
 final case class ParsedCookie(
     name: String,
     value: String,
@@ -10,7 +12,7 @@ final case class ParsedCookie(
     httpOnly: Boolean = false,
 )
 
-object CookieParser {
+object CookieParser extends StrictLogging {
 
   def parse(rawSetCookie: String, defaultDomain: String): Seq[ParsedCookie] =
     rawSetCookie.split("\n").toSeq.flatMap(parseSingle(_, defaultDomain))
@@ -34,7 +36,12 @@ object CookieParser {
         value = nameValue(1).trim,
         domain = attrs.get("domain").orElse(Some(defaultDomain)),
         path = attrs.get("path"),
-        maxAge = attrs.get("max-age").flatMap(_.toLongOption),
+        maxAge = attrs.get("max-age").flatMap { raw =>
+          val parsed = raw.toLongOption
+          if (parsed.isEmpty)
+            logger.warn(s"Ignoring unparseable Max-Age value '$raw' for cookie '${nameValue(0).trim}' (expected a Long)")
+          parsed
+        },
         secure = attrs.contains("secure"),
         httpOnly = attrs.contains("httponly"),
       ),
