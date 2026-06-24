@@ -1,6 +1,7 @@
 package org.galaxio.gatling.storage
 
 import io.gatling.core.feeder.Record
+import org.galaxio.gatling.transactions.fixtures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -89,6 +90,41 @@ class SessionStorageSpec extends AnyWordSpec with Matchers {
       val withBe  = storage.withBackend(JsonFileBackend(tmpFile.getAbsolutePath))
       withBe.size shouldBe 1
       withBe.toFeeder.head("key") shouldBe "value"
+    }
+
+    // --- restoreCookies session-attribute behavior (FR-004/005, component layer) ---
+
+    "restoreCookies sets each cookie name -> value as a session attribute" in {
+      val session = fixtures.emptySession("cookie").set("raw", "sid=abc123; Path=/")
+      val result  = SessionStorage().restoreCookiesIntoSession("raw", "localhost")(session)
+      result.attributes("sid") shouldBe "abc123"
+    }
+
+    "restoreCookies handles multiple cookies from a multi-line value" in {
+      val session = fixtures.emptySession("cookie").set("raw", "a=1; Path=/\nb=2; Secure")
+      val result  = SessionStorage().restoreCookiesIntoSession("raw", "localhost")(session)
+      result.attributes("a") shouldBe "1"
+      result.attributes("b") shouldBe "2"
+    }
+
+    "restoreCookies is a no-op when the source attribute is absent" in {
+      val session = fixtures.emptySession("cookie")
+      val result  = SessionStorage().restoreCookiesIntoSession("missing", "localhost")(session)
+      result.attributes.get("missing") shouldBe None
+      result.attributes.keySet should not contain "sid"
+    }
+
+    // Regression: the internal stash key must be namespaced and dropped at the end of the chain so it
+    // cannot leak into saveAll/persist records. `restoreCookies` appends `.exec(_.remove(restoreCookiesAttr))`
+    // after the foreach; this test mirrors that final step's net effect on the key.
+    "restoreCookies does not leak its internal stash key into the session" in {
+      SessionStorage.restoreCookiesAttr should startWith("__picatinny")
+      val seeded = fixtures.emptySession("cookie").set("raw", "sid=abc123; Path=/")
+      val mid    = SessionStorage().restoreCookiesIntoSession("raw", "localhost")(seeded)
+      mid.attributes.keySet should contain(SessionStorage.restoreCookiesAttr) // stashed for the foreach
+      val cleaned = mid.remove(SessionStorage.restoreCookiesAttr) // what the chain's final exec does
+      cleaned.attributes.keySet should not contain SessionStorage.restoreCookiesAttr
+      cleaned.attributes("sid") shouldBe "abc123" // cookie attr still present
     }
 
     "withBackend keeps record queues independent after copying" in {
