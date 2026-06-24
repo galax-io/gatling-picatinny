@@ -128,11 +128,11 @@ object RandomDataGenerators {
   /** Generates a random value of type `T` within the specified upper bound.
     *
     * @param max
-    *   the maximum value for the random generation
+    *   the exclusive upper bound for the random generation
     * @param rng
     *   an implicit `RandomProvider` instance used to generate the random value
     * @return
-    *   a randomly generated value of type `T` that is less than or equal to `max`
+    *   a randomly generated value of type `T` that is strictly less than `max` (max exclusive)
     */
   def randomValue[T](max: T)(implicit rng: RandomProvider[T]): T = rng.random(max)
 
@@ -141,13 +141,14 @@ object RandomDataGenerators {
     * @param min
     *   the minimum value of the range (inclusive)
     * @param max
-    *   the maximum value of the range (inclusive)
+    *   the maximum value of the range (exclusive)
     * @param rng
     *   an implicit RandomProvider to generate random values of type T
     * @param ord
     *   an implicit Ordering to compare the minimum and maximum values
     * @return
-    *   a randomly generated value of type T within the specified range
+    *   a randomly generated value of type T within the range `[min, max)` (min inclusive, max exclusive); returns `max` only in
+    *   the degenerate `min == max` case
     * @throws java.lang.IllegalArgumentException
     *   if the minimum value is not less than the maximum value
     */
