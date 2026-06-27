@@ -13,3 +13,6 @@
 **/.gradle/
 **/build/
 .claude/settings.local.json
+.claude/skills/speckit-worktrees-*/
+.specify/extensions/
+.specify/presets/
