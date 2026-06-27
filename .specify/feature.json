@@ -1,3 +1,3 @@
 {
-  "feature_directory": "specs/006-config-cookie-fixes"
+  "feature_directory": "specs/007-secret-masking-leak-prevention"
 }

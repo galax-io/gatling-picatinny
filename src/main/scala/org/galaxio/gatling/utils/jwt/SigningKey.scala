@@ -17,11 +17,18 @@ sealed trait SigningKey
 
 object SigningKey {
 
-  /** HMAC secret as a plain string. Used with HS256, HS384, HS512. */
-  final case class StringSecret(value: String) extends SigningKey
+  /** HMAC secret as a plain string. Used with HS256, HS384, HS512. `toString` is redacted so the secret never leaks via logs,
+    * exceptions, or string interpolation; the `value` accessor still returns the raw secret.
+    */
+  final case class StringSecret(value: String) extends SigningKey {
+    override def toString: String = "StringSecret(******)"
+  }
 
   /** Asymmetric private key for RSA or EC algorithms. Used with RS256, RS384, RS512, ES256, ES384, ES512. Load keys via
-    * [[JwtKeys]] helpers.
+    * [[JwtKeys]] helpers. `toString` is redacted so provider-dependent key material never leaks; the `value` accessor still
+    * returns the raw key.
     */
-  final case class AsymmetricKey(value: PrivateKey) extends SigningKey
+  final case class AsymmetricKey(value: PrivateKey) extends SigningKey {
+    override def toString: String = "AsymmetricKey(******)"
+  }
 }

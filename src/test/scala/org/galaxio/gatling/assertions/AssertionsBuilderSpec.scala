@@ -1,17 +1,12 @@
 package org.galaxio.gatling.assertions
 
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
-import ch.qos.logback.core.read.ListAppender
 import io.gatling.commons.stats.assertion.Assertion
 import io.gatling.core.Predef._
 import io.gatling.core.assertion.AssertionPathParts
 import io.gatling.core.config.GatlingConfiguration
+import org.galaxio.gatling.testutil.LogCapture
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.slf4j.LoggerFactory
-
-import scala.jdk.CollectionConverters._
 
 /** Unit tests for the Scala [[AssertionsBuilder]] (test-model layer 1). Driven through the `assertionsFrom` test seam, which
   * takes a [[GatlingConfiguration]] explicitly, so `GatlingConfiguration.loadForTest()` builds against the `nfr.yml` fixture
@@ -43,20 +38,8 @@ class AssertionsBuilderSpec extends AnyWordSpec with Matchers {
     details(grp("GET /test/uuid")).responseTime.max.lt(1000),
   )
 
-  private def captureWarns(body: => Unit): List[String] = {
-    val logger   = LoggerFactory.getLogger("org.galaxio.gatling.assertions").asInstanceOf[LogbackLogger]
-    val appender = new ListAppender[ILoggingEvent]()
-    appender.start()
-    val prev     = logger.getLevel
-    logger.setLevel(Level.WARN)
-    logger.addAppender(appender)
-    try body
-    finally {
-      logger.detachAppender(appender)
-      logger.setLevel(prev)
-    }
-    appender.list.asScala.toList.filter(_.getLevel == Level.WARN).map(_.getFormattedMessage)
-  }
+  private def captureWarns(body: => Unit): List[String] =
+    LogCapture.warns("org.galaxio.gatling.assertions")(body)
 
   "AssertionsBuilder.assertionsFrom" should {
 

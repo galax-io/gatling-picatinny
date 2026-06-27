@@ -12,6 +12,7 @@ import com.typesafe.config.ConfigException
 import com.typesafe.scalalogging.LazyLogging
 
 private[gatling] class SimulationConfigUtils(config: Config) extends LazyLogging {
+  private[gatling] val masking  = ConfigValueMasking.fromConfig(config)
   private val StringTag         = typeTag[String]
   private val FiniteDurationTag = typeTag[FiniteDuration]
   private val StringListTag     = typeTag[List[String]]
@@ -48,7 +49,11 @@ private[gatling] class SimulationConfigUtils(config: Config) extends LazyLogging
     readValueByType(cfg, path)
       .map(_.asInstanceOf[T])
       .map { value =>
-        logger.info(s"Simulation param for $path is set to: ${ConfigValueMasking.displayValue(path, value)}")
+        val shown = value match {
+          case cfgValue: Config => masking.displayConfig(cfgValue)
+          case other            => masking.displayValue(path, other)
+        }
+        logger.info(s"Simulation param for $path is set to: $shown")
         value
       }
       .recoverWith(configReadFailure(path, tag))
