@@ -278,13 +278,20 @@ Workload defaults are validated when they are first read:
 - `rampDuration` must be `0` or greater
 - `stageDuration` and `testDuration` must be greater than `0`
 
-Config values are logged when they are read. Paths containing words like `password`, `secret`, `token`, `apiKey`, or
-`credential` are masked in logs as `******`.
+Config values are logged when they are read. Keys whose last path segment is a sensitive term (`password`, `secret`,
+`token`, `apiKey`, `clientSecret`, `bearer`, `authorization`, `credentials`, …, plus separator-less forms like
+`dbpassword`) are masked as `******`; benign keys (`roleId`, `tokenBucketSize`) stay visible. You can add your own terms
+via `picatinny.redaction.additionalSensitiveKeys`. Full behavior, the recommended `logback.xml`, and upgrade notes are in
+[docs/logging.md](docs/logging.md).
 
 ### startup banner and diagnostics
 
 Picatinny provides explicit utility methods for startup output. Put them where it makes sense for your project: in a
 simulation class, a shared package object, or another project bootstrap point.
+
+> **Since 1.23.0** the banner and diagnostics go through **SLF4J** (logger `org.galaxio.gatling.diagnostics`), not
+> `println`/`stdout`, and Picatinny ships no `logback.xml`. With no logging config the banner may be filtered by your
+> backend's default level — see [docs/logging.md](docs/logging.md) for the recommended config that renders it prefix-free.
 
 Default behavior:
 

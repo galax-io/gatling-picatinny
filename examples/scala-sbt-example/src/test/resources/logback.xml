@@ -6,6 +6,20 @@
         </encoder>
     </appender>
 
+    <!-- Picatinny startup banner / diagnostics: rendered prefix-free so the ASCII box stays aligned.
+         The whole multi-line block arrives as ONE log event, so %msg%n prints it verbatim.
+         Suppress it by setting this logger to OFF (or WARN); additivity="false" stops it also
+         printing through the prefixed root appender (which would duplicate it). -->
+    <appender name="BANNER" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.galaxio.gatling.diagnostics" level="INFO" additivity="false">
+        <appender-ref ref="BANNER"/>
+    </logger>
+
     <root level="ERROR">
         <appender-ref ref="CONSOLE"/>
     </root>
