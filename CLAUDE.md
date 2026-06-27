@@ -1,5 +1,5 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-Active plan: [specs/006-config-cookie-fixes/plan.md](specs/006-config-cookie-fixes/plan.md)
+Active plan: [specs/007-secret-masking-leak-prevention/plan.md](specs/007-secret-masking-leak-prevention/plan.md)
 <!-- SPECKIT END -->
