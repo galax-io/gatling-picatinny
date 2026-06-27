@@ -1,38 +1,16 @@
 package org.galaxio.gatling.storage
 
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
-import ch.qos.logback.core.AppenderBase
+import org.galaxio.gatling.testutil.LogCapture
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.slf4j.LoggerFactory
-
-import java.util.concurrent.ConcurrentLinkedQueue
-import scala.jdk.CollectionConverters._
 
 class CookieParserSpec extends AnyWordSpec with Matchers {
 
-  /** Capture WARN messages under the `org.galaxio.gatling.storage` logger while `body` runs. Uses a thread-safe queue-backed
-    * appender so events propagated from sibling storage classes (exercised by other suites running in parallel) cannot corrupt
-    * the capture; results are content-filtered to CookieParser's own Max-Age warnings.
+  /** Capture WARN messages under the `org.galaxio.gatling.storage` logger while `body` runs, via the shared JVM-serialized
+    * [[LogCapture]] (capture mutates the global logback context — see its docs).
     */
-  private def captureWarns(body: => Unit): List[String] = {
-    val logger   = LoggerFactory.getLogger("org.galaxio.gatling.storage").asInstanceOf[LogbackLogger]
-    val events   = new ConcurrentLinkedQueue[ILoggingEvent]()
-    val appender = new AppenderBase[ILoggingEvent] {
-      override def append(e: ILoggingEvent): Unit = events.add(e)
-    }
-    appender.start()
-    val prev     = logger.getLevel
-    logger.setLevel(Level.WARN)
-    logger.addAppender(appender)
-    try body
-    finally {
-      logger.detachAppender(appender)
-      logger.setLevel(prev)
-    }
-    events.asScala.toList.filter(_.getLevel == Level.WARN).map(_.getFormattedMessage)
-  }
+  private def captureWarns(body: => Unit): List[String] =
+    LogCapture.warns("org.galaxio.gatling.storage")(body)
 
   "CookieParser" should {
 

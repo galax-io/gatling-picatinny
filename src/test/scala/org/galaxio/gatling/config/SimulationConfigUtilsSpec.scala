@@ -1,6 +1,7 @@
 package org.galaxio.gatling.config
 
 import com.typesafe.config.ConfigFactory
+import org.galaxio.gatling.testutil.LogCapture
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -161,6 +162,122 @@ class ConfigValueMaskingSpec extends AnyWordSpec with Matchers {
     "handle null display inputs defensively" in {
       ConfigValueMasking.displayValue(null, "value") shouldBe "value"
       ConfigValueMasking.displayValue("token", null) shouldBe "******"
+    }
+
+    "match required sensitive terms by whole word on the last path segment (FR-003)" in {
+      val sensitive = Seq(
+        "authorization",
+        "bearerToken",
+        "passphrase",
+        "client.apiKey",
+        "vault.clientSecret",
+        "db.password",
+        "auth.token",
+        // prefix-secret compounds: the secret word is the HEAD, not the tail
+        "passwordHash",
+        "tokenValue",
+        "secretValue",
+        "vault.secret_id",
+      )
+      sensitive.foreach(p => withClue(p) { ConfigValueMasking.isSensitive(p) shouldBe true })
+    }
+
+    // Regression guard: the old substring matcher masked separator-less keys; whole-word matching must not LEAK them.
+    // Covered by the suffix floor (the secret noun is the tail) so the over-match fix for tokenBucketSize/secretariat holds.
+    "mask separator-less and plural secret keys (no masking regression vs substring)" in {
+      val sensitive = Seq(
+        "dbpassword",
+        "apisecret",
+        "accesstoken",
+        "apitoken",
+        "authtoken",
+        "adminpwd",
+        "userpassword",
+        "jwtsecret",
+        "myapikey",
+        "credentials",
+        "app.credentials",
+      )
+      sensitive.foreach(p => withClue(p) { ConfigValueMasking.isSensitive(p) shouldBe true })
+    }
+
+    "not mask a strong term followed by a benign structural tail (FR-003 boundary)" in {
+      val benignTails = Seq(
+        "tokenBucketSize",
+        "passwordLength",
+        "secretRotation",
+        "tokenTtl",
+      )
+      benignTails.foreach(p => withClue(p) { ConfigValueMasking.isSensitive(p) shouldBe false })
+    }
+
+    "not over-match non-secret identifiers or benign compounds (FR-003 negatives)" in {
+      val benign = Seq(
+        "roleId",
+        "roleIdPrefix",
+        "tokenBucketSize",
+        "apiKeyboard",
+        "secretariat",
+        "baseUrl",
+      )
+      benign.foreach(p => withClue(p) { ConfigValueMasking.isSensitive(p) shouldBe false })
+    }
+
+    "merge user-supplied sensitive keys without dropping built-ins (FR-012)" in {
+      val masking = ConfigValueMasking.fromConfig(
+        ConfigFactory.parseString("""picatinny.redaction.additionalSensitiveKeys = ["tenantRef"]"""),
+      )
+      masking.displayValue("tenantRef", "v") shouldBe "******"   // user-added
+      masking.displayValue("db.password", "v") shouldBe "******" // built-in still masks (merge, not replace)
+      masking.displayValue("baseUrl", "http://x") shouldBe "http://x"
+
+      val defaults = ConfigValueMasking.fromConfig(ConfigFactory.empty())
+      defaults.displayValue("db.password", "v") shouldBe "******" // absent block → built-ins apply
+      defaults.displayValue("tenantRef", "v") shouldBe "v"        // not a built-in
+    }
+
+    "mask secret leaves inside a benignly-named nested block (FR-004)" in {
+      val cfg = ConfigFactory.parseString(
+        """url = "http://h"
+          |token = "abc"
+          |nested { inner { secret = "deep" } }
+          |size = 10
+          |""".stripMargin,
+      )
+      val out = ConfigValueMasking.displayConfig(cfg)
+      out should include("url = http://h")
+      out should include("token = ******")
+      out should include("nested.inner.secret = ******")
+      out should include("size = 10")
+      out should not include "abc"
+      out should not include "deep"
+    }
+
+    "strip URL userinfo fail-safely (FR-007)" in {
+      ConfigValueMasking.redactUserInfo("https://user:pass@host:8080/p") shouldBe "https://******@host:8080/p"
+      ConfigValueMasking.redactUserInfo("https://host/p") shouldBe "https://host/p"
+      ConfigValueMasking.redactUserInfo("mailto:a@b") shouldBe "mailto:a@b"
+      val malformed = ConfigValueMasking.redactUserInfo("https://user:p%ss@host/path")
+      malformed should include("******")
+      malformed should not include "p%ss"
+      malformed should not include "user:p"
+    }
+
+    "mask the logged param value at the config sink and leave others visible (FR-001)" in {
+      val utils   = SimulationConfigUtils(
+        ConfigFactory.parseString("""db { password = "s3cr3t", url = "http://localhost" }"""),
+      )
+      val logs    = LogCapture
+        .infoEvents("org.galaxio.gatling.config.SimulationConfigUtils") {
+          utils.get[String]("db.password")
+          utils.get[String]("db.url")
+        }
+        .map(_.getFormattedMessage)
+      val pwdLine = logs.find(_.contains("db.password")).getOrElse("")
+      pwdLine should include("******")
+      pwdLine should not include "s3cr3t"
+      val urlLine = logs.find(_.contains("db.url")).getOrElse("")
+      urlLine should include("http://localhost")
     }
   }
 }
