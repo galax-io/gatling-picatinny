@@ -1,29 +1,27 @@
 package org.galaxio.gatling.utils
 
 import io.gatling.core.Predef._
+import org.galaxio.gatling.testutil.LogCapture
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.duration._
 
 /** Unit tests for the [[Utility]] banner overloads (test-model layer 1). The test `simulation.conf` enables the startup banner,
-  * so each overload prints; output is captured via `Console.withOut` and asserted to contain the banner header. This exercises
-  * the open/closed/list/tuple injection-step parsing paths (`StartupBanner.printOpen/Closed/SettingsIfEnabled`) that the no-arg
-  * `banner()` test does not reach.
+  * so each overload emits one log event; output is captured via the diagnostics logger (banner now routes through SLF4J, not
+  * stdout) and asserted to contain the banner header. This exercises the open/closed/list/tuple injection-step parsing paths
+  * (`StartupBanner.printOpen/Closed/SettingsIfEnabled`) that the no-arg `banner()` test does not reach.
   */
 class UtilitySpec extends AnyWordSpec with Matchers {
 
   private val BannerHeader = "Picatinny Gatling Run"
 
-  private def capture(f: => Unit): String = {
-    val out = new java.io.ByteArrayOutputStream()
-    Console.withOut(out)(f)
-    out.toString("UTF-8")
-  }
+  private def capture(f: => Unit): String =
+    LogCapture.infoEvents("org.galaxio.gatling.diagnostics")(f).map(_.getFormattedMessage).mkString("\n")
 
-  // The no-arg banner renders the workload from simulation.conf. Each step-parsing overload must render the workload PARSED
-  // from its argument, which differs from the conf fallback — so `should not be fallback` catches a silent fall-through to
-  // banner() (e.g. the printFromValues default case) that asserting only the static header would miss.
+  // The no-arg banner renders the workload from simulation.conf. Each step-parsing overload must render the workload
+  // PARSED from its argument, which differs from the conf fallback — so `should not be fallback` catches a silent
+  // fall-through to banner() (e.g. the printFromValues default case) that asserting only the static header would miss.
   private val fallback = capture(Utility.banner())
 
   "Utility.banner" should {

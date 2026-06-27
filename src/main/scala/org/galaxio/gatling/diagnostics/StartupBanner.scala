@@ -1,18 +1,19 @@
 package org.galaxio.gatling.diagnostics
 
+import com.typesafe.scalalogging.StrictLogging
 import io.gatling.core.controller.inject.closed.ClosedInjectionStep
 import io.gatling.core.controller.inject.open.OpenInjectionStep
-import org.galaxio.gatling.config.ConfigManager
+import org.galaxio.gatling.config.{ConfigManager, ConfigValueMasking}
 import org.galaxio.gatling.utils.IntensityConverter.getIntensityFromString
 
 import scala.concurrent.duration.FiniteDuration
 
-object StartupBanner {
+object StartupBanner extends StrictLogging {
   private val EnabledPath        = "picatinny.startup.banner.enabled"
   private val InternalStackNames = Set("Utility", "StartupBanner", "Diagnostics")
 
   def printIfEnabled(): Unit =
-    if (isEnabled) println(render())
+    if (isEnabled) logger.info(render())
 
   def printOpenIfEnabled(openSteps: Iterable[OpenInjectionStep]): Unit =
     printSettingsIfEnabled(InjectionProfileParser.fromOpen(openSteps))
@@ -24,10 +25,10 @@ object StartupBanner {
     printSimulationIfEnabled(Some(simulationClass))
 
   private[gatling] def printSettingsIfEnabled(settings: Option[WorkloadSettings]): Unit =
-    if (isEnabled) println(settings.map(render).getOrElse(render()))
+    if (isEnabled) logger.info(settings.map(render).getOrElse(render()))
 
   private def printSimulationIfEnabled(simulationClass: Option[Class[_]]): Unit =
-    if (isEnabled) println(render(simulationClass, None))
+    if (isEnabled) logger.info(render(simulationClass, None))
 
   private[gatling] def isEnabled: Boolean =
     ConfigManager.simulationConfig.get(EnabledPath, true)
@@ -51,7 +52,7 @@ object StartupBanner {
        | Picatinny Gatling Run
        |$line
        | Simulation   : $name
-       | Base URL     : ${config.get[String]("baseUrl", "<undefined>")}
+       | Base URL     : ${ConfigValueMasking.redactUserInfo(config.get[String]("baseUrl", "<undefined>"))}
        |
        |${providedSettings.map(workloadBlock).getOrElse(configWorkloadBlock(name, stages))}
        |$line

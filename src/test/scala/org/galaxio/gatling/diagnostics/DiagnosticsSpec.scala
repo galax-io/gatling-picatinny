@@ -1,6 +1,9 @@
 package org.galaxio.gatling.diagnostics
 
+import com.typesafe.config.ConfigFactory
 import io.gatling.core.Predef._
+import org.galaxio.gatling.config.ConfigValueMasking
+import org.galaxio.gatling.testutil.LogCapture
 import org.scalatest.OptionValues
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
@@ -289,6 +292,39 @@ class DiagnosticsSpec extends AnyWordSpec with Matchers with OptionValues {
     "respect enabled flags from test resources" in {
       StartupBanner.isEnabled shouldBe true
       Diagnostics.isEnabled shouldBe false
+    }
+
+    "redact sensitive -D JVM arguments while leaving others intact (FR-006)" in {
+      val masking = ConfigValueMasking.builtin
+      Diagnostics.redactArg("-Xmx2g", masking) shouldBe "-Xmx2g"
+      Diagnostics.redactArg("-DvaultToken=hunter2", masking) shouldBe "-DvaultToken=******"
+      Diagnostics.redactArg("-Dapp.name=foo", masking) shouldBe "-Dapp.name=foo"
+      Diagnostics.redactArg("-DvaultToken", masking) shouldBe "-DvaultToken" // no value → unchanged
+      Diagnostics.redactArg("-Dpassword:hunter2", masking) shouldBe "-Dpassword:******"
+    }
+
+    "honor config-extended terms and replacement for -D args (FR-002/FR-012)" in {
+      val masking = ConfigValueMasking.fromConfig(
+        ConfigFactory.parseString(
+          """picatinny.redaction { additionalSensitiveKeys = ["tenantRef"], replacement = "######" }""",
+        ),
+      )
+      Diagnostics.redactArg("-DtenantRef=abc", masking) shouldBe "-DtenantRef=######" // custom term + custom placeholder
+      Diagnostics.redactArg("-Dpassword=x", masking) shouldBe "-Dpassword=######"     // built-in still masks
+      Diagnostics.redactArg("-Dother=keep", masking) shouldBe "-Dother=keep"          // unknown term untouched
+    }
+
+    "emit the startup banner as a single SLF4J event under the diagnostics category (FR-008/009)" in {
+      val events  = LogCapture.infoEvents("org.galaxio.gatling.diagnostics") {
+        StartupBanner.printIfEnabled()
+      }
+      events should have size 1
+      val event   = events.head
+      event.getLoggerName should startWith("org.galaxio.gatling.diagnostics")
+      val message = event.getMessage
+      message should include("Picatinny Gatling Run")
+      message should include("\n") // one multi-line event, NOT split per line
+      message should include("|")
     }
 
   }
