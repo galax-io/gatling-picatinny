@@ -1,5 +1,6 @@
 package org.galaxio.gatling.diagnostics
 
+import org.galaxio.gatling.testutil.LogCapture
 import org.galaxio.gatling.utils.Utility
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -7,14 +8,17 @@ import org.scalatest.wordspec.AnyWordSpec
 class UtilityIntegrationSpec extends AnyWordSpec with Matchers {
 
   "Utility.banner" should {
-    "print startup banner with a continuous workload chart" in {
-      val output = new java.io.ByteArrayOutputStream()
-
-      Console.withOut(output) {
-        Utility.banner()
+    "emit the startup banner through SLF4J (not stdout) as a single event" in {
+      val stdout = new java.io.ByteArrayOutputStream()
+      val events = LogCapture.infoEvents("org.galaxio.gatling.diagnostics") {
+        Console.withOut(stdout) {
+          Utility.banner()
+        }
       }
 
-      val text = output.toString("UTF-8")
+      stdout.toString("UTF-8") shouldBe empty // routed through the logging framework, no println
+      events should have size 1
+      val text = events.head.getFormattedMessage
       text should include("Picatinny Gatling Run")
       text should include("ASCII preview")
       text should include("|")
@@ -25,15 +29,16 @@ class UtilityIntegrationSpec extends AnyWordSpec with Matchers {
   }
 
   "Utility.diagnostics" should {
-    "print nothing when disabled in test resources" in {
-      val output = new java.io.ByteArrayOutputStream()
-
-      Console.withOut(output) {
-        Utility.diagnostics()
+    "emit nothing when disabled in test resources" in {
+      val stdout = new java.io.ByteArrayOutputStream()
+      val events = LogCapture.infoEvents("org.galaxio.gatling.diagnostics") {
+        Console.withOut(stdout) {
+          Utility.diagnostics()
+        }
       }
 
-      output.toString("UTF-8") shouldBe empty
+      stdout.toString("UTF-8") shouldBe empty
+      events shouldBe empty
     }
   }
-
 }
