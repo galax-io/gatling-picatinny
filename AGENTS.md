@@ -58,6 +58,16 @@ Coverage floor 65/60 (stmt/branch). Every `/speckit-plan` fills the code-free "T
 
 **Never:** force-push or commit to `main`, merge commits in PR branches (rebase only), commit broken code, opportunistic refactors outside scope, mock Gatling runtime where a real integration path exists.
 
+## Linkage (issue ↔ PR ↔ milestone)
+
+Every change traces through one issue, one PR, one milestone. Each entity owes exactly:
+
+- **Issue** — the *what/why*. In exactly one milestone. Closed only once its fix is on `main`.
+- **PR** — the *how*. Carries its issue's milestone and a real closing link (`Closes #<issue>` in the body, not just `(#NNN)` in the title). One issue per PR; the linked issue shares the PR's milestone.
+- **Milestone** — one release (`vX.Y.Z`); owns its spec (`specs/NNN-*/`). Active = lowest-numbered open milestone. Tag only when every issue is closed and every PR merged.
+
+Verify, don't trust: `scripts/check-linkage.sh [milestone]` (add `--tag` for tag-readiness). It fails on any PR with no milestone or no closing issue, any cross-milestone link, and — in `--tag` mode — any open issue or unmerged PR. Run it before cutting a release branch.
+
 ## Commits & PRs
 
 - **Spec-first.** `specs/NNN-*/` artifacts → `docs(speckit): add NNN-<feature> spec/plan/tasks` commit BEFORE any `feat`/`fix`. Never folded into implementation.
