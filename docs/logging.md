@@ -84,6 +84,8 @@ picatinny.redaction {
 
 ## Migration — upgrading to 1.23.0
 
+> Part of the project-wide [migration guide](migration.md) (all spec-kit releases, with before/after code).
+
 1.23.0 hardens secret handling. These are the consumer-visible behavior changes and how to adapt.
 
 ### Banner & diagnostics now go through SLF4J (not `stdout`)
@@ -132,7 +134,7 @@ simulation class, a shared package object, or another project bootstrap point. O
 
 Default behavior:
 
-```text
+```hocon
 picatinny.startup.banner.enabled = true
 picatinny.diagnostics.enabled = false
 ```
