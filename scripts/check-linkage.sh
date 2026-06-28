@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# check-linkage.sh — verify the issue ↔ PR ↔ milestone contract (see AGENTS.md "Linkage").
+# check-linkage.sh — verify the issue ↔ PR ↔ milestone contract (see AGENTS.md "Milestones (ALWAYS)").
 # Run `scripts/check-linkage.sh --help` for full usage.
 
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
-check-linkage.sh — verify the issue <-> PR <-> milestone contract (see AGENTS.md "Linkage").
+check-linkage.sh — verify the issue <-> PR <-> milestone contract (see AGENTS.md "Milestones (ALWAYS)").
 
 What each entity owes (this script enforces it):
   Issue      belongs to exactly one milestone; closed only when its fix is on main.
@@ -16,8 +16,10 @@ What each entity owes (this script enforces it):
   Milestone  one release (vX.Y.Z); tag only when every issue is closed and every PR merged.
 
 Usage:
-  scripts/check-linkage.sh [milestone]   # default: lowest-numbered open milestone
-  scripts/check-linkage.sh --tag [ms]    # also assert tag-readiness (all issues closed, all PRs merged)
+  scripts/check-linkage.sh --pr <N>          # GATE one PR: milestone + Closes #issue + same milestone
+  scripts/check-linkage.sh --for-tag vX.Y.Z  # GATE a release: tag-readiness of that version's milestone
+  scripts/check-linkage.sh [milestone]       # audit a milestone (default: lowest-numbered open)
+  scripts/check-linkage.sh --tag [ms]        # also assert tag-readiness (all issues closed, all PRs merged)
   scripts/check-linkage.sh --help
 
 Env:
@@ -35,15 +37,57 @@ REPO="${REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null 
 
 TAG_MODE=0
 MS=""
+PR_NUM=""
+FOR_TAG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --tag)      TAG_MODE=1 ;;
+    --pr)       shift; PR_NUM="${1:-}"
+                [[ "$PR_NUM" =~ ^[0-9]+$ ]] || { echo "error: --pr needs a numeric PR id" >&2; exit 2; } ;;
+    --for-tag)  shift; FOR_TAG="${1:-}"
+                [[ "$FOR_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "error: --for-tag needs vX.Y.Z" >&2; exit 2; } ;;
     --help|-h)  usage; exit 0 ;;
     [0-9]*)     MS="$1" ;;
     *)          echo "error: unknown argument '$1'" >&2; usage; exit 2 ;;
   esac
   shift
 done
+
+# Gate one PR (the merge gate). Fails if the PR is missing a milestone, closes no
+# issue, or closes an issue in a different milestone. Strict: requires a registered
+# GitHub closing link (no body-text fallback — that lenient path is audit-mode only).
+if [ -n "$PR_NUM" ]; then
+  pj=$(gh pr view "$PR_NUM" --repo "$REPO" --json number,title,state,milestone,closingIssuesReferences) \
+    || { echo "error: PR #$PR_NUM not found in $REPO" >&2; exit 2; }
+  p_title=$(jq -r '.title' <<<"$pj")
+  p_ms=$(jq -r '.milestone.title // ""' <<<"$pj")
+  p_closes=$(jq -r '.closingIssuesReferences[]?.number' <<<"$pj")
+  e=0
+  printf 'PR #%s  %s\n' "$PR_NUM" "$p_title"
+  if [ -z "$p_ms" ]; then printf '  ✗ no milestone — assign one (gh pr edit %s --milestone "…")\n' "$PR_NUM"; e=1
+  else printf '  ✓ milestone: %s\n' "$p_ms"; fi
+  if [ -z "$p_closes" ]; then
+    printf '  ✗ closes no issue — add "Closes #<issue>" to the PR body\n'; e=1
+  else
+    for i in $p_closes; do
+      i_ms=$(gh issue view "$i" --repo "$REPO" --json milestone -q '.milestone.title // ""' 2>/dev/null || echo "")
+      if [ "$i_ms" = "$p_ms" ]; then printf '  ✓ closes #%s (same milestone)\n' "$i"
+      else printf '  ✗ closes #%s but its milestone is "%s", not "%s"\n' "$i" "${i_ms:-none}" "$p_ms"; e=1; fi
+    done
+  fi
+  if [ "$e" = 0 ]; then printf 'PASS: PR #%s is well-formed.\n' "$PR_NUM"; exit 0; fi
+  printf 'FAIL: PR #%s is malformed — fix the above before merge.\n' "$PR_NUM"; exit 1
+fi
+
+# Map a release version (vX.Y.Z) to its milestone, then assert tag-readiness on it.
+# Patch versions map to the vX.Y.0 milestone (e.g. v1.23.1 -> "v1.23.0 …").
+if [ -n "$FOR_TAG" ]; then
+  v="${FOR_TAG#v}"; minor="v${v%.*}.0"
+  MS=$(gh api "repos/$REPO/milestones?state=all&per_page=100" \
+        | jq -r --arg t "$minor" 'map(select(.title | startswith($t))) | .[0].number // empty')
+  [ -n "$MS" ] || { echo "error: no milestone whose title starts with '$minor' for tag $FOR_TAG" >&2; exit 2; }
+  TAG_MODE=1
+fi
 
 # Default to the lowest-numbered open milestone (the "active" one).
 if [ -z "$MS" ]; then
