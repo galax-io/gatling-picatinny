@@ -52,7 +52,7 @@ unit-tested, real external systems use Testcontainers).
 - **Assert**: recorded `StatsEngine` message fields, session mutations, next-action
   receipt; deterministic timing via `TestClock`.
 - **Forbidden**: mocking `StatsEngine`/runtime; `Thread.sleep` races (use a latch).
-- **Reference**: `transactions/TransactionsSpec.scala`, `examples/ExampleSmokeSpec.scala`.
+- **Reference**: `transactions/TransactionsSpec.scala`.
 
 ### 3. External Integration (Testcontainers) — `it` config, Docker
 - **For**: container-backed real backends — Redis side effects/session state, Vault
