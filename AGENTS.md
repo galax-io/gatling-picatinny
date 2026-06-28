@@ -58,6 +58,15 @@ Coverage floor 65/60 (stmt/branch). Every `/speckit-plan` fills the code-free "T
 
 **Never:** force-push or commit to `main`, merge commits in PR branches (rebase only), commit broken code, opportunistic refactors outside scope, mock Gatling runtime where a real integration path exists.
 
+## Milestones (ALWAYS)
+
+Every piece of work is tied to a milestone. No exceptions unless explicitly told otherwise.
+
+- **Every PR** must be assigned to the active milestone before merging. No milestone = do not merge.
+- **Every issue** fixed by a PR must be closed when that PR lands on `main`. Do not leave completed issues open.
+- **Spec work** (`specs/NNN-*/`) belongs to the milestone that owns the spec. Link the spec PR to the milestone immediately when creating it.
+- **Active milestone** = the lowest-numbered open milestone that matches the current spec/plan. Check `gh api repos/galax-io/gatling-picatinny/milestones` if unsure.
+
 ## Commits & PRs
 
 - **Spec-first.** `specs/NNN-*/` artifacts → `docs(speckit): add NNN-<feature> spec/plan/tasks` commit BEFORE any `feat`/`fix`. Never folded into implementation.
@@ -91,3 +100,4 @@ Trunk-based with release branches. Trunk is `main`; `release/*` branches are cut
 - **Branch name must match tag version**: `release/1.2.0` → `v1.2.0`, `v1.2.1`, etc.
 - **Never delete a release tag** after Sonatype deployment starts — creates stuck deployments
 - **Never reuse a version number** — Sonatype Central rejects duplicates permanently
+- **Before tagging**: every PR merged since the previous tag must be assigned to the milestone; every issue in the milestone whose fix is on `main` must be closed
