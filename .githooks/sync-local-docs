@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+common_dir=$(git rev-parse --git-common-dir)
+source_root=$(cd "$common_dir/.." && pwd)
+worktree_root=$(git rev-parse --show-toplevel)
+
+sync_file() {
+  name=$1
+  src="$source_root/$name"
+  dst="$worktree_root/$name"
+
+  [ -f "$src" ] || return 0
+
+  if [ "$src" = "$dst" ]; then
+    return 0
+  fi
+
+  if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
+    cp "$src" "$dst"
+  fi
+}
+
+sync_file AGENTS.md
+sync_file CLAUDE.md

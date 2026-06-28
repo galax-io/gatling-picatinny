@@ -1,0 +1,80 @@
+#!/bin/sh
+# Blocks pushing a release tag (vX.Y.Z) if:
+#   1. Any PR merged since the previous tag has no milestone
+#   2. The target milestone has open issues
+set -eu
+
+OWNER="galax-io"
+REPO="gatling-picatinny"
+
+pushing_tag=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/tags/v[0-9]*.[0-9]*.[0-9]*)
+      pushing_tag="${remote_ref#refs/tags/}"
+      ;;
+  esac
+done
+
+[ -z "$pushing_tag" ] && exit 0
+
+echo "pre-push: release checklist for $pushing_tag ..."
+
+version="${pushing_tag#v}"
+
+milestone=$(gh api "repos/$OWNER/$REPO/milestones" --paginate \
+  --jq ".[] | select(.title | test(\"^v${version}\"))" | head -1)
+
+if [ -z "$milestone" ]; then
+  echo "ERROR: no milestone found matching v$version — create it first" >&2
+  exit 1
+fi
+
+ms_number=$(echo "$milestone" | jq -r '.number')
+ms_title=$(echo "$milestone" | jq -r '.title')
+ms_open=$(echo "$milestone" | jq -r '.open_issues')
+
+prev_tag=$(git tag --sort=-version:refname \
+  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+  | grep -vF "$pushing_tag" \
+  | head -1 || true)
+
+if [ -z "$prev_tag" ]; then
+  prev_date="1970-01-01T00:00:00Z"
+else
+  prev_date=$(git log -1 --format="%cI" "$prev_tag")
+fi
+
+echo "  milestone : $ms_title (#$ms_number), open_issues=$ms_open"
+echo "  since tag : ${prev_tag:-<none>} ($prev_date)"
+
+fail=0
+
+# --- 1. PRs without milestone merged after prev tag ---
+unassigned=$(gh pr list \
+  --repo "$OWNER/$REPO" --state merged --limit 200 \
+  --json number,title,milestone,mergedAt \
+  --jq "[.[] | select(.mergedAt > \"$prev_date\" and .milestone == null)]")
+
+count=$(echo "$unassigned" | jq 'length')
+if [ "$count" -gt 0 ]; then
+  echo "FAIL: $count PR(s) merged since ${prev_tag:-start} with no milestone:" >&2
+  echo "$unassigned" | jq -r '.[] | "  #\(.number) \(.title)"' >&2
+  echo "  Fix: gh pr edit <N> --repo $OWNER/$REPO --milestone \"$ms_title\"" >&2
+  fail=1
+fi
+
+# --- 2. Open issues in milestone ---
+if [ "$ms_open" -gt 0 ]; then
+  echo "FAIL: milestone '$ms_title' has $ms_open open issue(s):" >&2
+  gh issue list \
+    --repo "$OWNER/$REPO" \
+    --milestone "$ms_title" --state open --limit 50 \
+    --json number,title \
+    --jq '.[] | "  #\(.number) \(.title)"' >&2
+  echo "  Close completed issues before tagging." >&2
+  fail=1
+fi
+
+[ "$fail" -eq 0 ] || exit 1
+echo "ok: checklist passed — proceeding with $pushing_tag"
