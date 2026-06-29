@@ -14,48 +14,50 @@ import scala.jdk.CollectionConverters._
   * Capturing mutates the GLOBAL logback `LoggerContext` (a logger's level), which is shared across suites. Three independent
   * safeguards make it deterministic without serializing the whole test run:
   *
-  *   1. `synchronized` — serializes the level save/set/restore + sink swap so two captures never corrupt each other's level
+  *   1. `synchronized` — serializes the level save/set/restore + queue swap so two captures never corrupt each other's level
   *      restore (the part that genuinely needs mutual exclusion).
   *   2. attach-once appender — a recording appender is added to the target logger exactly ONCE (lazily, at the logger's resting
   *      level where foreign WARNs are suppressed) and NEVER detached. Detaching/attaching per capture mutates the logger's
   *      appender list, which can race against concurrent foreign dispatch through the same logger (logback's `COWArrayList`
   *      refreshes its cached snapshot non-atomically) and intermittently drop the capturing thread's own event — observed as a
   *      flaky "0 was not equal to 1". Keeping the appender attached means no list mutation ever happens while a foreign suite
-  *      is logging through the subtree. Activity is toggled via a `@volatile` sink instead: events are recorded only while a
-  *      capture window is open.
-  *   3. eager thread-name + a thread-safe queue — while a capture window is open, OTHER (non-capturing) suites running in
-  *      parallel may still log to the same logger subtree on their own threads. The sink is a `ConcurrentLinkedQueue` (so
-  *      concurrent foreign appends can't corrupt it), the appender resolves each event's (lazily-computed) thread name on the
-  *      EMITTING thread, and the result keeps only events emitted on the capturing thread (the body logs synchronously on the
-  *      caller thread), discarding foreign noise.
+  *      is logging through the subtree. Activity is toggled via a `ThreadLocal` instead: events are recorded only while a
+  *      capture window is open on the calling thread.
+  *   3. `ThreadLocal` capture queue — while a capture window is open, OTHER (non-capturing) suites running in parallel may
+  *      still log to the same logger subtree on their own threads. Because each thread reads its OWN `ThreadLocal` slot,
+  *      foreign threads see `null` and their events are silently dropped. This replaces the previous thread-name-equality
+  *      check, which was fragile: thread names are not guaranteed unique across JVM pools and can be mutated by test runners
+  *      at suite boundaries, causing spurious inclusions or exclusions.
   *
   * All log-capturing suites must go through this object so the guarantee holds.
   */
 object LogCapture {
 
-  /** A recording appender attached ONCE per logger and never detached. While a capture is active its `sink` is the capturing
-    * queue; otherwise `null` and the appender ignores events. `append` NEVER mutates the logger's appender list, so it can't
-    * race with concurrent foreign dispatch through the same logger (see the object doc).
+  /** A recording appender attached ONCE per logger and never detached. Events are forwarded to the calling thread's
+    * [[activeQueue]] slot; foreign threads (those not holding the capture window) see `null` and are ignored. `append`
+    * NEVER mutates the logger's appender list, so it can't race with concurrent foreign dispatch through the same logger
+    * (see the object doc).
     */
   private final class RecordingAppender extends AppenderBase[ILoggingEvent] {
-    @volatile var sink: ConcurrentLinkedQueue[ILoggingEvent] = _
-
     override def append(event: ILoggingEvent): Unit = {
-      val queue = sink
-      if (queue != null) {
-        event.getThreadName // resolve the lazily-computed thread name on the EMITTING thread (keeps the thread filter honest)
-        queue.add(event)
-      }
+      val queue = activeQueue.get()
+      if (queue != null) queue.add(event)
     }
   }
+
+  /** Set only on the thread that currently holds the capture window; `null` on all other threads. Using a `ThreadLocal`
+    * makes the capturing side-channel invisible to foreign threads by construction, without relying on thread names
+    * (which are not guaranteed unique and can be mutated by test runners at suite boundaries).
+    */
+  private val activeQueue = new ThreadLocal[ConcurrentLinkedQueue[ILoggingEvent]]()
 
   /** One appender per logger name; all access is under `synchronized`, so a plain map suffices. */
   private val appenders = mutable.Map.empty[String, RecordingAppender]
 
   /** Capture the events `body` emits under `loggerName` at `level` (inclusive), on the calling thread only. */
   def events(loggerName: String, level: Level)(body: => Unit): List[ILoggingEvent] = synchronized {
-    val logger   = logbackLogger(loggerName)
-    val appender = appenders.getOrElseUpdate(
+    val logger = logbackLogger(loggerName)
+    appenders.getOrElseUpdate(
       loggerName, {
         val recorder = new RecordingAppender
         recorder.start()
@@ -65,16 +67,15 @@ object LogCapture {
     )
 
     val captured      = new ConcurrentLinkedQueue[ILoggingEvent]()
-    val captureThread = Thread.currentThread().getName
     val previousLevel = logger.getLevel
-    appender.sink = captured
+    activeQueue.set(captured)
     logger.setLevel(level)
     try body
     finally {
       logger.setLevel(previousLevel)
-      appender.sink = null
+      activeQueue.remove()
     }
-    captured.asScala.iterator.filter(_.getThreadName == captureThread).toList
+    captured.asScala.toList
   }
 
   /** Capture INFO+ events (raw, for asserting logger name / single-event / message structure). */
