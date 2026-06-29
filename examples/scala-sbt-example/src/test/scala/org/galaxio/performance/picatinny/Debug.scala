@@ -53,34 +53,42 @@ class Debug extends SimulationWithTransactions {
   mock.stubFor(
     WM.get(WM.urlPathEqualTo("/login/user"))
       .willReturn(
-        WM.aResponse().withStatus(200).withHeader("Content-Type", "application/json")
+        WM.aResponse()
+          .withStatus(200)
+          .withHeader("Content-Type", "application/json")
           .withBody("""{"cookie":"sid=user-secret; Path=/"}"""),
       ),
   )
   mock.stubFor(
     WM.get(WM.urlPathEqualTo("/login/admin"))
       .willReturn(
-        WM.aResponse().withStatus(200).withHeader("Content-Type", "application/json")
+        WM.aResponse()
+          .withStatus(200)
+          .withHeader("Content-Type", "application/json")
           .withBody("""{"cookie":"sid=admin-secret; Path=/"}"""),
       ),
   )
   // Protected endpoints: 200 only when the auto-sent cookie value matches the role; otherwise the catch-all 403.
   mock.stubFor(
-    WM.get(WM.urlPathEqualTo("/admin/data")).atPriority(1)
+    WM.get(WM.urlPathEqualTo("/admin/data"))
+      .atPriority(1)
       .withCookie("sid", WM.equalTo("admin-secret"))
       .willReturn(WM.aResponse().withStatus(200)),
   )
   mock.stubFor(
-    WM.get(WM.urlPathEqualTo("/admin/data")).atPriority(10)
+    WM.get(WM.urlPathEqualTo("/admin/data"))
+      .atPriority(10)
       .willReturn(WM.aResponse().withStatus(403)),
   )
   mock.stubFor(
-    WM.get(WM.urlPathEqualTo("/user/data")).atPriority(1)
+    WM.get(WM.urlPathEqualTo("/user/data"))
+      .atPriority(1)
       .withCookie("sid", WM.equalTo("user-secret"))
       .willReturn(WM.aResponse().withStatus(200)),
   )
   mock.stubFor(
-    WM.get(WM.urlPathEqualTo("/user/data")).atPriority(10)
+    WM.get(WM.urlPathEqualTo("/user/data"))
+      .atPriority(10)
       .willReturn(WM.aResponse().withStatus(403)),
   )
 
