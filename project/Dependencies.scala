@@ -66,7 +66,7 @@ object Dependencies {
   // National-ID generation via libraries so Faker emits values with real, validator-passing checksums.
   // Runtime deps (used in main Faker). Authorized 2026-06-23.
   lazy val idValidation: Seq[ModuleID] = Seq(
-    "org.iban4j"             % "iban4j"             % "3.2.11-RELEASE", // valid IBAN (ISO 7064 Mod 97-10)
+    "org.iban4j"             % "iban4j"             % "3.2.13-RELEASE", // valid IBAN (ISO 7064 Mod 97-10)
     "it.kamaladafrica"       % "codice-fiscale"     % "1.6.0",          // valid Italian codice fiscale
     "io.github.viepovsky"    % "pesel"              % "2.0.2",          // valid Polish PESEL (gen + validate), 0 deps
     "br.com.caelum.stella"   % "caelum-stella-core" % "2.2.2",          // valid Brazilian CPF / CNPJ (gen + validate), 0 deps
