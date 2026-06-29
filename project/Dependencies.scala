@@ -69,7 +69,7 @@ object Dependencies {
     "org.iban4j"             % "iban4j"             % "3.2.11-RELEASE", // valid IBAN (ISO 7064 Mod 97-10)
     "it.kamaladafrica"       % "codice-fiscale"     % "1.6.0",          // valid Italian codice fiscale
     "io.github.viepovsky"    % "pesel"              % "2.0.2",          // valid Polish PESEL (gen + validate), 0 deps
-    "br.com.caelum.stella"   % "caelum-stella-core" % "2.2.1",          // valid Brazilian CPF / CNPJ (gen + validate), 0 deps
+    "br.com.caelum.stella"   % "caelum-stella-core" % "2.2.2",          // valid Brazilian CPF / CNPJ (gen + validate), 0 deps
     "com.github.mkyrychenko" % "vin-utils"          % "1.1.0",          // valid vehicle VIN (mod-11)
     // commons-validator: ISBN / EAN / Luhn check-digit computation (routines.checkdigit). Exclude
     // transitive deps unused by the check-digit routines. Also exclude commons-collections 3.2.2
