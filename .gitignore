@@ -13,6 +13,11 @@
 **/.gradle/
 **/build/
 .claude/settings.local.json
-.claude/skills/speckit-worktrees-*/
-.specify/extensions/
-.specify/presets/
+# spec-kit — commit the manifests, extension/preset payloads and generated skills so
+# the toolkit works on a fresh clone; ignore only local-machine install metadata/cache.
+.specify/extensions/.registry
+.specify/extensions/.cache/
+.specify/extensions/.backup/
+.specify/presets/.registry
+.specify/presets/.cache/
+.specify/presets/.backup/
