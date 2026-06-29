@@ -2,6 +2,8 @@ installed:
 - agent-context
 - bug
 - git
+- harness
+- worktrees
 settings:
   auto_execute_hooks: true
 hooks:
@@ -22,6 +24,22 @@ hooks:
     prompt: Commit specification changes?
     description: Auto-commit after specification
     condition: null
+  - extension: worktrees
+    command: speckit.worktrees.create
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Execute speckit.worktrees.create?
+    description: Auto-spawn a worktree after a new feature is specified
+    condition: null
+  - extension: harness
+    command: speckit.harness.init
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Set up a state-externalized research harness for this feature?
+    description: Initialize harness state after specification
+    condition: null
   after_plan:
   - extension: agent-context
     command: speckit.agent-context.update
@@ -38,6 +56,14 @@ hooks:
     priority: 10
     prompt: Commit plan changes?
     description: Auto-commit after implementation planning
+    condition: null
+  - extension: harness
+    command: speckit.harness.verify
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Verify plan claims against primary sources and the harness evidence base?
+    description: Run claim verification after planning
     condition: null
   before_constitution:
   - extension: git
