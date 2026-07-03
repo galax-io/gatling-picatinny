@@ -5,6 +5,10 @@
 /.vscode
 /.project
 /\.bsp/
+.bloop/
+.metals/
+metals.sbt
+.mcp.json
 /project/project/
 /project/target/
 /report/
