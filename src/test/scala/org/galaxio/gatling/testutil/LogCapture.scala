@@ -26,17 +26,17 @@ import scala.jdk.CollectionConverters._
   *   3. `ThreadLocal` capture queue — while a capture window is open, OTHER (non-capturing) suites running in parallel may
   *      still log to the same logger subtree on their own threads. Because each thread reads its OWN `ThreadLocal` slot,
   *      foreign threads see `null` and their events are silently dropped. This replaces the previous thread-name-equality
-  *      check, which was fragile: thread names are not guaranteed unique across JVM pools and can be mutated by test runners
-  *      at suite boundaries, causing spurious inclusions or exclusions.
+  *      check, which was fragile: thread names are not guaranteed unique across JVM pools and can be mutated by test runners at
+  *      suite boundaries, causing spurious inclusions or exclusions.
   *
   * All log-capturing suites must go through this object so the guarantee holds.
   */
 object LogCapture {
 
   /** A recording appender attached ONCE per logger and never detached. Events are forwarded to the calling thread's
-    * [[activeQueue]] slot; foreign threads (those not holding the capture window) see `null` and are ignored. `append`
-    * NEVER mutates the logger's appender list, so it can't race with concurrent foreign dispatch through the same logger
-    * (see the object doc).
+    * [[activeQueue]] slot; foreign threads (those not holding the capture window) see `null` and are ignored. `append` NEVER
+    * mutates the logger's appender list, so it can't race with concurrent foreign dispatch through the same logger (see the
+    * object doc).
     */
   private final class RecordingAppender extends AppenderBase[ILoggingEvent] {
     override def append(event: ILoggingEvent): Unit = {
@@ -45,9 +45,9 @@ object LogCapture {
     }
   }
 
-  /** Set only on the thread that currently holds the capture window; `null` on all other threads. Using a `ThreadLocal`
-    * makes the capturing side-channel invisible to foreign threads by construction, without relying on thread names
-    * (which are not guaranteed unique and can be mutated by test runners at suite boundaries).
+  /** Set only on the thread that currently holds the capture window; `null` on all other threads. Using a `ThreadLocal` makes
+    * the capturing side-channel invisible to foreign threads by construction, without relying on thread names (which are not
+    * guaranteed unique and can be mutated by test runners at suite boundaries).
     */
   private val activeQueue = new ThreadLocal[ConcurrentLinkedQueue[ILoggingEvent]]()
 
