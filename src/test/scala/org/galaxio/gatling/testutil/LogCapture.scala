@@ -27,7 +27,9 @@ import scala.jdk.CollectionConverters._
   *      still log to the same logger subtree on their own threads. Because each thread reads its OWN `ThreadLocal` slot,
   *      foreign threads see `null` and their events are silently dropped. This replaces the previous thread-name-equality
   *      check, which was fragile: thread names are not guaranteed unique across JVM pools and can be mutated by test runners at
-  *      suite boundaries, causing spurious inclusions or exclusions.
+  *      suite boundaries, causing spurious inclusions or exclusions. Nested captures on the same thread (a capture whose `body`
+  *      opens another capture) save/restore the slot rather than clearing it, so the outer window keeps recording once the
+  *      inner one closes.
   *
   * All log-capturing suites must go through this object so the guarantee holds.
   */
@@ -68,12 +70,13 @@ object LogCapture {
 
     val captured      = new ConcurrentLinkedQueue[ILoggingEvent]()
     val previousLevel = logger.getLevel
+    val previousQueue = activeQueue.get()
     activeQueue.set(captured)
     logger.setLevel(level)
     try body
     finally {
       logger.setLevel(previousLevel)
-      activeQueue.remove()
+      if (previousQueue == null) activeQueue.remove() else activeQueue.set(previousQueue)
     }
     captured.asScala.toList
   }
