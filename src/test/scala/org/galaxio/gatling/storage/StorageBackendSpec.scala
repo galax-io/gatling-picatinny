@@ -27,8 +27,12 @@ class StorageBackendSpec extends AnyWordSpec with Matchers {
     }
 
     "return empty seq for missing file" in {
-      val backend = JsonFileBackend("/tmp/nonexistent-test-file-12345.json")
-      backend.load() shouldBe empty
+      // Per-run temp dir instead of a hardcoded absolute /tmp path: parallel-safe and Windows-safe (#108).
+      val missingDir = Files.createTempDirectory("backend-missing")
+      try {
+        val backend = JsonFileBackend(missingDir.resolve("nonexistent-test-file.json").toString)
+        backend.load() shouldBe empty
+      } finally Files.deleteIfExists(missingDir)
     }
 
     "clear deletes the file" in {
