@@ -3,6 +3,13 @@ import Dependencies.*
 def UtilsModule(id: String) = Project(id, file(id))
 lazy val IntegrationTest    = config("it") extend Test
 
+// Single shared definition of "benchmark sources", consumed by every static-analysis gate
+// (coverage here; scalafix / -Werror source filters reuse it). JMH benchmarks sit on the
+// production classpath but only ever run via `sbt Jmh/run`, so counting them in any gate's
+// denominator distorts the signal (#210).
+lazy val benchmarkFilePattern    = ".*Benchmark.*"
+lazy val benchmarkPackagePattern = "org\\.galaxio\\.gatling\\.jmh\\..*"
+
 lazy val root = (project in file("."))
   .enablePlugins(GitVersioning, JmhPlugin)
   .configs(IntegrationTest)
@@ -29,6 +36,8 @@ lazy val root = (project in file("."))
     coverageMinimumStmtTotal            := 65,
     coverageMinimumBranchTotal          := 60,
     coverageFailOnMinimum               := true,
+    coverageExcludedFiles               := benchmarkFilePattern,
+    coverageExcludedPackages            := benchmarkPackagePattern,
     IntegrationTest / parallelExecution := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
     javacOptions ++= Seq("--release", "17"),
