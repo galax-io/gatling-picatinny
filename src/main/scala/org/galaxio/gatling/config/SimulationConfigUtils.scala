@@ -7,7 +7,6 @@ import com.typesafe.scalalogging.LazyLogging
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Try}
 

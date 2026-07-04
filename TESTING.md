@@ -164,6 +164,7 @@ in `build.sbt`.
 | Format | `sbt scalafmtCheckAll scalafmtSbtCheck` | `sbt scalafmtAll scalafmtSbt` | none |
 | Lint (scalafix, #273) | `sbt "scalafixAll --check"` | `sbt scalafixAll scalafmtAll` (fix, then format — they converge) | `// scalafix:ok <Rule>` on the offending line, or a bare `// scalafix:off <Rule>` … `// scalafix:on <Rule>` block, ALWAYS with a `// Justification:` line |
 | Binary compatibility (ADVISORY, #274) | `sbt mimaFindBinaryIssues` — prints findings, never fails; CI annotates PRs with `::warning::` and stays green | restore the API, or acknowledge an intentional break | `mimaBinaryIssueFilters` entry in `build.sbt` + justification comment + constitution-II version bump; reviewing outstanding warnings is a mandatory release-checklist step (AGENTS.md) |
+| Compiler diagnostics (#275) | `sbt compile Test/compile "IntegrationTest / compile"` — `-Xlint:_,-infer-any` + `-Wunused` + `-Wdead-code` under `-Werror`, always on | fix the diagnostic | per-site `@nowarn("cat=…"/"msg=…")` + justification comment — never a category-wide downgrade; documented category exclusions live in the `build.sbt` flag comment (currently: `infer-any` — heterogeneous feeder records are the domain type) |
 
 If a local run seems to miss a fresh finding, the scalafix incremental cache is stale — re-run
 as `sbt "Test/scalafix --no-cache <Rule>"` (CI always runs cold-cache). Note: `scalafix:off/on`

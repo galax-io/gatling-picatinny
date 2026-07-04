@@ -65,6 +65,15 @@ lazy val root = (project in file("."))
       "-language:existentials",
       "-language:postfixOps",
       "-Wunused:imports,privates,locals,patvars",
+      // Strict diagnostics (#275): curated compiler lints escalated to errors on ALL scopes,
+      // always on (local == CI, no drift). Tolerated diagnostics get a per-site
+      // @nowarn("cat=...") with a justification — never a category-wide downgrade.
+      // Documented -Xlint exclusion: infer-any — heterogeneous Map[String, Any] records ARE the
+      // library's core feeder domain type; the lint would demand a type ascription on every
+      // record literal for zero defect-finding value.
+      "-Xlint:_,-infer-any",
+      "-Wdead-code",
+      "-Werror",
     ),
   )
   .settings(inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)))

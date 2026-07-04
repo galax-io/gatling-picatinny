@@ -1,7 +1,6 @@
 package org.galaxio.gatling.redis
 
 import com.redis.RedisClient
-import com.redis.serialization.Parse
 
 sealed trait RedisCommand {
   def execute(client: RedisClient): Option[Any]

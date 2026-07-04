@@ -55,12 +55,9 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     }
 
     "build single-field typed feeder" in {
-      val feeder = GeneratedFeeder.single("n", Faker.number.int(1, 10))
-      val record = feeder.next()
-      val value  = record("n") match {
-        case i: Int => i
-        case other  => fail(s"expected Int, got ${other.getClass.getName}: $other")
-      }
+      val feeder     = GeneratedFeeder.single("n", Faker.number.int(1, 10))
+      val record     = feeder.next()
+      val value: Int = record("n") // Record[Int]: the value is statically typed, no cast needed
       value should (be >= 1 and be <= 10)
     }
 

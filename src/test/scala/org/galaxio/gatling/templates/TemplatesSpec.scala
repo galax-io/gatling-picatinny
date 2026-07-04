@@ -62,8 +62,7 @@ class TemplatesSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       val original = Thread.currentThread.getContextClassLoader
       try {
         Thread.currentThread.setContextClassLoader(new ClassLoader(null) {})
-        val t  = new Templates { def force(): Unit = { templates; () } }
-        val ex = intercept[IllegalStateException](t.force())
+        val ex = intercept[IllegalStateException](new TemplatesProbe().names)
         ex.getMessage should include("Templates directory")
         ex.getMessage should include("resources/templates")
         ex.getMessage.toLowerCase should include("classpath")
@@ -77,8 +76,7 @@ class TemplatesSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       val cl       = new java.net.URLClassLoader(Array(root.toUri.toURL), null)
       try {
         Thread.currentThread.setContextClassLoader(cl)
-        val t = new Templates { def names: Set[String] = templates.keySet }
-        t.names shouldBe empty
+        new TemplatesProbe().names shouldBe empty
       } finally {
         Thread.currentThread.setContextClassLoader(original)
         cl.close()
