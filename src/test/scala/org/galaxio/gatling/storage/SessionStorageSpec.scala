@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.util.concurrent.{CountDownLatch, Executors}
-import scala.jdk.CollectionConverters._
 
 class SessionStorageSpec extends AnyWordSpec with Matchers {
 
@@ -148,7 +147,10 @@ class SessionStorageSpec extends AnyWordSpec with Matchers {
     def addRecord(record: Record[Any]): Unit = {
       val field = classOf[SessionStorage].getDeclaredField("records")
       field.setAccessible(true)
-      field.get(storage).asInstanceOf[java.util.concurrent.ConcurrentLinkedQueue[Record[Any]]].add(record)
+      field.get(storage) match {
+        case queue: java.util.concurrent.ConcurrentLinkedQueue[Record[Any]] @unchecked => queue.add(record)
+        case other                                                                     => fail(s"expected ConcurrentLinkedQueue, got: $other")
+      }
     }
   }
 

@@ -1,10 +1,10 @@
 package org.galaxio.gatling.utils.jwt
 
+import org.json4s.JsonDSL._
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 import pdi.jwt.JwtAlgorithm
 import pdi.jwt.algorithms.JwtUnknownAlgorithm
-import org.json4s._
-import org.json4s.JsonDSL._
-import org.json4s.jackson.JsonMethods._
 
 import java.util.Locale
 import scala.io.Source
@@ -63,8 +63,8 @@ final case class JwtGeneratorBuilder(
       }
 
   private def readResource(path: String): String = {
-    val url    = getClass.getClassLoader.getResource(path)
-    if (url == null) throw new IllegalArgumentException(s"Resource not found: $path")
+    val url    = Option(getClass.getClassLoader.getResource(path))
+      .getOrElse(throw new IllegalArgumentException(s"Resource not found: $path"))
     val source = Source.fromURL(url)
     try validateJson(source.mkString)
     finally source.close()

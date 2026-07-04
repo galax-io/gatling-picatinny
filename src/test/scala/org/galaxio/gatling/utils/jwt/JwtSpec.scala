@@ -1,7 +1,6 @@
 package org.galaxio.gatling.utils.jwt
 
 import io.gatling.core.config.GatlingConfiguration
-import io.gatling.core.session.el._
 import org.galaxio.gatling.transactions.FakeEventLoop
 import org.galaxio.gatling.utils.{jwt => jwtPkg}
 import org.scalatest.matchers.should.Matchers
@@ -13,7 +12,7 @@ import scala.concurrent.duration.DurationInt
 
 class JwtSpec extends AnyWordSpec with Matchers {
 
-  private implicit val configuration: GatlingConfiguration  = GatlingConfiguration.loadForTest()
+  GatlingConfiguration.loadForTest()
   private val fakeEventLoop                                 = new FakeEventLoop
   private val emptySession: io.gatling.core.session.Session =
     io.gatling.core.session.Session("test", 1L, fakeEventLoop)
@@ -190,8 +189,10 @@ class JwtSpec extends AnyWordSpec with Matchers {
       val cb     = ClaimsBuilder().issuer("my-app").claim("role", "admin")
       val result = cb.resolve(emptySession)
 
-      result.isInstanceOf[io.gatling.commons.validation.Success[_]] shouldBe true
-      val json = result.asInstanceOf[io.gatling.commons.validation.Success[String]].value
+      val json = result match {
+        case io.gatling.commons.validation.Success(value) => value
+        case other                                        => fail(s"expected Success, got: $other")
+      }
       json should include("\"iss\":\"my-app\"")
       json should include("\"role\":\"admin\"")
     }
@@ -201,8 +202,10 @@ class JwtSpec extends AnyWordSpec with Matchers {
       val cb      = ClaimsBuilder().subject("#{uid}")
       val result  = cb.resolve(session)
 
-      result.isInstanceOf[io.gatling.commons.validation.Success[_]] shouldBe true
-      val json = result.asInstanceOf[io.gatling.commons.validation.Success[String]].value
+      val json = result match {
+        case io.gatling.commons.validation.Success(value) => value
+        case other                                        => fail(s"expected Success, got: $other")
+      }
       json should include("\"sub\":\"abc-123\"")
     }
 
@@ -210,8 +213,10 @@ class JwtSpec extends AnyWordSpec with Matchers {
       val cb     = ClaimsBuilder().issuedAtNow.notBeforeNow.expiresIn(300.seconds)
       val result = cb.resolve(emptySession)
 
-      result.isInstanceOf[io.gatling.commons.validation.Success[_]] shouldBe true
-      val json = result.asInstanceOf[io.gatling.commons.validation.Success[String]].value
+      val json = result match {
+        case io.gatling.commons.validation.Success(value) => value
+        case other                                        => fail(s"expected Success, got: $other")
+      }
       json should include("\"iat\":")
       json should include("\"nbf\":")
       json should include("\"exp\":")
@@ -221,7 +226,7 @@ class JwtSpec extends AnyWordSpec with Matchers {
       val cb     = ClaimsBuilder().claimFromSession("userId", "#{missingKey}")
       val result = cb.resolve(emptySession)
 
-      result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
+      result shouldBe a[io.gatling.commons.validation.Failure]
     }
   }
 
@@ -319,19 +324,19 @@ class JwtSpec extends AnyWordSpec with Matchers {
     "fail generation when forcing a Long on a non-numeric value" in {
       val session = emptySession.set("uid", "not-a-number")
       val result  = ClaimsBuilder().claimFromSession("uid", "#{uid}").as[Long].resolve(session)
-      result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
+      result shouldBe a[io.gatling.commons.validation.Failure]
     }
 
     "fail (not overflow) when forcing a Long on a whole Double beyond Long range" in {
       val session = emptySession.set("big", 9.223372036854776e18) // > Long.MaxValue
       val result  = ClaimsBuilder().claimFromSession("big", "#{big}").as[Long].resolve(session)
-      result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
+      result shouldBe a[io.gatling.commons.validation.Failure]
     }
 
     "fail (not overflow) when forcing a Long on a BigInt beyond Long range" in {
       val session = emptySession.set("huge", BigInt("99999999999999999999"))
       val result  = ClaimsBuilder().claimFromSession("huge", "#{huge}").as[Long].resolve(session)
-      result.isInstanceOf[io.gatling.commons.validation.Failure] shouldBe true
+      result shouldBe a[io.gatling.commons.validation.Failure]
     }
 
     "not NPE when forcing a type on a null session value" in {

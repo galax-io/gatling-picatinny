@@ -3,11 +3,11 @@ package org.galaxio.gatling.feeders
 import io.gatling.core.CoreDsl
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.feeder._
+import org.galaxio.gatling.feeders.faker.Predef._
+import org.galaxio.gatling.feeders.faker.{Faker, GeneratedFeeder}
 import org.scalacheck.Gen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.galaxio.gatling.feeders.faker.Predef._
-import org.galaxio.gatling.feeders.faker.{Faker, GeneratedFeeder}
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 class FeedersBaseSpec extends AnyWordSpec with Matchers with CoreDsl with ScalaCheckDrivenPropertyChecks {

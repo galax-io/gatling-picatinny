@@ -1,8 +1,8 @@
 package org.galaxio.gatling.feeders
 
-import java.util.concurrent.atomic.AtomicLong
-
 import io.gatling.core.feeder.Feeder
+
+import java.util.concurrent.atomic.AtomicLong
 
 object SequentialFeeder {
 

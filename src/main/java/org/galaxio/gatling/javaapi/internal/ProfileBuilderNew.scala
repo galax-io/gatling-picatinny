@@ -1,10 +1,10 @@
 package org.galaxio.gatling.javaapi.internal
 
-import org.galaxio.gatling.profile.Request
 import io.gatling.javaapi.core.CoreDsl._
 import io.gatling.javaapi.core._
 import io.gatling.javaapi.http.HttpDsl._
 import io.gatling.javaapi.http._
+import org.galaxio.gatling.profile.Request
 
 import scala.jdk.javaapi.CollectionConverters
 

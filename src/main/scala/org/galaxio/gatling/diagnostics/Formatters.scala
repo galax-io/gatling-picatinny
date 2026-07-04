@@ -1,7 +1,6 @@
 package org.galaxio.gatling.diagnostics
 
 import java.util.Locale
-
 import scala.concurrent.duration.FiniteDuration
 
 private[diagnostics] object Formatters {

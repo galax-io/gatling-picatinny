@@ -1,7 +1,7 @@
 package org.galaxio.gatling.feeders.faker
 
-import org.galaxio.gatling.utils._
 import org.galaxio.gatling.utils.RandomDataGenerators.{digitString, lettersString, randomValue}
+import org.galaxio.gatling.utils._
 
 /** Hand-rolled government / financial identifier generators with valid control digits (Russian INN, OGRN, OGRNIP, SNILS, KPP,
   * passport, and the Luhn-checked credit-card PAN).

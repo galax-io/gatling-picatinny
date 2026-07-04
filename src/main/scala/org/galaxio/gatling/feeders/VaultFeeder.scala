@@ -36,7 +36,7 @@ object VaultFeeder extends LazyLogging {
       keys: List[String],
       timeoutInSeconds: Long = 5,
   ): IndexedSeq[Record[String]] = {
-    require(keys != null, "Keys list must not be null")
+    require(Option(keys).isDefined, "Keys list must not be null")
     warnIfNotHttps(vaultUrl)
 
     Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
@@ -93,7 +93,7 @@ object VaultFeeder extends LazyLogging {
       onDuplicate: DuplicateKeyStrategy,
       timeoutInSeconds: Long,
   ): IndexedSeq[Record[String]] = {
-    require(paths != null, "Paths list must not be null")
+    require(Option(paths).isDefined, "Paths list must not be null")
     warnIfNotHttps(vaultUrl)
 
     Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>
@@ -141,7 +141,7 @@ object VaultFeeder extends LazyLogging {
       keys: List[String],
       timeoutInSeconds: Long = 5,
   ): IndexedSeq[Record[String]] = {
-    require(keys != null, "Keys list must not be null")
+    require(Option(keys).isDefined, "Keys list must not be null")
     warnIfNotHttps(vaultUrl)
 
     Using.resource(THttpClient(timeoutInSeconds = timeoutInSeconds)) { client =>

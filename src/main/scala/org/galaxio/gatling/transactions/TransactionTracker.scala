@@ -1,12 +1,12 @@
 package org.galaxio.gatling.transactions
 
-import java.util.concurrent.atomic.AtomicLong
-
 import com.typesafe.scalalogging.StrictLogging
 import io.gatling.core.action.Action
 import io.gatling.core.actor.{ActorRef, ActorSystem}
 import io.gatling.core.session.Session
 import io.gatling.core.stats.StatsEngine
+
+import java.util.concurrent.atomic.AtomicLong
 
 object TransactionTracker extends StrictLogging {
 

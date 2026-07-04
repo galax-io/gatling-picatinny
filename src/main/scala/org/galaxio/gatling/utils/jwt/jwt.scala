@@ -3,10 +3,10 @@ package org.galaxio.gatling.utils
 import io.gatling.commons.validation.{Failure, Success}
 import io.gatling.core.Predef.Session
 import io.gatling.core.session.el._
-import org.json4s.jackson.JsonMethods._
 import org.json4s._
-import pdi.jwt.{Jwt => PdiJwt, JwtAlgorithm}
+import org.json4s.jackson.JsonMethods._
 import pdi.jwt.algorithms.{JwtAsymmetricAlgorithm, JwtHmacAlgorithm}
+import pdi.jwt.{Jwt => PdiJwt, JwtAlgorithm}
 
 import java.security.PrivateKey
 

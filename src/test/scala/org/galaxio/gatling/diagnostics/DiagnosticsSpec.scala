@@ -5,8 +5,8 @@ import io.gatling.core.Predef._
 import org.galaxio.gatling.config.ConfigValueMasking
 import org.galaxio.gatling.testutil.LogCapture
 import org.scalatest.OptionValues
-import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.duration._
 

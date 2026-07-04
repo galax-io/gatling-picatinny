@@ -34,6 +34,17 @@ jobs:
       - uses: ./.github/actions/sbt-setup
       - run: sbt scalafmtCheckAll scalafmtSbtCheck
 
+  lint:
+    name: Lint (scalafix)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/sbt-setup
+      # Idiomatic-Scala gate (#273): DisableSyntax + ProcedureSyntax + RemoveUnused + OrganizeImports.
+      # Local fix: sbt scalafixAll scalafmtAll. Escape hatch: per-site `// scalafix:ok <Rule>` with justification.
+      - run: sbt "scalafixAll --check"
+
   test:
     name: Test (Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04

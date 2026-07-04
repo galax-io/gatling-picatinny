@@ -1,15 +1,15 @@
 package org.galaxio.gatling.config
 
-import java.util.concurrent.TimeUnit
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigException
+import com.typesafe.scalalogging.LazyLogging
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Try}
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigException
-import com.typesafe.scalalogging.LazyLogging
 
 private[gatling] class SimulationConfigUtils(config: Config) extends LazyLogging {
   private[gatling] val masking  = ConfigValueMasking.fromConfig(config)
@@ -47,7 +47,12 @@ private[gatling] class SimulationConfigUtils(config: Config) extends LazyLogging
 
   private def getValueByType[T](cfg: Config, path: String)(implicit tag: TypeTag[T]): T =
     readValueByType(cfg, path)
-      .map(_.asInstanceOf[T])
+      // Justification: guarded extraction: readValueByType already dispatched on TypeTag[T], the cast cannot fail
+      // scalafix:off DisableSyntax.asInstanceOf
+      .map(
+        _.asInstanceOf[T],
+      )
+      // scalafix:on DisableSyntax.asInstanceOf
       .map { value =>
         val shown = value match {
           case cfgValue: Config => masking.displayConfig(cfgValue)

@@ -1,8 +1,8 @@
 package org.galaxio.gatling.utils
 
-import org.galaxio.gatling.diagnostics.{Diagnostics, StartupBanner}
 import io.gatling.core.controller.inject.closed.ClosedInjectionStep
 import io.gatling.core.controller.inject.open.OpenInjectionStep
+import org.galaxio.gatling.diagnostics.{Diagnostics, StartupBanner}
 
 /** Convenience diagnostics facade for Gatling simulations.
   *
@@ -46,15 +46,13 @@ object Utility {
   def banner(steps: Array[io.gatling.javaapi.core.ClosedInjectionStep]): Unit =
     StartupBanner.printSettingsIfEnabled(org.galaxio.gatling.diagnostics.InjectionProfileParser.javaClosed(steps))
 
-  private def printFromValues(values: List[Any]): Unit =
-    values match {
-      case values if values.forall(_.isInstanceOf[OpenInjectionStep])   =>
-        StartupBanner.printOpenIfEnabled(values.collect { case step: OpenInjectionStep => step })
-      case values if values.forall(_.isInstanceOf[ClosedInjectionStep]) =>
-        StartupBanner.printClosedIfEnabled(values.collect { case step: ClosedInjectionStep => step })
-      case _                                                            =>
-        banner()
-    }
+  private def printFromValues(values: List[Any]): Unit = {
+    val open   = values.collect { case step: OpenInjectionStep => step }
+    val closed = values.collect { case step: ClosedInjectionStep => step }
+    if (open.sizeIs == values.size) StartupBanner.printOpenIfEnabled(open)
+    else if (closed.sizeIs == values.size) StartupBanner.printClosedIfEnabled(closed)
+    else banner()
+  }
 
   /** Prints runtime/JVM diagnostics when `picatinny.diagnostics.enabled` is true.
     */

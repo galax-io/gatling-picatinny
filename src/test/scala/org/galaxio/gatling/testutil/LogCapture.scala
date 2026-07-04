@@ -43,7 +43,7 @@ object LogCapture {
   private final class RecordingAppender extends AppenderBase[ILoggingEvent] {
     override def append(event: ILoggingEvent): Unit = {
       val queue = activeQueue.get()
-      if (queue != null) queue.add(event)
+      Option(queue).foreach(_.add(event))
     }
   }
 
@@ -76,7 +76,7 @@ object LogCapture {
     try body
     finally {
       logger.setLevel(previousLevel)
-      if (previousQueue == null) activeQueue.remove() else activeQueue.set(previousQueue)
+      Option(previousQueue).fold(activeQueue.remove())(activeQueue.set)
     }
     captured.asScala.toList
   }
@@ -101,6 +101,9 @@ object LogCapture {
     LoggerFactory.getLogger(loggerName) match {
       case logback: LogbackLogger => logback
       case _ if attemptsLeft > 0  => Thread.sleep(1); logbackLogger(loggerName, attemptsLeft - 1)
-      case other                  => other.asInstanceOf[LogbackLogger] // exhausted → surface a clear cast error
+      case other                  =>
+        other
+          // Justification: deliberate: exhausted retries surface a clear cast error naming the foreign logger binding
+          .asInstanceOf[LogbackLogger] // scalafix:ok DisableSyntax.asInstanceOf
     }
 }

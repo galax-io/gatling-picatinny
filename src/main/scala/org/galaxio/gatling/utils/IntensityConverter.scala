@@ -19,7 +19,7 @@ object IntensityConverter {
   // extractor, `Either.cond`, and a unit match. The for-comprehension just composes them.
 
   private def trimmedInput(s: String): Either[String, String] =
-    if (s == null) Left("input is null") else Right(s.trim)
+    Option(s).map(_.trim).toRight("input is null")
 
   private def split(s: String): Either[String, (String, String)] =
     s match {

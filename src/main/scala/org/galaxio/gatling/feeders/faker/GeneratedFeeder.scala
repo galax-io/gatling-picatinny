@@ -63,8 +63,10 @@ object GeneratedFeeder {
     * invariant in its value type, so the compiler cannot prove this statically, but the cast is guaranteed to succeed for any
     * `A`.
     */
-  private def widenRecord[A](record: Record[A]): Map[String, Any] =
-    record.asInstanceOf[Map[String, Any]]
+  private[faker] def widenRecord[A](record: Record[A]): Map[String, Any] =
+    record
+      // Justification: documented guarded widening: erasure-safe for every A (see scaladoc above); single shared extraction point (FR-016)
+      .asInstanceOf[Map[String, Any]] // scalafix:ok DisableSyntax.asInstanceOf
 
   /** Materializes records so Gatling's built-in feeder strategies can be used. */
   def recordsFrom(records: Iterable[Map[String, Any]]): IndexedSeq[Record[Any]] = {

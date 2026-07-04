@@ -1,10 +1,9 @@
 package org.galaxio.gatling.diagnostics
 
-import java.lang.management.ManagementFactory
-
 import com.typesafe.scalalogging.StrictLogging
 import org.galaxio.gatling.config.{ConfigManager, ConfigValueMasking}
 
+import java.lang.management.ManagementFactory
 import scala.jdk.CollectionConverters._
 
 object Diagnostics extends StrictLogging {

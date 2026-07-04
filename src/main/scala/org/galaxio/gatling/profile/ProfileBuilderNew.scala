@@ -1,14 +1,13 @@
 package org.galaxio.gatling.profile
 
-import io.circe.yaml._
+import cats.syntax.either._
 import io.circe.generic.auto._
+import io.circe.yaml._
 import io.gatling.core.Predef._
 import io.gatling.core.structure.{ChainBuilder, ScenarioBuilder}
 import io.gatling.http.Predef._
 import io.gatling.http.request.builder.HttpRequestBuilder
 import org.galaxio.gatling.utils.IntensityConverter.getIntensityFromString
-
-import cats.syntax.either._
 
 import java.io.FileNotFoundException
 import java.nio.file.{Path, Paths}

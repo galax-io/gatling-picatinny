@@ -14,8 +14,8 @@ import org.scalatest.OptionValues._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.jdk.CollectionConverters._
 
 object TransactionsSpec {
@@ -81,8 +81,10 @@ object TransactionsSpec {
   def paramsOf(simulation: SimulationWithTransactions): SimulationParams =
     classOf[io.gatling.core.scenario.Simulation]
       .getMethod("params", classOf[GatlingConfiguration])
-      .invoke(simulation, configuration)
-      .asInstanceOf[SimulationParams]
+      .invoke(simulation, configuration) match {
+      case params: SimulationParams => params
+      case other                    => throw new IllegalStateException(s"expected SimulationParams, got: $other")
+    }
 }
 
 class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {

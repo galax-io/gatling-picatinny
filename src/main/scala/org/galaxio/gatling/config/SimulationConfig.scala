@@ -1,8 +1,8 @@
 package org.galaxio.gatling.config
 
+import com.typesafe.config.Config
 import org.galaxio.gatling.config.ConfigManager.simulationConfig
 import org.galaxio.gatling.utils.IntensityConverter.getIntensityFromString
-import com.typesafe.config.Config
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Try}

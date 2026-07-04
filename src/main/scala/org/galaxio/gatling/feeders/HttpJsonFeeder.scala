@@ -41,7 +41,7 @@ object HttpJsonFeeder {
       headers: Seq[String],
   ): IndexedSeq[Record[String]] = {
     require(url.nonEmpty, "URL must be non-empty")
-    require(keys != null, "Keys list must not be null")
+    require(Option(keys).isDefined, "Keys list must not be null")
 
     val response = client.get(url, headers).body
     val json     = JsonMethods.parse(response)

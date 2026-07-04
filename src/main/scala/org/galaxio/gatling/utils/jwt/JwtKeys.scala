@@ -91,8 +91,8 @@ object JwtKeys {
     }
 
   private def readResourceString(path: String): String = {
-    val url = getClass.getClassLoader.getResource(path)
-    if (url == null) throw new IllegalArgumentException(s"Resource not found: $path")
+    val url = Option(getClass.getClassLoader.getResource(path))
+      .getOrElse(throw new IllegalArgumentException(s"Resource not found: $path"))
     Using.resource(Source.fromURL(url))(_.mkString)
   }
 
