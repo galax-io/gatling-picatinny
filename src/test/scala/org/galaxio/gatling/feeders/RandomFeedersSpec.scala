@@ -401,13 +401,24 @@ class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenP
       }
     }
 
+    // Independent OGRNIP check-digit oracle, anchored on a documented real-world sample below —
+    // a transcription mistake here cannot silently agree with a production bug (#211).
+    lazy val psrnspCheckDigitOracle: String => Int = first14 => (first14.toLong % 13 % 10).toInt
+
+    "anchor the PSRNSP oracle on a documented real-world sample" in {
+      psrnspCheckDigitOracle("30450011600015") shouldBe 7      // real OGRNIP 304500116000157
+      psrnspCheckDigitOracle("30450011600016") should not be 7 // corrupted base shifts the digit (negative)
+    }
+
     "create random PSRNSPFeeder" in {
       forAll(rndString) { paramName =>
         RandomPSRNSPFeeder(paramName)
           .take(50)
           .foreach { record =>
+            val value = record(paramName)
             withClue(s"Invalid random PSRNSPFeeder: $record, ") {
-              record(paramName).substring(0, 14).toLong % 13 % 10 shouldBe record(paramName).substring(14, 15).toInt
+              value should fullyMatch regex "\\d{15}"
+              value.substring(14, 15).toInt shouldBe psrnspCheckDigitOracle(value.substring(0, 14))
             }
           }
       }

@@ -400,8 +400,11 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     }
 
     "generate cyrillic strings" in {
-      val s = Faker.string.cyrillic(10).sample()
-      s should have length 10
+      // Content + length pinned (was length-only, asserting nothing about the script — #211).
+      val cyrillicPattern = "[Ѐ-ӿ]{10}"
+      val s               = Faker.string.cyrillic(10).sample()
+      s should fullyMatch regex cyrillicPattern
+      "abcdefghij" shouldNot fullyMatch regex cyrillicPattern // pattern rejects Latin (negative)
     }
 
     "generate strings from custom alphabet" in {
@@ -882,25 +885,42 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
   }
 
   "French identifiers" should {
+    // Independent oracle for the INSEE NIR key. It is anchored on the official documentation
+    // sample below, so a transcription mistake here cannot silently agree with a production
+    // bug — that anchor is what removes the #211 tautology (test formula == production formula).
+    val nirKeyOracle: Long => Int = base => (97L - base % 97L).toInt
+
+    "anchor the NIR key oracle on the official INSEE sample" in {
+      nirKeyOracle(2550814168025L) shouldBe 38      // NIR "2 55 08 14 168 025" -> key 38 (INSEE doc example)
+      nirKeyOracle(2550814168026L) should not be 38 // corrupted base shifts the key (negative)
+    }
+
     "generate NIR with valid key" in {
       (1 to sampleCount).foreach { _ =>
-        val nir  = Faker.fr.nir().sample()
+        val nir = Faker.fr.nir().sample()
         nir should fullyMatch regex "\\d{15}"
-        val base = nir.take(13).toLong
-        val key  = nir.takeRight(2).toInt
-        key shouldBe (97 - (base % 97)).toInt
+        nir.takeRight(2).toInt shouldBe nirKeyOracle(nir.take(13).toLong)
       }
     }
   }
 
   "Spanish identifiers" should {
+    // Independent NIF letter oracle, anchored on officially documented number->letter pairs
+    // (tautology guard, #211 — see NIR comment above).
+    val nifLetterOracle: Int => Char = digits => "TRWAGMYFPDXBNJZSQVHLCKE".charAt(digits % 23)
+
+    "anchor the NIF letter oracle on officially documented pairs" in {
+      nifLetterOracle(0) shouldBe 'T'
+      nifLetterOracle(12345678) shouldBe 'Z'      // canonical example DNI 12345678Z
+      nifLetterOracle(99999999) shouldBe 'R'      // documented test NIF 99999999R
+      nifLetterOracle(12345679) should not be 'Z' // corrupted number shifts the letter (negative)
+    }
+
     "generate NIF with valid check letter" in {
       (1 to sampleCount).foreach { _ =>
-        val nif     = Faker.es.nif().sample()
+        val nif = Faker.es.nif().sample()
         nif should fullyMatch regex "\\d{8}[A-Z]"
-        val digits  = nif.take(8).toInt
-        val letters = "TRWAGMYFPDXBNJZSQVHLCKE"
-        nif.last shouldBe letters.charAt(digits % 23)
+        nif.last shouldBe nifLetterOracle(nif.take(8).toInt)
       }
     }
   }
