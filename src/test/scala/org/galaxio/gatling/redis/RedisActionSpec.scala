@@ -46,13 +46,28 @@ class RedisActionSpec extends AnyWordSpec with Matchers with Mocks {
   // updateSessionWithResult success cases are unit-covered above.
   // ---------------------------------------------------------------------------------------------
 
-  /** Ephemeral port that is bound and immediately released — connecting to it is refused, which drives the real crash branch of
-    * `execute` without stubbing the Redis client (a stub throwing on demand would assert the stub, not the action).
+  /** Ephemeral port that is bound, released, and then double-checked to actually refuse connections — this drives the real
+    * crash branch of `execute` without stubbing the Redis client (a stub throwing on demand would assert the stub, not the
+    * action). The post-release probe closes the port-reuse race: the OS may hand the just-released port to another process, in
+    * which case we retry with a fresh one (review finding; suspected source of a rare suite flake).
     */
   private def closedPort(): Int = {
-    val socket = new ServerSocket(0)
-    try socket.getLocalPort
-    finally socket.close()
+    def candidate(): Int                       = {
+      val socket = new ServerSocket(0)
+      try socket.getLocalPort
+      finally socket.close()
+    }
+    def refusesConnections(port: Int): Boolean =
+      try {
+        new java.net.Socket("127.0.0.1", port).close()
+        false // something answered — the port was re-bound, not refused
+      } catch { case _: java.io.IOException => true }
+
+    Iterator
+      .continually(candidate())
+      .take(5)
+      .find(refusesConnections)
+      .getOrElse(fail("could not obtain a connection-refused port after 5 attempts"))
   }
 
   /** Terminal action recording every session it receives — proves `next` still fires after a failure. */
