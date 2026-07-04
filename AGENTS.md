@@ -48,7 +48,7 @@ Authoritative: **[TESTING.md](TESTING.md)** (constitution §III). Test-first; as
 5. Compile guard (`Test`).
 6. Facade delegation (`Test`, JUnit 5).
 
-Coverage floor 65/60 (stmt/branch). Every `/speckit-plan` fills the code-free "Test Model" table (gate).
+Coverage floor 75/66 (stmt/branch; data-driven ratchet — TESTING.md "Coverage ratchet"). Every `/speckit-plan` fills the code-free "Test Model" table (gate).
 
 ## Boundaries
 

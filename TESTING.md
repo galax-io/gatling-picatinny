@@ -10,8 +10,8 @@
 Test the **real** thing, **test-first**. Follow the TDD loop: write the failing test
 before the code (red → green → refactor); cover unit + integration + e2e as the change
 demands; assert **observable behavior**, not internals; keep tests isolated; commit no
-skipped/disabled tests; keep coverage above the enforced floor (≥65% statement /
-≥60% branch). Use real
+skipped/disabled tests; keep coverage above the enforced floor (≥75% statement /
+≥66% branch — see "Coverage ratchet" below). Use real
 components (real `ActorSystem`, real Redis container, real clock or a controllable
 `TestClock`) and small fakes **only at the edges** so the test can observe outputs.
 Mocking is **plain ScalaMock**, leaf collaborators only — never the Gatling runtime.
@@ -133,7 +133,23 @@ The Gatling runtime/DSL is **never** in the mock column.
 | Unit/component | `sbt Test/test` | layers 1 (ScalaMock for HTTP), 2, 5, 6 | no |
 | Integration | `sbt "IntegrationTest / test"` | layer 3 | yes |
 | Full Gatling e2e (in `examples/`) | `sbt Gatling/test` in the overlay, under `template-tests` | layer 4 | no |
-| Coverage | `sbt clean coverage test "IntegrationTest/test" coverageReport` (≥65%/60%) | breadth | yes |
+| Coverage | `sbt clean coverage test "IntegrationTest/test" coverageReport` (≥75%/66%) | breadth | yes |
+
+## Coverage ratchet
+
+The floors (`coverageMinimumStmtTotal` / `coverageMinimumBranchTotal` in `build.sbt`) are
+**data-driven**: after a change that raises real coverage, re-measure and reset each floor
+just under the measured value (≤5 points slack). Rules:
+
+- Floors only move **up** — lowering one requires explicit maintainer authorization in the PR.
+- Never satisfy the floor by padding: no low-value tests on generated or benchmark code.
+- Benchmark sources (`*Benchmark*`, `org.galaxio.gatling.jmh`) are excluded from the
+  denominator via the shared exclusion definition in `build.sbt` — the same definition all
+  static-analysis gates use, so every gate sees the same code.
+- Record the measured value and date in the `build.sbt` comment on every ratchet.
+
+Current: **75% stmt / 66% branch**, set 2026-07-04 (measured 77.75% / 68.29%, unit+it,
+benchmarks excluded; history: 65/60 on 2026-06-21 at measured 69.69%/63.37%).
 
 ## Per-feature gate (speckit)
 

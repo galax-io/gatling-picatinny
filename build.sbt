@@ -31,10 +31,11 @@ lazy val root = (project in file("."))
     libraryDependencies ++= idValidationTest,
     libraryDependencies ++= circeDeps,
     libraryDependencies ++= junit,
-    // Coverage floor — data-driven (measured unit+it: 69.69% stmt / 63.37% branch on 2026-06-21).
-    // Set just under the measured level to lock in the gain and INTRODUCE a branch floor (none existed).
-    coverageMinimumStmtTotal            := 65,
-    coverageMinimumBranchTotal          := 60,
+    // Coverage floor — data-driven ratchet (policy: TESTING.md "Coverage ratchet").
+    // Measured unit+it with benchmarks excluded: 77.75% stmt / 68.29% branch on 2026-07-04.
+    // Floors sit just under measured; they only ever move UP (#80).
+    coverageMinimumStmtTotal            := 75,
+    coverageMinimumBranchTotal          := 66,
     coverageFailOnMinimum               := true,
     coverageExcludedFiles               := benchmarkFilePattern,
     coverageExcludedPackages            := benchmarkPackagePattern,
