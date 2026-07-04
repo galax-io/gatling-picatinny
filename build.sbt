@@ -15,10 +15,13 @@ lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(inConfig(IntegrationTest)(Defaults.testSettings))
   .settings(
-    name                                  := "gatling-picatinny",
-    scalaVersion                          := "2.13.18",
+    name                                   := "gatling-picatinny",
+    scalaVersion                           := "2.13.18",
     libraryDependencies ++= gatlingCore,
+    libraryDependencies ++= gatlingShared,
     libraryDependencies ++= gatling,
+    // TypeTag-based config extraction references scala-reflect directly (hygiene report #276)
+    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     libraryDependencies ++= fastUUID,
     libraryDependencies ++= json4s,
     libraryDependencies ++= pureConfig,
@@ -34,13 +37,35 @@ lazy val root = (project in file("."))
     // Coverage floor — data-driven ratchet (policy: TESTING.md "Coverage ratchet").
     // Measured unit+it with benchmarks excluded: 77.75% stmt / 68.29% branch on 2026-07-04.
     // Floors sit just under measured; they only ever move UP (#80).
-    coverageMinimumStmtTotal              := 75,
-    coverageMinimumBranchTotal            := 66,
-    coverageFailOnMinimum                 := true,
-    coverageExcludedFiles                 := benchmarkFilePattern,
-    coverageExcludedPackages              := benchmarkPackagePattern,
-    IntegrationTest / parallelExecution   := false,
+    coverageMinimumStmtTotal               := 75,
+    coverageMinimumBranchTotal             := 66,
+    coverageFailOnMinimum                  := true,
+    coverageExcludedFiles                  := benchmarkFilePattern,
+    coverageExcludedPackages               := benchmarkPackagePattern,
+    IntegrationTest / parallelExecution    := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
+    // Dependency-hygiene report (#276, report-only — never CI-gated, clarification Q4). Filters
+    // document the accepted findings; everything else is declared explicitly in Dependencies.scala.
+    undeclaredCompileDependenciesFilter -= moduleFilter(
+      "com.chuusai",
+      "shapeless*",
+    ), // pureconfig-generic macro-expansion artifact, version governed by pureconfig
+    undeclaredCompileDependenciesFilter -= moduleFilter(
+      "org.typelevel",
+      "cats*",
+    ), // pureconfig API surface leak, version governed transitively
+    undeclaredCompileDependenciesFilter -= moduleFilter(
+      "net.debasishg",
+      "redisclient*",
+    ), // version deliberately pinned by the gatling-redis umbrella (Provided host runtime)
+    unusedCompileDependenciesFilter -= moduleFilter(
+      "io.gatling",
+      "gatling-redis*",
+    ), // kept: pins redisclient to Gatling's own version
+    unusedCompileDependenciesFilter -= moduleFilter(
+      "org.openjdk.jmh",
+      "jmh-generator*",
+    ), // sbt-jmh code-generation-time dependency
     // Binary-compatibility ADVISORY check (#274): never fails the build. Local: mimaFindBinaryIssues
     // (always exits green); CI runs mimaReportBinaryIssues under continue-on-error with ::warning::
     // annotations. Baseline = latest published release; bumped by the release checklist (AGENTS.md).

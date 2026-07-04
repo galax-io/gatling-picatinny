@@ -11,6 +11,14 @@ object Dependencies {
     "io.gatling" % "gatling-redis-java",
   ).map(_ % GatlingVersion % Provided)
 
+  // Direct bytecode dependencies of published code that previously rode in transitively via
+  // gatling-core (dependency-hygiene report, #276). Provided: part of the Gatling host runtime.
+  lazy val gatlingShared: Seq[ModuleID] = Seq(
+    "io.gatling"  % "gatling-commons"      % GatlingVersion % Provided,
+    "io.gatling" %% "gatling-shared-model" % "0.0.11"       % Provided,
+    "io.gatling" %% "gatling-shared-util"  % "0.0.12"       % Provided,
+  )
+
   lazy val gatling: Seq[ModuleID] = Seq(
     "io.gatling.highcharts" % "gatling-charts-highcharts",
     "io.gatling"            % "gatling-test-framework",
@@ -20,23 +28,35 @@ object Dependencies {
     "com.eatthepath" % "fast-uuid" % "0.2.0" % Provided,
   )
 
+  // Modules the code references directly (bytecode-level, dependency-hygiene report #276);
+  // the json4s-jackson umbrella carried them transitively but is itself unused.
   lazy val json4s: Seq[ModuleID] = Seq(
-    "io.github.json4s" %% "json4s-native"  % "4.1.1",
-    "io.github.json4s" %% "json4s-jackson" % "4.1.1",
+    "io.github.json4s" %% "json4s-native"       % "4.1.1",
+    "io.github.json4s" %% "json4s-ast"          % "4.1.1",
+    "io.github.json4s" %% "json4s-core"         % "4.1.1",
+    "io.github.json4s" %% "json4s-jackson-core" % "4.1.1",
+    "io.github.json4s" %% "json4s-native-core"  % "4.1.1",
   )
 
+  // Explicit modules instead of the unused umbrella (dependency-hygiene report #276).
   lazy val pureConfig: Seq[ModuleID] = Seq(
-    "com.github.pureconfig" %% "pureconfig"      % "0.17.10",
-    "com.github.pureconfig" %% "pureconfig-yaml" % "0.17.10",
+    "com.github.pureconfig" %% "pureconfig-core"         % "0.17.10",
+    "com.github.pureconfig" %% "pureconfig-generic"      % "0.17.10",
+    "com.github.pureconfig" %% "pureconfig-generic-base" % "0.17.10",
+    "com.github.pureconfig" %% "pureconfig-yaml"         % "0.17.10",
+    "com.typesafe"           % "config"                  % "1.4.5", // direct Config API use (SimulationConfig)
   )
 
   lazy val jackson: Seq[ModuleID] = Seq(
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.22.0",
-    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.22.0",
+    // databind is what the code references directly; it brings jackson-core (hygiene report #276)
+    "com.fasterxml.jackson.core"       % "jackson-databind"        % "2.22.0",
   )
 
   lazy val scalaLogging: Seq[ModuleID] = Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
+    // scala-logging macros expand to direct slf4j API calls in our bytecode (hygiene report #276)
+    "org.slf4j"                   % "slf4j-api"     % "2.0.17",
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(

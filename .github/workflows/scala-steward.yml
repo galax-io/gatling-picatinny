@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write # milestone assignment goes through the issues API
 
 concurrency:
   group: scala-steward-${{ github.ref }}
@@ -29,3 +30,16 @@ jobs:
         uses: scala-steward-org/scala-steward-action@v2
         with:
           timeout: 30min
+
+      # Every PR must carry a milestone (repo linkage rule). Bot PRs get the standing
+      # "maintenance" milestone (spec 008 clarification Q2); Steward branches are `update/*`.
+      - name: Assign maintenance milestone to Steward PRs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr list -R "$GITHUB_REPOSITORY" --state open --json number,headRefName,milestone \
+            --jq '.[] | select(.headRefName | startswith("update/")) | select(.milestone == null) | .number' |
+          while read -r pr; do
+            gh pr edit "$pr" -R "$GITHUB_REPOSITORY" --milestone maintenance
+          done
