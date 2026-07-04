@@ -29,10 +29,15 @@ sbt "scalafixAll --check"          # zero findings
 ## V3. Binary compatibility — advisory (US6 / FR-018)
 
 ```bash
-sbt mimaFindBinaryIssues           # reports clean vs org.galaxio %% gatling-picatinny % 1.23.0, always exits green
+sbt mimaReportBinaryIssues || true  # reports clean vs org.galaxio %% gatling-picatinny % 1.23.0, always exits green
 ```
 
-**Seeded violation**: comment out any public method in `src/main` → command PRINTS the missing-method problem but still succeeds (assert both: warning text present, exit code 0). In CI the same finding appears as a `::warning::` annotation on the PR while the workflow stays green. Revert.
+The `|| true` is load-bearing: `mimaReportBinaryIssues` alone exits non-zero on findings. Its sibling
+`mimaFindBinaryIssues` is a silent internal task — it returns problems as a value but prints
+nothing, so running it bare looks clean even when it is not (discovered during review of this
+feature; do not use it directly as the local advisory command).
+
+**Seeded violation**: comment out any public method in `src/main` → command PRINTS the missing-method problem (human-readable `[error] * method … does not have a correspondent`) but still succeeds (assert both: message present, exit code 0). In CI the same finding appears as a `::warning::` annotation on the PR while the workflow stays green. Revert.
 
 ## V4. Strict diagnostics (US7 / FR-019)
 
@@ -75,7 +80,7 @@ sbt undeclaredCompileDependencies unusedCompileDependencies   # report-only, zer
 ## V8. Full regression chain (FR-015)
 
 ```bash
-sbt scalafmtCheckAll scalafmtSbtCheck "scalafixAll --check" compile mimaFindBinaryIssues test "IntegrationTest / test"
+sbt scalafmtCheckAll scalafmtSbtCheck "scalafixAll --check" compile test "IntegrationTest / test"; sbt mimaReportBinaryIssues || true
 ```
 
 **Expected**: green end-to-end; wall-clock delta vs pre-feature baseline ≤ ~25% (record once in PR description).

@@ -1,12 +1,9 @@
 package org.galaxio.gatling.feeders
 
-import io.gatling.core.config.GatlingConfiguration
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class TransformFeedersSpec extends AnyWordSpec with Matchers {
-
-  private implicit val configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
 
   "SeparatedValuesFeeder" should {
     "split every value from a sequence of maps" in {

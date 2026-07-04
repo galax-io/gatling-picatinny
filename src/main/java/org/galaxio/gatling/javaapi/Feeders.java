@@ -186,13 +186,13 @@ public final class Feeders {
         }
 
         public static Iterator<Map<String, Object>> apply(String paramName, List<String> source, char separator) {
-            return toJavaFeeder(org.galaxio.gatling.feeders.SeparatedValuesFeeder.apply(paramName, asScala(source).toSeq(), separator, io.gatling.core.Predef.configuration()));
+            return toJavaFeeder(org.galaxio.gatling.feeders.SeparatedValuesFeeder.apply(paramName, asScala(source).toSeq(), separator));
         }
 
         public static Iterator<Map<String, Object>> apply(Optional<String> paramPrefix, List<Map<String, Object>> source, char separator) {
             Option<String> _paramPrefix = toScalaOption(paramPrefix);
 
-            return toJavaFeeder(org.galaxio.gatling.feeders.SeparatedValuesFeeder.apply(_paramPrefix, toScala(source), separator, io.gatling.core.Predef.configuration()));
+            return toJavaFeeder(org.galaxio.gatling.feeders.SeparatedValuesFeeder.apply(_paramPrefix, toScala(source), separator));
         }
 
         public static Iterator<Map<String, Object>> csv(String paramName, String source) {
