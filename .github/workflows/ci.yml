@@ -45,6 +45,26 @@ jobs:
       # Local fix: sbt scalafixAll scalafmtAll. Escape hatch: per-site `// scalafix:ok <Rule>` with justification.
       - run: sbt "scalafixAll --check"
 
+  binary-compat:
+    name: Binary compatibility (advisory)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/sbt-setup
+      # ADVISORY check (#274): NEVER blocks a merge — incompatibilities vs the latest published
+      # release surface as warning annotations on the PR; reviewing them is a release-checklist
+      # step (AGENTS.md Release Process). Intentional breaks: mimaBinaryIssueFilters entry with
+      # a justification + the constitution-mandated version bump.
+      - name: MiMa report (warnings only, never blocks)
+        continue-on-error: true
+        run: |
+          set +e
+          sbt mimaReportBinaryIssues 2>&1 | tee mima.log
+          status=$?
+          grep -E '^\[error\] +\* ' mima.log | sed 's/^\[error\] *\* /::warning title=Binary compatibility vs latest release::/'
+          exit $status
+
   test:
     name: Test (Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
