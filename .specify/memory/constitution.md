@@ -64,9 +64,10 @@ change:
 6. **Facade delegation** (`Test`, JUnit 5): facade output == Scala-core output; no
    facade-only logic.
 
-Coverage gate (`sbt-scoverage`): statement ≥65% / branch ≥60% (`coverageFailOnMinimum`);
+Coverage gate (`sbt-scoverage`): statement ≥75% / branch ≥66% (`coverageFailOnMinimum`);
 floor is data-driven (set just under measured) and ratcheted up as real coverage rises —
-never padded with low-value tests on generated/benchmark code.
+never padded with low-value tests on generated/benchmark code; benchmark sources are
+excluded from the denominator (see TESTING.md "Coverage ratchet").
 
 **Per-feature Test Sketch (planning gate)**: every `/speckit-plan` MUST include a
 code-free "Test Model" section — for each functional requirement: the real case, the
@@ -145,4 +146,4 @@ versioning policy below, and propagate changes to affected templates and AGENTS.
 Violations require explicit justification in the plan's Complexity Tracking table
 before merging.
 
-**Version**: 1.1.3 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-21
+**Version**: 1.1.4 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-07-04
