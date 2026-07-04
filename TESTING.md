@@ -163,6 +163,7 @@ in `build.sbt`.
 |------|------------|-----------|--------------|
 | Format | `sbt scalafmtCheckAll scalafmtSbtCheck` | `sbt scalafmtAll scalafmtSbt` | none |
 | Lint (scalafix, #273) | `sbt "scalafixAll --check"` | `sbt scalafixAll scalafmtAll` (fix, then format — they converge) | `// scalafix:ok <Rule>` on the offending line, or a bare `// scalafix:off <Rule>` … `// scalafix:on <Rule>` block, ALWAYS with a `// Justification:` line |
+| Binary compatibility (ADVISORY, #274) | `sbt mimaFindBinaryIssues` — prints findings, never fails; CI annotates PRs with `::warning::` and stays green | restore the API, or acknowledge an intentional break | `mimaBinaryIssueFilters` entry in `build.sbt` + justification comment + constitution-II version bump; reviewing outstanding warnings is a mandatory release-checklist step (AGENTS.md) |
 
 If a local run seems to miss a fresh finding, the scalafix incremental cache is stale — re-run
 as `sbt "Test/scalafix --no-cache <Rule>"` (CI always runs cold-cache). Note: `scalafix:off/on`

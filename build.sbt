@@ -41,6 +41,11 @@ lazy val root = (project in file("."))
     coverageExcludedPackages              := benchmarkPackagePattern,
     IntegrationTest / parallelExecution   := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
+    // Binary-compatibility ADVISORY check (#274): never fails the build. Local: mimaFindBinaryIssues
+    // (always exits green); CI runs mimaReportBinaryIssues under continue-on-error with ::warning::
+    // annotations. Baseline = latest published release; bumped by the release checklist (AGENTS.md).
+    // Intentional breaks: mimaBinaryIssueFilters entry + justification + version bump (constitution II).
+    mimaPreviousArtifacts                 := Set("org.galaxio" %% "gatling-picatinny" % "1.23.0"),
     // Scalafix lint gate (#273): semantic rules need SemanticDB; RemoveUnused feeds on -Wunused.
     semanticdbEnabled                     := true,
     semanticdbVersion                     := scalafixSemanticdb.revision,

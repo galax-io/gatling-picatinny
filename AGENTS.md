@@ -103,3 +103,6 @@ Trunk-based with release branches. Trunk is `main`; `release/*` branches are cut
 - **Never delete a release tag** after Sonatype deployment starts — creates stuck deployments
 - **Never reuse a version number** — Sonatype Central rejects duplicates permanently
 - **Before tagging**: every PR merged since the previous tag must be assigned to the milestone; every issue in the milestone whose fix is on `main` must be closed
+- **Before tagging**: review outstanding MiMa binary-compatibility warnings (`sbt mimaFindBinaryIssues`) — each must be fixed or acknowledged via a justified `mimaBinaryIssueFilters` entry with the constitution-mandated version bump
+- **Before tagging**: run the dependency-hygiene report (`sbt undeclaredCompileDependencies unusedCompileDependencies`, report-only) and triage findings
+- **After releasing**: bump `mimaPreviousArtifacts` in `build.sbt` to the just-published version
