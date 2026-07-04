@@ -1,5 +1,5 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-Active plan: [specs/007-secret-masking-leak-prevention/plan.md](specs/007-secret-masking-leak-prevention/plan.md)
+Active plan: [specs/008-coverage-test-infra/plan.md](specs/008-coverage-test-infra/plan.md)
 <!-- SPECKIT END -->
