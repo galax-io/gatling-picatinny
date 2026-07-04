@@ -19,6 +19,23 @@ class RedisIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
   private def exec(cmd: RedisCommand): Option[Any] =
     redisPool.withClient(client => cmd.execute(client))
 
+  /** Typed extraction with a descriptive assertion failure naming expected vs. actual runtime type — replaces the raw
+    * `asInstanceOf` casts that surfaced shape mismatches as bare ClassCastException (#110).
+    */
+  private def as[T](value: Any)(implicit ct: scala.reflect.ClassTag[T]): T =
+    value match {
+      case ct(t) => t
+      case other => fail(s"expected ${ct.runtimeClass.getName} but got ${other.getClass.getName}: $other")
+    }
+
+  "typed extraction (#110)" should {
+    "fail with a descriptive message on shape mismatch instead of a ClassCastException" in {
+      val e = intercept[org.scalatest.exceptions.TestFailedException](as[Long]("not-a-long"))
+      e.getMessage should include("expected long")
+      e.getMessage should include("java.lang.String")
+    }
+  }
+
   "String commands" should {
     "SET and GET a value" in {
       exec(RedisCommand.Strings.Set("test:str:1", "hello")) shouldBe Some(true)
@@ -33,7 +50,7 @@ class RedisIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
 
     "SETEX with expiry" in {
       exec(RedisCommand.Strings.SetEx("test:setex:1", 10, "expiring")) shouldBe Some(true)
-      val ttl = exec(RedisCommand.Keys.Ttl("test:setex:1")).map(_.asInstanceOf[Long])
+      val ttl = exec(RedisCommand.Keys.Ttl("test:setex:1")).map(as[Long](_))
       ttl.exists(v => v > 0 && v <= 10) shouldBe true
     }
 
@@ -100,7 +117,7 @@ class RedisIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
       exec(RedisCommand.Lists.LPush("test:list:1", "a", Seq("b")))
       exec(RedisCommand.Lists.RPush("test:list:1", "c", Seq.empty))
       val result = exec(RedisCommand.Lists.LRange("test:list:1", 0, -1))
-        .map(_.asInstanceOf[List[Option[String]]].flatten)
+        .map(as[List[Option[String]]](_).flatten)
       result shouldBe Some(List("b", "a", "c"))
     }
 
@@ -132,7 +149,7 @@ class RedisIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
     "EXPIRE and TTL" in {
       redisPool.withClient(_.set("test:expire:1", "val"))
       exec(RedisCommand.Keys.Expire("test:expire:1", 60)) shouldBe Some(true)
-      val ttl = exec(RedisCommand.Keys.Ttl("test:expire:1")).map(_.asInstanceOf[Long])
+      val ttl = exec(RedisCommand.Keys.Ttl("test:expire:1")).map(as[Long](_))
       ttl.exists(v => v > 0 && v <= 60) shouldBe true
     }
 
@@ -140,7 +157,7 @@ class RedisIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
       redisPool.withClient(_.set("test:keys:pattern:a", "1"))
       redisPool.withClient(_.set("test:keys:pattern:b", "2"))
       val result = exec(RedisCommand.Keys.KeysPattern("test:keys:pattern:*"))
-        .map(_.asInstanceOf[List[Option[String]]].flatten.sorted)
+        .map(as[List[Option[String]]](_).flatten.sorted)
       result shouldBe Some(List("test:keys:pattern:a", "test:keys:pattern:b"))
     }
   }
@@ -150,7 +167,7 @@ class RedisIntegrationSpec extends AnyWordSpec with Matchers with ForAllTestCont
       exec(RedisCommand.Sets.SAdd("test:set:1", "a", Seq("b", "c"))) shouldBe Some(3L)
       exec(RedisCommand.Sets.SRem("test:set:1", "b", Seq.empty)) shouldBe Some(1L)
       val result = exec(RedisCommand.Sets.SMembers("test:set:1"))
-        .map(_.asInstanceOf[Set[Option[String]]].flatten)
+        .map(as[Set[Option[String]]](_).flatten)
       result shouldBe Some(Set("a", "c"))
     }
 
