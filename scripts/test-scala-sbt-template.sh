@@ -64,6 +64,13 @@ rm -rf "$PROJECT_DIR/src/test/scala/org/galaxio/performance/picatinny"
 cp -R "$ROOT_DIR/examples/scala-sbt-example/src/test/scala/org/galaxio/performance/picatinny" \
   "$PROJECT_DIR/src/test/scala/org/galaxio/performance/picatinny"
 
+# Overlay the example's own logback.xml: it routes the diagnostics logger through a dedicated
+# prefix-free appender (additivity="false") so the multi-line startup banner/ASCII chart stays
+# aligned, instead of the template's generic default. Without this the CI run uses whatever
+# templates-gatling scaffolds and the banner never appears in the log at the levels tested here.
+cp "$ROOT_DIR/examples/scala-sbt-example/src/test/resources/logback.xml" \
+  "$PROJECT_DIR/src/test/resources/logback.xml"
+
 (
   cd "$PROJECT_DIR"
   sbt Gatling/test
