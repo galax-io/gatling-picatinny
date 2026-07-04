@@ -52,7 +52,7 @@ private[transactions] class TransactionsActor(name: String, statsEngine: StatsEn
 
           case started :: newStack =>
             if (started.timestamp > timestamp) {
-              crash(s"Transaction '$name' illegal state", s"transaction cannot end before it started", session, next)
+              crash(s"Transaction '$name' illegal state", "transaction cannot end before it started", session, next)
               stay
             } else if (started.name == name) {
               executeNext(name, started.timestamp, timestamp, session, next)

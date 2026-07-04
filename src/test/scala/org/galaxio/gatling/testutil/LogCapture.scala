@@ -100,8 +100,10 @@ object LogCapture {
   private def logbackLogger(loggerName: String, attemptsLeft: Int = 2000): LogbackLogger =
     LoggerFactory.getLogger(loggerName) match {
       case logback: LogbackLogger => logback
-      case _ if attemptsLeft > 0  => Thread.sleep(1); logbackLogger(loggerName, attemptsLeft - 1)
-      case other                  =>
+      // Justification: bounded 1 ms poll probe with an attempt cap — a retry loop, not sleep-based synchronization (#109).
+      case _ if attemptsLeft > 0  =>
+        Thread.sleep(1); logbackLogger(loggerName, attemptsLeft - 1) // scalafix:ok DisableSyntax.threadSleep
+      case other =>
         other
           // Justification: deliberate: exhausted retries surface a clear cast error naming the foreign logger binding
           .asInstanceOf[LogbackLogger] // scalafix:ok DisableSyntax.asInstanceOf

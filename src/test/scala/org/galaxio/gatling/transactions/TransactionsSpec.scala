@@ -92,7 +92,7 @@ class TransactionsSpec extends AnyWordSpec with Matchers with Mocks {
 
   private val session = fixtures.emptySession(transactionScenario.name)
 
-  // Deterministic, bounded replacement for the racy Thread.sleep: the latch fires when the terminal `next` is
+  // Deterministic, bounded replacement for the racy thread-sleep: the latch fires when the terminal `next` is
   // reached. Returns true if the chain completed within the timeout, false on a stall (the #201 hang). See R6.
   private def runScenario(s: ScenarioBuilder, testContext: ScenarioContext): Boolean = {
     val latch    = new CountDownLatch(1)
