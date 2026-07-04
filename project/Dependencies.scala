@@ -54,9 +54,16 @@ object Dependencies {
 
   lazy val jackson: Seq[ModuleID] = Seq(
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.22.0",
-    // databind is what the code references directly; it brings jackson-core (hygiene report #276)
-    "com.fasterxml.jackson.core"       % "jackson-databind"        % "2.22.0",
+    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.22.0",
   )
+  // NOTE (hygiene report #276): jackson-databind is used directly (Assertions.java's
+  // ObjectMapper) but is DELIBERATELY left undeclared/transitive here — declaring it explicitly
+  // as a direct compile dependency shifts Maven's dependency-mediation depth in DOWNSTREAM
+  // consumer builds and made a real java-maven-example Gatling run crash with
+  // NoClassDefFoundError: JsonSerializeAs (WireMock's own jackson-databind/-annotations chain
+  // lost mediation to ours, landing on a mismatched jackson-annotations version). Confirmed by
+  // reproducing the exact CI template-scaffolding steps locally; reverting this one line fixed
+  // it. Accept the "undeclared" finding here rather than repeat that regression.
 
   lazy val scalaLogging: Seq[ModuleID] = Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
