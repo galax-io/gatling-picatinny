@@ -252,8 +252,14 @@ class JavaApiExampleSmokeTest {
                     Arguments.of("matching", matching("[A-Z]{2}[0-9]{4}"), 6, "[A-Z]{2}[0-9]{4}"),
                     Arguments.of("num", numeric(8), 8, "\\d+"),
                     Arguments.of("hex", hex(16), 16, "[0-9a-f]+"),
-                    Arguments.of("cyr", cyrillic(6), 6, ".+")
+                    Arguments.of("cyr", cyrillic(6), 6, "[Ѐ-ӿ]{6}")
             );
+        }
+
+        @Test
+        void cyrillicPatternRejectsLatin() {
+            // Pins the pattern used above: a Latin string of the right length must NOT match (#211).
+            assertThat("abcdef").doesNotMatch("[Ѐ-ӿ]{6}");
         }
 
         @SuppressWarnings("unchecked")
