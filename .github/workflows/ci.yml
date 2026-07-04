@@ -58,8 +58,15 @@ jobs:
       # a justification + the constitution-mandated version bump.
       - name: MiMa report (warnings only, never blocks)
         continue-on-error: true
+        env:
+          # Plain output for the grep below: the workflow-level color env (sbt.color=true,
+          # FORCE_COLOR) wraps [error] lines in ANSI codes and the annotations would never match.
+          SBT_OPTS: -Dsbt.color=false -Dsbt.log.noformat=true -Dsbt.supershell=false
+          FORCE_COLOR: "0"
         run: |
-          set +e
+          # pipefail: without it $? is tee's exit code (always 0) and the step could never
+          # go amber even when findings exist; +e keeps the script running past the failure.
+          set +e -o pipefail
           sbt mimaReportBinaryIssues 2>&1 | tee mima.log
           status=$?
           grep -E '^\[error\] +\* ' mima.log | sed 's/^\[error\] *\* /::warning title=Binary compatibility vs latest release::/'
