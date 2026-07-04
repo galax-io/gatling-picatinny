@@ -22,13 +22,13 @@ import scala.jdk.CollectionConverters._
   * }}}
   *
   * Templates are lazily loaded on first access. If the `templates` resource directory is absent from the classpath, the first
-  * access fails fast with an [[IllegalStateException]] naming the missing directory (rather than silently yielding an empty
-  * map). A present-but-empty directory yields an empty registry.
+  * access fails fast with an `IllegalStateException` naming the missing directory (rather than silently yielding an empty map).
+  * A present-but-empty directory yields an empty registry.
   */
 trait Templates {
 
   /** Map of template name (filename without extension) to Gatling EL file body. Lazily initialized from the `templates`
-    * resource directory. Fails fast with an [[IllegalStateException]] if that directory is absent from the classpath; a
+    * resource directory. Fails fast with an `IllegalStateException` if that directory is absent from the classpath; a
     * present-but-empty directory yields an empty map.
     */
   protected lazy val templates: Map[String, Body with Expression[String]] =
@@ -63,14 +63,12 @@ trait Templates {
       ),
     )
 
-  /** Sends a POST request with the named template as body.
+  /** Sends a POST request with the named template as body. Throws `NoSuchElementException` if `templateName` is not found.
     *
     * @param templateName
     *   filename without extension from `resources/templates`
     * @param targetUrl
     *   target URL path
-    * @throws NoSuchElementException
-    *   if template name is not found
     */
   def postTemplate(templateName: String, targetUrl: String): HttpRequestBuilder =
     http(templateName)
