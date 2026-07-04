@@ -1,6 +1,5 @@
 package org.galaxio.gatling.feeders
 
-import io.gatling.core.config.GatlingConfiguration
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -9,8 +8,6 @@ import org.scalatest.wordspec.AnyWordSpec
   * empty sequence source fails fast).
   */
 class SeparatedValuesFeederSpec extends AnyWordSpec with Matchers {
-
-  private implicit val configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
 
   "SeparatedValuesFeeder from a String" should {
     "split on the separator into one record per value" in {

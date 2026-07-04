@@ -1,4 +1,5 @@
 import Dependencies.*
+import com.typesafe.tools.mima.core.*
 
 def UtilsModule(id: String) = Project(id, file(id))
 lazy val IntegrationTest    = config("it") extend Test
@@ -66,11 +67,23 @@ lazy val root = (project in file("."))
       "org.openjdk.jmh",
       "jmh-generator*",
     ), // sbt-jmh code-generation-time dependency
-    // Binary-compatibility ADVISORY check (#274): never fails the build. Local: mimaFindBinaryIssues
-    // (always exits green); CI runs mimaReportBinaryIssues under continue-on-error with ::warning::
-    // annotations. Baseline = latest published release; bumped by the release checklist (AGENTS.md).
-    // Intentional breaks: mimaBinaryIssueFilters entry + justification + version bump (constitution II).
+    // Binary-compatibility ADVISORY check (#274): never fails the build. Local: `mimaReportBinaryIssues
+    // || true` (the `|| true` is required — mimaReportBinaryIssues exits non-zero on findings;
+    // mimaFindBinaryIssues is a silent internal task that returns problems as a value without
+    // printing them, so running it bare looks clean even when it is not). CI runs
+    // mimaReportBinaryIssues under continue-on-error with ::warning:: annotations. Baseline =
+    // latest published release; bumped by the release checklist (AGENTS.md). Intentional breaks:
+    // mimaBinaryIssueFilters entry + justification + version bump (constitution II).
     mimaPreviousArtifacts                 := Set("org.galaxio" %% "gatling-picatinny" % "1.23.0"),
+    // Intentional break, requires the NEXT release to be MAJOR (constitution II): the implicit
+    // GatlingConfiguration parameter on SeparatedValuesFeeder.apply(Seq[String], ...) and
+    // apply(Seq[Map], ...) was dead in the method body (flagged by -Wunused during #275) and
+    // inconsistent with the third apply(String, ...) overload, which never had it. Maintainer-
+    // authorized removal; Gatling resolves the implicit from ambient Predef.configuration at the
+    // call site regardless, so no caller needs to change source — only the erasure changes.
+    mimaBinaryIssueFilters ++= Seq(
+      "org.galaxio.gatling.feeders.SeparatedValuesFeeder.apply",
+    ).map(ProblemFilters.exclude[DirectMissingMethodProblem](_)),
     // Scalafix lint gate (#273): semantic rules need SemanticDB; RemoveUnused feeds on -Wunused.
     semanticdbEnabled                     := true,
     semanticdbVersion                     := scalafixSemanticdb.revision,
