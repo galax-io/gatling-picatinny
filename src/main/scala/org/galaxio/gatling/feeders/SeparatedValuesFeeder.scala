@@ -4,6 +4,7 @@ import io.gatling.core.Predef._
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.feeder.{FeederBuilderBase, _}
 
+import scala.annotation.nowarn
 import scala.collection.mutable.ArrayBuffer
 
 object SeparatedValuesFeeder {
@@ -64,6 +65,10 @@ object SeparatedValuesFeeder {
     *     SeparatedValuesFeeder.csv("someValues", sourceSeq) // this will return Vector(Map(someValues -> 1), Map(someValues -> two), Map(someValues -> 3), Map(someValues -> 4))
     *   }}}
     */
+  // Justification: the implicit GatlingConfiguration parameter is part of the published API
+  // signature (binary compatibility, constitution II) even though this implementation no longer
+  // reads it — removing it would break consumers.
+  @nowarn("msg=parameter configuration in method apply is never used")
   def apply(paramName: String, source: Seq[String], separator: Char)(implicit
       configuration: GatlingConfiguration,
   ): IndexedSeq[Record[String]] = {
@@ -112,6 +117,10 @@ object SeparatedValuesFeeder {
     *     SeparatedValuesFeeder("prefix", sourceSeq, ',') // this will return Vector(Map(HOSTS -> host11), Map(HOSTS -> host12), Map(USERS -> user11), Map(HOSTS -> host21), Map(HOSTS -> host22), Map(USERS -> user21), Map(USERS -> user22), Map(USERS -> user23))
     *   }}}
     */
+  // Justification: the implicit GatlingConfiguration parameter is part of the published API
+  // signature (binary compatibility, constitution II) even though this implementation no longer
+  // reads it — removing it would break consumers.
+  @nowarn("msg=parameter configuration in method apply is never used")
   def apply(paramPrefix: Option[String], source: Seq[Map[String, Any]], separator: Char)(implicit
       configuration: GatlingConfiguration,
   ): IndexedSeq[Record[String]] = {

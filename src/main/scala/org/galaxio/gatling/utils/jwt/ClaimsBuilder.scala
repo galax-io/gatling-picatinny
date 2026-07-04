@@ -3,7 +3,6 @@ package org.galaxio.gatling.utils.jwt
 import io.gatling.commons.validation.{Failure, Success, Validation}
 import io.gatling.core.Predef.Session
 import io.gatling.core.session.el._
-import org.json4s.JsonDSL._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 
