@@ -1,5 +1,10 @@
 import sbt.*
 
+// NOTE (hygiene report #276): several artifacts below are EXPLICIT PINS of previously-transitive
+// versions (slf4j-api, com.typesafe config, the json4s and pureconfig modules) because the code
+// references them directly. Scala Steward bumps them independently of their parent libraries
+// (scala-logging, pureconfig umbrella, json4s-native) — when reviewing bot PRs, keep each pin in
+// step with what its parent expects transitively.
 object Dependencies {
   private val GatlingVersion          = "3.13.5"
   lazy val gatlingCore: Seq[ModuleID] = Seq(
