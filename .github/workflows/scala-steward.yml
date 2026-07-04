@@ -41,5 +41,8 @@ jobs:
           gh pr list -R "$GITHUB_REPOSITORY" --state open --json number,headRefName,milestone \
             --jq '.[] | select(.headRefName | startswith("update/")) | select(.milestone == null) | .number' |
           while read -r pr; do
-            gh pr edit "$pr" -R "$GITHUB_REPOSITORY" --milestone maintenance
+            # Degrade gracefully: a missing/renamed 'maintenance' milestone must not fail the
+            # whole (already successful) Steward run — surface it as a warning instead.
+            gh pr edit "$pr" -R "$GITHUB_REPOSITORY" --milestone maintenance \
+              || echo "::warning title=Steward milestone::could not assign 'maintenance' to PR #$pr — does the milestone still exist?"
           done
