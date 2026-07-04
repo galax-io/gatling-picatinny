@@ -98,7 +98,7 @@ class Phone(models: Seq[PhoneFormat]) {
 
 object Phone extends StrictLogging {
 
-  final val DEFAULT_FORMAT_RU_MOBILE = Seq(
+  final val DEFAULT_FORMAT_RU_MOBILE: Seq[PhoneFormat] = Seq(
     PhoneFormat(
       countryCode = "+7",
       length = 10,

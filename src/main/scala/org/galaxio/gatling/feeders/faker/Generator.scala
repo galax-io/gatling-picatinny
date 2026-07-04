@@ -38,7 +38,7 @@ final class Generator[+A] private (private val run: () => A) {
 
   def withFilter(predicate: A => Boolean): Generator[A] = filter(predicate)
 
-  override def toString: String = s"Generator(<lazy>)"
+  override def toString: String = "Generator(<lazy>)"
 }
 
 object Generator {

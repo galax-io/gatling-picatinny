@@ -179,9 +179,13 @@ and `scalafix:ok` directives take a BARE rule list — prose on the directive li
 the justification on its own comment line.
 
 Lint rules (`.scalafix.conf`): `DisableSyntax` (no `return`, no `asInstanceOf`/`isInstanceOf`
-outside justified guarded extraction, no `finalize`, no null comparisons — wrap in
-`Option(...)`), `ProcedureSyntax`, `RemoveUnused` (needs the `-Wunused` flags in `build.sbt`),
-`OrganizeImports` (deterministic layout).
+outside justified guarded extraction, no `finalize`, no XML literals, no null comparisons —
+wrap in `Option(...)`, no `Thread.sleep` synchronization — latch or bounded probe, no
+`println` — use the logger), `ProcedureSyntax`, `RemoveUnused` (needs the `-Wunused` flags in
+`build.sbt`), `OrganizeImports` (deterministic layout), `NoValInForComprehension`,
+`RedundantSyntax`, `ExplicitResultTypes` (public members carry explicit types).
+`LeakingImplicitClassVal` is deliberately NOT enabled — its auto-fix would privatize published
+implicit-class accessors (binary break; see the note in `.scalafix.conf`).
 
 ## Per-feature gate (speckit)
 

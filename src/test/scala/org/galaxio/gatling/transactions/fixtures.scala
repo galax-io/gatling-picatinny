@@ -33,7 +33,7 @@ object fixtures {
     def advance(deltaMillis: Long): Long = current.addAndGet(deltaMillis)
   }
 
-  /** Terminal chainable action that counts down a latch whenever it is reached. Replaces the racy `Thread.sleep` — proving "the
+  /** Terminal chainable action that counts down a latch whenever it is reached. Replaces the racy thread-sleep — proving "the
     * virtual user is advanced / never stalls" becomes "the latch fires within a bounded timeout".
     */
   def latchAction(latch: CountDownLatch): Action = new ChainableAction {

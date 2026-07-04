@@ -84,7 +84,7 @@ object ProfileBuilderNew {
     case e: SecurityException     => ProfileBuilderException(e.getMessage, e)
     case e: FileNotFoundException => ProfileBuilderException(s"File not found $path", e)
     case e: io.circe.Error        => ProfileBuilderException(s"Incorrect file content in $path", e)
-    case e: Throwable             => ProfileBuilderException(s"Unknown error", e)
+    case e: Throwable             => ProfileBuilderException("Unknown error", e)
   }
 
   /** Verifies the caller path stays inside the working directory; guards against `../` traversal and absolute paths.
@@ -131,7 +131,7 @@ object ProfileBuilderNew {
       case e: SecurityException     => throw ProfileBuilderException(e.getMessage, e)
       case e: FileNotFoundException => throw ProfileBuilderException(s"File not found $path", e)
       case e: io.circe.Error        => throw ProfileBuilderException(s"Incorrect file content in $path", e)
-      case e: Exception             => throw ProfileBuilderException(s"Unknown error", e)
+      case e: Exception             => throw ProfileBuilderException("Unknown error", e)
     }
   }
 }

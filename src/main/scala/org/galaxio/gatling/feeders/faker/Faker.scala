@@ -379,7 +379,7 @@ object Faker {
         maxLengthDays: Long = 30L,
     ): Generator[(LocalDate, LocalDate)] = {
       require(minLengthDays >= 0, s"minLengthDays must be >= 0: $minLengthDays")
-      require(minLengthDays <= maxLengthDays, s"minLengthDays must be <= maxLengthDays")
+      require(minLengthDays <= maxLengthDays, "minLengthDays must be <= maxLengthDays")
       require(!from.isAfter(to), s"from must be <= to: $from > $to")
       val totalDays   = ChronoUnit.DAYS.between(from, to)
       require(
