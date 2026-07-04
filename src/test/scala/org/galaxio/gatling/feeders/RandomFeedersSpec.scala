@@ -17,6 +17,13 @@ import scala.annotation.nowarn
 @nowarn("cat=deprecation")
 class RandomFeedersSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
+  // Explicit property-check bounds (#121): the successful-run count and the discard budget are
+  // pinned instead of inherited from ScalaCheck defaults that drift between versions. Failing
+  // properties report a shrunk minimal counter-example under this known configuration (the
+  // heavy `whenever` filters below are what the discard factor budgets for).
+  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
+    PropertyCheckConfiguration(minSuccessful = 10, maxDiscardedFactor = 5.0)
+
   val positiveInt: Gen[Int] = Gen.posNum[Int]
 
   val rndString: Gen[String] = Gen.alphaNumStr
