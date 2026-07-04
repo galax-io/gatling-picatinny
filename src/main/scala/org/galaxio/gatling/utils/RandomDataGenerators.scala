@@ -1,13 +1,13 @@
 package org.galaxio.gatling.utils
 
 import com.eatthepath.uuid.FastUUID
+import org.galaxio.gatling.feeders.faker.GovIdGenerators
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalUnit
 import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.UUID
 import scala.util.Random
-import org.galaxio.gatling.feeders.faker.GovIdGenerators
 
 object RandomDataGenerators {
 

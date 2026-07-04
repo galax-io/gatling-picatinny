@@ -1,11 +1,11 @@
 package org.galaxio.gatling.feeders
 
 import org.galaxio.gatling.feeders.faker.Faker
-import org.scalacheck._
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
+import org.scalacheck._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 import java.time.temporal.{ChronoUnit, TemporalUnit}
 import java.time.{LocalDateTime, ZoneId}

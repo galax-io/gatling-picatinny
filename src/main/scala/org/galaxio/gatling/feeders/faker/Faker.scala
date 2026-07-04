@@ -1,16 +1,16 @@
 package org.galaxio.gatling.feeders.faker
 
-import com.mifmif.common.regex.Generex
-import org.galaxio.gatling.utils.{RandomDataGenerators, RandomPhoneGenerator}
-import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
+import _root_.br.com.caelum.stella.validation.{CNPJValidator => StellaCnpj, CPFValidator => StellaCpf}
+import _root_.de.kyrychenko.utils.vin.VinValidatorUtils
+import _root_.io.github.viepovsky.polishutils.pesel.PeselGenerator
+import _root_.it.kamaladafrica.codicefiscale.city.{CityProvider => CfCityProvider}
 // National-ID generation libraries — aliased with `_root_.` to avoid clashing with the `it`/`br`/`pl` Faker
 // objects and the `it.*`/`br.*` package roots.
 import _root_.it.kamaladafrica.codicefiscale.{City => CfCity, CodiceFiscale, Person => CfPerson}
-import _root_.it.kamaladafrica.codicefiscale.city.{CityProvider => CfCityProvider}
-import _root_.br.com.caelum.stella.validation.{CNPJValidator => StellaCnpj, CPFValidator => StellaCpf}
-import _root_.io.github.viepovsky.polishutils.pesel.PeselGenerator
-import _root_.de.kyrychenko.utils.vin.VinValidatorUtils
+import com.mifmif.common.regex.Generex
 import org.apache.commons.validator.routines.checkdigit.{EAN13CheckDigit, ISBNCheckDigit, LuhnCheckDigit}
+import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
+import org.galaxio.gatling.utils.{RandomDataGenerators, RandomPhoneGenerator}
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit

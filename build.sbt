@@ -15,8 +15,8 @@ lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(inConfig(IntegrationTest)(Defaults.testSettings))
   .settings(
-    name                                := "gatling-picatinny",
-    scalaVersion                        := "2.13.18",
+    name                                  := "gatling-picatinny",
+    scalaVersion                          := "2.13.18",
     libraryDependencies ++= gatlingCore,
     libraryDependencies ++= gatling,
     libraryDependencies ++= fastUUID,
@@ -34,15 +34,21 @@ lazy val root = (project in file("."))
     // Coverage floor — data-driven ratchet (policy: TESTING.md "Coverage ratchet").
     // Measured unit+it with benchmarks excluded: 77.75% stmt / 68.29% branch on 2026-07-04.
     // Floors sit just under measured; they only ever move UP (#80).
-    coverageMinimumStmtTotal            := 75,
-    coverageMinimumBranchTotal          := 66,
-    coverageFailOnMinimum               := true,
-    coverageExcludedFiles               := benchmarkFilePattern,
-    coverageExcludedPackages            := benchmarkPackagePattern,
-    IntegrationTest / parallelExecution := false,
+    coverageMinimumStmtTotal              := 75,
+    coverageMinimumBranchTotal            := 66,
+    coverageFailOnMinimum                 := true,
+    coverageExcludedFiles                 := benchmarkFilePattern,
+    coverageExcludedPackages              := benchmarkPackagePattern,
+    IntegrationTest / parallelExecution   := false,
     IntegrationTest / unmanagedResourceDirectories ++= Seq((Test / resourceDirectory).value),
+    // Scalafix lint gate (#273): semantic rules need SemanticDB; RemoveUnused feeds on -Wunused.
+    semanticdbEnabled                     := true,
+    semanticdbVersion                     := scalafixSemanticdb.revision,
+    // Benchmark sources are invisible to the lint gate too — same shared definition as coverage (FR-022).
+    Compile / scalafix / unmanagedSources := (Compile / scalafix / unmanagedSources).value
+      .filterNot(_.getName.matches(benchmarkFilePattern)),
     javacOptions ++= Seq("--release", "17"),
-    scalacOptions                       := Seq(
+    scalacOptions                         := Seq(
       "-encoding",
       "UTF-8",
       "-release:17",
@@ -53,7 +59,9 @@ lazy val root = (project in file("."))
       "-language:higherKinds",
       "-language:existentials",
       "-language:postfixOps",
+      "-Wunused:imports,privates,locals,patvars",
     ),
   )
+  .settings(inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest)))
 
 ThisBuild / com.github.sbt.git.SbtGit.GitKeys.useConsoleForROGit := true

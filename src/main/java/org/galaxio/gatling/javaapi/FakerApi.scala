@@ -1,9 +1,10 @@
 package org.galaxio.gatling.javaapi
 
-import java.{util => ju}
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
 import org.galaxio.gatling.feeders.faker._
+
+import java.time.{LocalDate, LocalDateTime}
+import java.{util => ju}
+import scala.jdk.CollectionConverters._
 
 /** Java/Kotlin facade for the Faker data generation API.
   *

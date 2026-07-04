@@ -1,15 +1,20 @@
 package org.galaxio.gatling.transactions
 
-import java.util.concurrent.atomic.AtomicLong
-
 import io.gatling.core.CoreComponents
 import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.protocol.{Protocol, ProtocolKey}
 
+import java.util.concurrent.atomic.AtomicLong
+
 object TransactionsProtocol {
   val key: ProtocolKey[TransactionsProtocol, TransactionsComponents] =
     new ProtocolKey[TransactionsProtocol, TransactionsComponents] {
-      override def protocolClass: Class[Protocol] = classOf[TransactionsProtocol].asInstanceOf[Class[Protocol]]
+      // Justification: Gatling ProtocolKey contract requires Class[Protocol]; same pattern as Gatling built-in protocols
+      // scalafix:off DisableSyntax.asInstanceOf
+      override def protocolClass: Class[Protocol] = classOf[TransactionsProtocol].asInstanceOf[Class[
+        Protocol,
+      ]]
+      // scalafix:on DisableSyntax.asInstanceOf
 
       override def defaultProtocolValue(configuration: GatlingConfiguration): TransactionsProtocol = new TransactionsProtocol
 

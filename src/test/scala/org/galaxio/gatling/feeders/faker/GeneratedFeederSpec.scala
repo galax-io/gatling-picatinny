@@ -57,7 +57,10 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     "build single-field typed feeder" in {
       val feeder = GeneratedFeeder.single("n", Faker.number.int(1, 10))
       val record = feeder.next()
-      val value  = record("n").asInstanceOf[Int]
+      val value  = record("n") match {
+        case i: Int => i
+        case other  => fail(s"expected Int, got ${other.getClass.getName}: $other")
+      }
       value should (be >= 1 and be <= 10)
     }
 
@@ -230,7 +233,13 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
 
     "apply record transformation" in {
       val feeder = Iterator.single(Map("x" -> 1, "y" -> 2))
-      val mapped = feeder.mapRecord(r => r + ("sum" -> (r("x").asInstanceOf[Int] + r("y").asInstanceOf[Int])))
+      val mapped = feeder.mapRecord { r =>
+        val sum = (r("x"), r("y")) match {
+          case (x: Int, y: Int) => x + y
+          case other            => fail(s"expected Int pair, got: $other")
+        }
+        r + ("sum" -> sum)
+      }
       val record = mapped.next()
 
       record("sum") shouldBe 3

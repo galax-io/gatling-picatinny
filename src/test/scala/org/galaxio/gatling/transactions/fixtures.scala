@@ -1,12 +1,12 @@
 package org.galaxio.gatling.transactions
 
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.AtomicLong
-
 import io.gatling.commons.util.Clock
 import io.gatling.core.action.{Action, ChainableAction}
 import io.gatling.core.session.Session
 import io.gatling.core.stats.{NoOpStatsEngine, StatsEngine}
+
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicLong
 
 object fixtures {
   val noAction: Action = new ChainableAction {

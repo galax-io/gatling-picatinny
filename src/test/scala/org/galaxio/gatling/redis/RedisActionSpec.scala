@@ -5,7 +5,7 @@ import io.gatling.commons.validation.{Failure, Success, Validation}
 import io.gatling.core.action.{Action, ChainableAction}
 import io.gatling.core.session.Session
 import io.gatling.core.stats.{NoOpStatsEngine, StatsEngine}
-import org.galaxio.gatling.transactions.{fixtures, Mocks}
+import org.galaxio.gatling.transactions.{Mocks, fixtures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

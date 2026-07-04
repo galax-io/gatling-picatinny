@@ -1,10 +1,10 @@
 package org.galaxio.gatling.transactions
 
-import java.{util => ju}
-import java.util.{Timer, TimerTask, concurrent => juc}
-
 import io.netty.channel.{Channel, ChannelFuture, ChannelPromise, EventLoop, EventLoopGroup}
 import io.netty.util.concurrent.{EventExecutor, Future => NFuture, ProgressivePromise, Promise, ScheduledFuture}
+
+import java.util.{Timer, TimerTask, concurrent => juc}
+import java.{util => ju}
 
 class FakeEventLoop extends EventLoop {
   private var timerInitialized = false

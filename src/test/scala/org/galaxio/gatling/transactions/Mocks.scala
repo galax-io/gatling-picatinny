@@ -22,7 +22,7 @@ trait Mocks extends MockFactory with BeforeAndAfterAll {
 
     def getEvents: List[Evt] = this.events.asScala.toList
 
-    private val componentsCache           = mutable.Map.empty[ProtocolKey[_, _], ProtocolComponents]
+    mutable.Map.empty[ProtocolKey[_, _], ProtocolComponents]
     private val componentsFactoryCache    = mutable.Map.empty[ProtocolKey[_, _], Protocol => ProtocolComponents]
     private val defaultProtocolValueCache = mutable.Map.empty[ProtocolKey[_, _], Protocol]
 

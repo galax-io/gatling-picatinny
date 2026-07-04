@@ -1,11 +1,11 @@
 package org.galaxio.gatling.transactions
-import java.util.concurrent.atomic.AtomicLong
-
 import io.gatling.commons.stats.{KO, OK}
 import io.gatling.core.action.Action
 import io.gatling.core.actor.{Actor, Behavior}
 import io.gatling.core.session.Session
 import io.gatling.core.stats.StatsEngine
+
+import java.util.concurrent.atomic.AtomicLong
 
 object TransactionsActor {
   sealed trait TransactionMessage

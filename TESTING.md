@@ -151,6 +151,29 @@ just under the measured value (≤5 points slack). Rules:
 Current: **75% stmt / 66% branch**, set 2026-07-04 (measured 77.75% / 68.29%, unit+it,
 benchmarks excluded; history: 65/60 on 2026-06-21 at measured 69.69%/63.37%).
 
+## Static analysis & gates
+
+This section is the **normative** "one place" for every gate: local command, fix flow,
+escape hatch. `AGENTS.md` Commands is a mirror. A gate lands only at zero findings — no
+red-at-birth, no blanket exclusions. Benchmark sources (`*Benchmark*`,
+`org.galaxio.gatling.jmh`) are invisible to every gate via the shared exclusion definition
+in `build.sbt`.
+
+| Gate | Local check | Local fix | Escape hatch |
+|------|------------|-----------|--------------|
+| Format | `sbt scalafmtCheckAll scalafmtSbtCheck` | `sbt scalafmtAll scalafmtSbt` | none |
+| Lint (scalafix, #273) | `sbt "scalafixAll --check"` | `sbt scalafixAll scalafmtAll` (fix, then format — they converge) | `// scalafix:ok <Rule>` on the offending line, or a bare `// scalafix:off <Rule>` … `// scalafix:on <Rule>` block, ALWAYS with a `// Justification:` line |
+
+If a local run seems to miss a fresh finding, the scalafix incremental cache is stale — re-run
+as `sbt "Test/scalafix --no-cache <Rule>"` (CI always runs cold-cache). Note: `scalafix:off/on`
+and `scalafix:ok` directives take a BARE rule list — prose on the directive line voids it; put
+the justification on its own comment line.
+
+Lint rules (`.scalafix.conf`): `DisableSyntax` (no `return`, no `asInstanceOf`/`isInstanceOf`
+outside justified guarded extraction, no `finalize`, no null comparisons — wrap in
+`Option(...)`), `ProcedureSyntax`, `RemoveUnused` (needs the `-Wunused` flags in `build.sbt`),
+`OrganizeImports` (deterministic layout).
+
 ## Per-feature gate (speckit)
 
 Every `/speckit-plan` MUST fill a **Test Model** section: for each functional requirement,

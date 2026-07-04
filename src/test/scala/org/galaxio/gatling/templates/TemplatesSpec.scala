@@ -1,13 +1,13 @@
 package org.galaxio.gatling.templates
 
-import java.nio.file.Files
-
 import io.gatling.commons.validation.{Failure, Success}
 import io.gatling.core.GatlingTestBootstrap
 import org.galaxio.gatling.transactions.fixtures
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import java.nio.file.Files
 
 class TemplatesSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 

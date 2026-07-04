@@ -1,16 +1,7 @@
 package org.galaxio.gatling.storage
 
 import java.lang.reflect.{InvocationHandler, Method, Proxy}
-import java.sql.{
-  Connection,
-  Driver,
-  DriverManager,
-  DriverPropertyInfo,
-  PreparedStatement,
-  ResultSet,
-  SQLFeatureNotSupportedException,
-  Statement,
-}
+import java.sql.{Connection, Driver, DriverManager, DriverPropertyInfo, PreparedStatement, ResultSet, Statement}
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.logging.Logger
@@ -64,7 +55,7 @@ private[storage] object JdbcTestSupport {
 
         override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = method.getName match {
           case "execute"      =>
-            val sql = args.headOption.map(_.asInstanceOf[String]).getOrElse("")
+            val sql = args.headOption.collect { case s: String => s }.getOrElse("")
             if (sql.startsWith("CREATE TABLE")) {
               state.ddlCount.incrementAndGet()
               state.lastDdl = sql
@@ -143,7 +134,10 @@ private[storage] object JdbcTestSupport {
     }
 
     private def proxyOf[T](iface: Class[T], handler: InvocationHandler): T =
-      Proxy.newProxyInstance(getClass.getClassLoader, Array(iface), handler).asInstanceOf[T]
+      Proxy
+        .newProxyInstance(getClass.getClassLoader, Array(iface), handler)
+        // Justification: JDK dynamic Proxy returns Object; the cast to the requested interface is the documented contract
+        .asInstanceOf[T] // scalafix:ok DisableSyntax.asInstanceOf
 
     private def defaultValue(returnType: Class[_]): AnyRef =
       if (returnType == java.lang.Boolean.TYPE) java.lang.Boolean.FALSE

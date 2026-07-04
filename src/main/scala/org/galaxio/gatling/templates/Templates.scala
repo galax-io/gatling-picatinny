@@ -1,13 +1,12 @@
 package org.galaxio.gatling.templates
 
-import java.nio.file.{Files, Paths}
-
 import io.gatling.core.Predef._
 import io.gatling.core.body.Body
 import io.gatling.core.session.Expression
 import io.gatling.http.Predef._
 import io.gatling.http.request.builder.HttpRequestBuilder
 
+import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
 
 /** Loads template files from `resources/templates` and provides methods to send them as HTTP request bodies.

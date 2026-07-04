@@ -14,6 +14,8 @@ Scala 2.13.18, sbt, Java 17 (compile target; CI runs on Temurin 21), Gatling 3.1
 
 ```bash
 sbt scalafmtAll scalafmtSbt                                          # format
+sbt scalafixAll scalafmtAll                                          # lint fix (then format; they converge)
+sbt "scalafixAll --check"                                            # lint gate (CI-enforced; TESTING.md "Static analysis & gates")
 sbt scalafmtCheckAll scalafmtSbtCheck compile test "IntegrationTest / test"  # verify
 sbt compile test                                                    # CI (unit only)
 sbt "IntegrationTest / test"                                        # integration (Docker / Redis)

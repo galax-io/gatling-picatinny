@@ -1,10 +1,11 @@
 package org.galaxio.gatling.feeders
 
-import java.time.{LocalDateTime, ZoneId}
-import java.time.format.DateTimeFormatter
-import java.time.temporal.{ChronoUnit, TemporalUnit}
 import io.gatling.core.feeder.Feeder
 import org.galaxio.gatling.utils.RandomDataGenerators
+
+import java.time.format.DateTimeFormatter
+import java.time.temporal.{ChronoUnit, TemporalUnit}
+import java.time.{LocalDateTime, ZoneId}
 
 @deprecated("Use org.galaxio.gatling.feeders.faker.Faker.date.range with GeneratedFeeder.records instead", "faker-api")
 object RandomDateRangeFeeder {
