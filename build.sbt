@@ -75,12 +75,14 @@ lazy val root = (project in file("."))
     // latest published release; bumped by the release checklist (AGENTS.md). Intentional breaks:
     // mimaBinaryIssueFilters entry + justification + version bump (constitution II).
     mimaPreviousArtifacts                 := Set("org.galaxio" %% "gatling-picatinny" % "1.23.0"),
-    // Intentional break, requires the NEXT release to be MAJOR (constitution II): the implicit
-    // GatlingConfiguration parameter on SeparatedValuesFeeder.apply(Seq[String], ...) and
-    // apply(Seq[Map], ...) was dead in the method body (flagged by -Wunused during #275) and
-    // inconsistent with the third apply(String, ...) overload, which never had it. Maintainer-
-    // authorized removal; Gatling resolves the implicit from ambient Predef.configuration at the
-    // call site regardless, so no caller needs to change source — only the erasure changes.
+    // Intentional break: the implicit GatlingConfiguration parameter on
+    // SeparatedValuesFeeder.apply(Seq[String], ...) and apply(Seq[Map], ...) was dead in the
+    // method body (flagged by -Wunused during #275) and inconsistent with the third
+    // apply(String, ...) overload, which never had it. Maintainer-authorized removal; Gatling
+    // resolves the implicit from ambient Predef.configuration at the call site regardless, so no
+    // real caller ever passed it explicitly or needs to change source — only the erasure changes.
+    // EXCEPTION to constitution II's MAJOR-bump default, explicitly authorized 2026-07-05:
+    // ships in 1.24.0 (MINOR) rather than 2.0.0 — see plan.md Complexity Tracking (008).
     mimaBinaryIssueFilters ++= Seq(
       "org.galaxio.gatling.feeders.SeparatedValuesFeeder.apply",
     ).map(ProblemFilters.exclude[DirectMissingMethodProblem](_)),
