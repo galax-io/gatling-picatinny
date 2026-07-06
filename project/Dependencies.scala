@@ -136,7 +136,7 @@ object Dependencies {
   // Real PostgreSQL JDBC driver — integration-test only (drives JdbcStorageBackend against a real
   // Postgres Testcontainers DB). Authorized 2026-06-21; MUST stay `it` scope, never published.
   lazy val jdbcDrivers: Seq[ModuleID] = Seq(
-    "org.postgresql" % "postgresql" % "42.7.11" % "it",
+    "org.postgresql" % "postgresql" % "42.7.12" % "it",
   )
 
   lazy val scalaTesting: Seq[ModuleID] =
