@@ -68,7 +68,7 @@ object Dependencies {
   lazy val scalaLogging: Seq[ModuleID] = Seq(
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
     // scala-logging macros expand to direct slf4j API calls in our bytecode (hygiene report #276)
-    "org.slf4j"                   % "slf4j-api"     % "2.0.17",
+    "org.slf4j"                   % "slf4j-api"     % "2.0.18",
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
