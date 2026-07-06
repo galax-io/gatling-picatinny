@@ -49,7 +49,7 @@ object Dependencies {
     "com.github.pureconfig" %% "pureconfig-generic"      % "0.17.10",
     "com.github.pureconfig" %% "pureconfig-generic-base" % "0.17.10",
     "com.github.pureconfig" %% "pureconfig-yaml"         % "0.17.10",
-    "com.typesafe"           % "config"                  % "1.4.5", // direct Config API use (SimulationConfig)
+    "com.typesafe"           % "config"                  % "1.4.9", // direct Config API use (SimulationConfig)
   )
 
   lazy val jackson: Seq[ModuleID] = Seq(
