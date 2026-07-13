@@ -54,7 +54,7 @@ object Dependencies {
 
   lazy val jackson: Seq[ModuleID] = Seq(
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.22.0",
-    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.22.0",
+    "com.fasterxml.jackson.core"       % "jackson-core"            % "2.22.1",
   )
   // NOTE (hygiene report #276): jackson-databind is used directly (Assertions.java's
   // ObjectMapper) but is DELIBERATELY left undeclared/transitive here — declaring it explicitly
