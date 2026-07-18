@@ -1,4 +1,6 @@
 addSbtPlugin("com.github.sbt"       % "sbt-ci-release"            % "1.12.0")
+// sbt-ci-release 1.12.0 dropped its transitive sbt-git dependency; GitVersioning below needs it declared directly.
+addSbtPlugin("com.github.sbt"       % "sbt-git"                   % "2.1.0")
 addSbtPlugin("io.gatling"           % "gatling-sbt"               % "4.18.3")
 addSbtPlugin("com.github.sbt.junit" % "sbt-jupiter-interface"     % "0.19.0")
 addSbtPlugin("org.scalameta"        % "sbt-scalafmt"              % "2.6.1")
