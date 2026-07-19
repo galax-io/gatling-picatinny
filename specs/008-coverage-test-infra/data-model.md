@@ -31,11 +31,11 @@ No runtime/domain data changes — this feature's "entities" are build-time conf
 - **Rules**: not CI-gated; zero findings at feature completion; findings triaged manually.
 
 ### Update Automation
-- **Fields**: bot identity (Scala Steward), schedule (weekly), config file, milestone assignment ("maintenance").
-- **Relationships**: every bot PR → "maintenance" milestone (satisfies linkage rule, clarification Q2).
+- **Fields**: bot identity (Scala Steward), schedule (weekly), config file, milestone assignment (current active — lowest-numbered open; amended 2026-07-19).
+- **Relationships**: every bot PR → active milestone (satisfies linkage rule, clarification Q2 as amended 2026-07-19).
 
 ### Milestone Ledger
-- **Fields**: milestone 10 (v1.24.0) ← existing issues #80 #81 #108 #109 #110 #121 #210 #211 + 4 new gate issues; standing "maintenance" milestone (no due date) ← bot PRs only.
+- **Fields**: milestone 10 (v1.24.0) ← existing issues #80 #81 #108 #109 #110 #121 #210 #211 + 4 new gate issues; bot PRs ← current active milestone (standing "maintenance" milestone retired 2026-07-19).
 - **Rules**: 1 issue = 1 commit; every PR carries a milestone before merge.
 
 ### Test-Fix Records (per-issue, no schema — tracked as issues)
