@@ -369,6 +369,26 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       Faker.number.negativeInt.sample() should be < 0
     }
 
+    "generate negative longs strictly below zero" in {
+      (1 to sampleCount * 4).foreach { _ =>
+        Faker.number.negativeLong.sample() should be < 0L
+      }
+    }
+
+    "keep wide long ranges inside both inclusive bounds" in {
+      (1 to sampleCount * 4).foreach { _ =>
+        Faker.number.long(Long.MinValue, -1L).sample() should be <= -1L
+        val v = Faker.number.long(Long.MinValue + 1L, 100L).sample()
+        v should (be >= (Long.MinValue + 1L) and be <= 100L)
+      }
+    }
+
+    "support the full long domain" in {
+      val samples = (1 to sampleCount * 4).map(_ => Faker.number.long(Long.MinValue, Long.MaxValue).sample())
+      samples.exists(_ < 0L) shouldBe true
+      samples.exists(_ >= 0L) shouldBe true
+    }
+
     "generate percentage 0-100" in {
       (1 to sampleCount).foreach { _ =>
         val v = Faker.number.percentage.sample()
