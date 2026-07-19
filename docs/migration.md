@@ -213,4 +213,37 @@ Per the project's versioning policy, **removal of any deprecated API happens onl
 | `RedisSaddAction`, `RedisSremAction`, `RedisDelAction` | `picatinny 0.x` | Folded into one generic builder | `GenericRedisActionBuilder` + `RedisCommand.Sets.SAdd` / `.Sets.SRem` / `.Keys.Del` — see [redis.md](redis.md) |
 | NFR-YAML assertions: `assertionFromYaml` (Scala + Java), `AssertionBuilderException` | `1.18.0` | NFR-YAML loading to be replaced by a new assertions API | Forthcoming assertions functionality — still works; watch the CHANGELOG. See [assertions.md](assertions.md) |
 
+### `RandomDateFeeder` → `Faker.date.offset`
+
+The legacy feeder generates a **discrete** whole-unit offset: `dateFrom.plus(k, unit)` with `k` drawn from
+`[-negativeDelta, positiveDelta)` — the **upper delta is exclusive** (same `randomValue` helper as above:
+`randomValue(1, 11)` yields 1..10). `Faker.date.between` is NOT its replacement — it returns any whole
+second inside the range (same boundaries, different distribution and values). Use the discrete offset
+generator instead; its bounds are **inclusive** on both ends, so the upper bound becomes `positiveDelta − 1`:
+
+| Legacy | Replacement |
+|--------|-------------|
+| `RandomDateFeeder(name, P, N, pattern, from, unit, tz)` | `GeneratedFeeder.single(name, Faker.date.formatDateTime(Faker.date.offset(from, -N, P - 1, unit), pattern))` |
+
+Two edge cases of the mapping:
+
+- **`P == 0 && N == 0`** — a valid legacy configuration that always returns the base date. The general
+  formula would produce inverted bounds (`0, -1`); use `Faker.date.offset(from, 0, 0, unit)` instead
+  (deterministic base, same as the legacy behavior).
+- **Zone-aware patterns** (`z`, `XXX`, `VV`, …) — the legacy feeder formatted through `atZone(tz)`, so such
+  patterns worked; `formatDateTime` formats a plain `LocalDateTime` and throws
+  `UnsupportedTemporalTypeException` on them. Map through the zone first:
+
+  ```scala
+  Faker.date
+    .offset(from, -N, P - 1, unit)
+    .map(_.atZone(tz).format(DateTimeFormatter.ofPattern(pattern)))
+  ```
+
+  For zone-free patterns the plain `formatDateTime` mapping above is exact (the legacy `timezone` parameter
+  affected only formatting).
+
+From Java/Kotlin use `FakerApi.dateOffset(from, min, max)` (whole days) or
+`FakerApi.dateOffset(from, min, max, unit)`.
+
 Compiler note: deprecated members emit `@deprecated`/`@Deprecated` warnings (with the same message/replacement) at build time, so usages surface in your own compile logs.

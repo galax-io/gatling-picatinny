@@ -134,7 +134,7 @@ The first slice includes:
 - `Faker.internet.email`, `username`, `domain`, `url`, `password`, `userAgent`, `ipv4`, `ipv6`
 - `Faker.location.country`, `countryCode`, `city`, `streetName`, `streetAddress`, `postalCode`, `latitude`, `longitude`
 - `Faker.localization.currency`, `languageCode`
-- `Faker.date.today`, `now`, `between`, `past`, `future`, `offset`, `range`
+- `Faker.date.today`, `now`, `between`, `past`, `future`, `offset` (`LocalDate`/whole days, and `LocalDateTime`/any supported `ChronoUnit` with a whole-days default), `range`
 - `Faker.finance.pan`, `amount`, `money`, `currency`, `accountNumber`, `bic`, `iban`, `transactionId`
 - `Faker.commerce.productName`, `category`, `sku`, `orderId`, `price`
 - `Faker.phone.mobile`, `tollFree`, `fromFormats`, `builder` — 16 countries supported
@@ -251,6 +251,14 @@ New:
 ```scala
 GeneratedFeeder.single(
   "createdAt",
-  Faker.date.past(days = 30).format("yyyy-MM-dd")
+  Faker.date.formatDateTime(
+    Faker.date.offset(LocalDateTime.now(), 0, 29),
+    "yyyy-MM-dd",
+  ),
 )
 ```
+
+The legacy feeder's positive delta is **exclusive** (30 means 0..29 whole days ahead) and its values are
+discrete whole-unit steps — so the replacement is `offset` (inclusive bounds, hence `29`), not `between`
+(which yields any second inside the range) and not `past`/`future` (continuous, `LocalDate`-based). Full
+mapping in [migration.md](migration.md#deprecations).

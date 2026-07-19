@@ -14,11 +14,14 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.galaxio.gatling.javaapi.FakerApi.*;
 import static org.galaxio.gatling.javaapi.Feeders.*;
 
@@ -215,6 +218,29 @@ class JavaApiExampleSmokeTest {
             assertThat(past).isBeforeOrEqualTo(LocalDate.now());
             assertThat(record.get("future").toString()).matches("\\d{4}-\\d{2}-\\d{2}");
             assertThat(record.get("between").toString()).matches("\\d{4}-\\d{2}-\\d{2}");
+        }
+
+        @Test
+        void dateOffsetProducesWholeUnitStepsWithinBounds() {
+            var base = LocalDateTime.of(2026, 1, 1, 12, 0, 0);
+            var record = next(GeneratedFeeder(
+                    field("days", formatDateTime(dateOffset(base, 0, 5), "yyyy-MM-dd'T'HH:mm:ss")),
+                    field("hours", formatDateTime(dateOffset(base, -10, 10, ChronoUnit.HOURS), "yyyy-MM-dd'T'HH:mm:ss"))
+            ));
+            var days = LocalDateTime.parse(record.get("days").toString());
+            var dayOffset = ChronoUnit.DAYS.between(base, days);
+            assertThat(days).isEqualTo(base.plusDays(dayOffset));
+            assertThat(dayOffset).isBetween(0L, 5L);
+            var hours = LocalDateTime.parse(record.get("hours").toString());
+            var hourOffset = ChronoUnit.HOURS.between(base, hours);
+            assertThat(hours).isEqualTo(base.plusHours(hourOffset));
+            assertThat(hourOffset).isBetween(-10L, 10L);
+        }
+
+        @Test
+        void dateOffsetRejectsInvertedBounds() {
+            assertThatThrownBy(() -> dateOffset(LocalDateTime.of(2026, 1, 1, 0, 0), 5, 0))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
