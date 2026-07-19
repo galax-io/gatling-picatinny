@@ -75,7 +75,7 @@ sbt "testOnly org.galaxio.gatling.templates.*"
 sbt undeclaredCompileDependencies unusedCompileDependencies   # report-only, zero findings expected
 ```
 
-**Automation**: after merge, trigger `scala-steward.yml` manually (workflow_dispatch) once → any opened PR carries the "maintenance" milestone.
+**Automation**: after merge, trigger `scala-steward.yml` manually (workflow_dispatch) once → any opened PR carries the current active milestone (lowest-numbered open; amended 2026-07-19).
 
 ## V8. Full regression chain (FR-015)
 
