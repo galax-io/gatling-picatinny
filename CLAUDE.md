@@ -1,5 +1,5 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-Active plan: [specs/008-coverage-test-infra/plan.md](specs/008-coverage-test-infra/plan.md)
+Active plan: [specs/009-faker-datetime-offset/plan.md](specs/009-faker-datetime-offset/plan.md)
 <!-- SPECKIT END -->
