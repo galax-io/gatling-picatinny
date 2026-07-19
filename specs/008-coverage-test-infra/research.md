@@ -28,7 +28,7 @@ All plan-deferred unknowns resolved below. Versions verified against Maven Centr
 
 ## R4. Dependency-update automation — Scala Steward (self-hosted action)
 
-- **Decision**: `.github/workflows/scala-steward.yml` ALREADY EXISTS (commit `3f44335`, weekly cron + `workflow_dispatch`, `scala-steward-org/scala-steward-action@v2`) — analysis finding I2. Remaining delta only: add repo config `.scala-steward.conf` and a post-step in the existing workflow assigning every open Steward PR to the standing **"maintenance"** milestone (via `gh pr edit --milestone`), satisfying the every-PR-needs-a-milestone rule (clarification Q2). Milestone "maintenance" (no due date) created once as an admin task. FR-020's automation half is pre-satisfied.
+- **Decision**: `.github/workflows/scala-steward.yml` ALREADY EXISTS (commit `3f44335`, weekly cron + `workflow_dispatch`, `scala-steward-org/scala-steward-action@v2`) — analysis finding I2. Remaining delta only: add repo config `.scala-steward.conf` and a post-step in the existing workflow assigning every open Steward PR to a milestone (via `gh pr edit --milestone`), satisfying the every-PR-needs-a-milestone rule (clarification Q2). FR-020's automation half is pre-satisfied. *Amended 2026-07-19: the post-step assigns the current active milestone (lowest-numbered open, per `scripts/check-linkage.sh`); the originally created standing "maintenance" milestone is retired.*
 - **Rationale**: Dependabot does not support sbt; Scala Steward is the ecosystem standard. Self-hosted action (vs. the public instance) keeps scheduling and the milestone post-step under repo control in one workflow.
 - **Alternatives considered**: Public Scala Steward instance (PR into their repos list) — no control over milestone assignment step; digest-issue-only mode — rejected in clarification Q2 (option C not chosen).
 - **Notes**: Exact action version pinned at implementation. Not a release-workflow change (no `release.yml` edit) — new standalone workflow, authorized by the spec.
@@ -68,4 +68,4 @@ All plan-deferred unknowns resolved below. Versions verified against Maven Centr
 
 ## R9. Issue/milestone admin
 
-- **Decision**: Four new issues (lint gate, MiMa gate, strict diagnostics, dependency hygiene/Steward) filed into milestone 10 (v1.24.0) before implementation; standing "maintenance" milestone created for bot PRs. Existing open issues map: #80+#210 → US1, #211 → US2, #81 → US3, #108/#109/#110/#121 → US4. Expected via `/speckit-taskstoissues`.
+- **Decision**: Four new issues (lint gate, MiMa gate, strict diagnostics, dependency hygiene/Steward) filed into milestone 10 (v1.24.0) before implementation; standing "maintenance" milestone created for bot PRs (retired 2026-07-19 — bot PRs now join the current active milestone). Existing open issues map: #80+#210 → US1, #211 → US2, #81 → US3, #108/#109/#110/#121 → US4. Expected via `/speckit-taskstoissues`.
