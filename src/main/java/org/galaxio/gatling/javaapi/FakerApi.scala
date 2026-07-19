@@ -2,6 +2,7 @@ package org.galaxio.gatling.javaapi
 
 import org.galaxio.gatling.feeders.faker._
 
+import java.time.temporal.TemporalUnit
 import java.time.{LocalDate, LocalDateTime}
 import java.{util => ju}
 import scala.jdk.CollectionConverters._
@@ -88,6 +89,11 @@ object FakerApi {
   def datePast(days: Long): Generator[LocalDate]                        = Faker.date.past(days)
   def dateFuture(days: Long): Generator[LocalDate]                      = Faker.date.future(days)
   def dateBetween(from: LocalDate, to: LocalDate): Generator[LocalDate] = Faker.date.between(from, to)
+
+  def dateOffset(from: LocalDateTime, minOffset: Long, maxOffset: Long): Generator[LocalDateTime]                     =
+    Faker.date.offset(from, minOffset, maxOffset)
+  def dateOffset(from: LocalDateTime, minOffset: Long, maxOffset: Long, unit: TemporalUnit): Generator[LocalDateTime] =
+    Faker.date.offset(from, minOffset, maxOffset, unit)
 
   def formatDate(gen: Generator[LocalDate], pattern: String): Generator[String]         = Faker.date.formatDate(gen, pattern)
   def formatDateTime(gen: Generator[LocalDateTime], pattern: String): Generator[String] =
