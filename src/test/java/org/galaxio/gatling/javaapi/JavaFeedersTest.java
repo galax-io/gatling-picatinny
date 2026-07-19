@@ -120,7 +120,9 @@ public class JavaFeedersTest extends Simulation {
     Iterator<Map<String, Object>> dates = GeneratedFeeder(
             field("createdAt", formatDate(datePast(30), "yyyy-MM-dd")),
             field("validFrom", formatDate(dateBetween(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 6, 30)), "yyyy-MM-dd")),
-            field("validTo", formatDate(dateFuture(90), "yyyy-MM-dd"))
+            field("validTo", formatDate(dateFuture(90), "yyyy-MM-dd")),
+            field("expiresAt", formatDateTime(dateOffset(LocalDateTime.of(2026, 1, 1, 0, 0), 0, 5), "yyyy-MM-dd'T'HH:mm:ss")),
+            field("retryAfter", formatDateTime(dateOffset(LocalDateTime.of(2026, 1, 1, 0, 0), -3, 3, ChronoUnit.HOURS), "yyyy-MM-dd'T'HH:mm:ss"))
     );
 
     Iterator<Map<String, Object>> finance = GeneratedFeeder(

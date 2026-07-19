@@ -7,7 +7,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
-import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.{ChronoUnit, UnsupportedTemporalTypeException}
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 
 class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
@@ -649,6 +651,100 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
         val d = Faker.date.offset(base, -10, 10).sample()
         d.isBefore(base.minusDays(10)) shouldBe false
         d.isAfter(base.plusDays(10)) shouldBe false
+      }
+    }
+
+    "generate datetime offset within bounds on whole-unit steps" in {
+      val base = LocalDateTime.of(2025, 6, 1, 12, 30, 15)
+      (1 to sampleCount).foreach { _ =>
+        val d = Faker.date.offset(base, 0, 5).sample()
+        val k = ChronoUnit.DAYS.between(base, d)
+        d shouldBe base.plusDays(k)
+        k should (be >= 0L and be <= 5L)
+      }
+    }
+
+    "generate datetime offset across zero with a non-day unit" in {
+      val base    = LocalDateTime.of(2025, 6, 1, 12, 30, 15)
+      val samples = (1 to sampleCount * 4).map(_ => Faker.date.offset(base, -10, 10, ChronoUnit.HOURS).sample())
+      samples.foreach { d =>
+        val k = ChronoUnit.HOURS.between(base, d)
+        d shouldBe base.plusHours(k)
+        k should (be >= -10L and be <= 10L)
+      }
+      samples.exists(_.isBefore(base)) shouldBe true
+      samples.exists(_.isAfter(base)) shouldBe true
+    }
+
+    "generate deterministic datetime offset when bounds are equal" in {
+      val base = LocalDateTime.of(2025, 6, 1, 0, 0)
+      (1 to sampleCount).foreach { _ =>
+        Faker.date.offset(base, 3, 3, ChronoUnit.WEEKS).sample() shouldBe base.plusWeeks(3)
+      }
+    }
+
+    "produce both inclusive endpoints of a datetime offset range" in {
+      val base    = LocalDateTime.of(2025, 6, 1, 0, 0)
+      val samples = (1 to sampleCount * 4).map(_ => Faker.date.offset(base, 0, 1).sample()).toSet
+      samples should contain(base)
+      samples should contain(base.plusDays(1))
+    }
+
+    "reject datetime offset with min greater than max" in {
+      assertThrows[IllegalArgumentException] {
+        Faker.date.offset(LocalDateTime.of(2025, 6, 1, 0, 0), 5, 0)
+      }
+    }
+
+    "reject datetime offset with unsupported unit" in {
+      assertThrows[IllegalArgumentException] {
+        Faker.date.offset(LocalDateTime.of(2025, 6, 1, 0, 0), 0, 5, ChronoUnit.FOREVER)
+      }
+    }
+
+    "format datetime offset output with a pattern" in {
+      val base = LocalDateTime.of(2026, 1, 2, 3, 4, 5)
+      val s    = Faker.date.formatDateTime(Faker.date.offset(base, 2, 2), "yyyy-MM-dd'T'HH:mm:ss").sample()
+      s shouldBe "2026-01-04T03:04:05"
+    }
+
+    "reproduce the documented RandomDateFeeder migration mapping" in {
+      // docs mapping under test: RandomDateFeeder("createdAt", 30, 0) has an EXCLUSIVE upper
+      // delta, so its replacement is offset(base, 0, 29) — base+30 must never appear.
+      val base     = LocalDateTime.of(2025, 6, 1, 12, 0, 0)
+      val expected = (0 to 29).map(k => base.plusDays(k.toLong).format(DateTimeFormatter.ISO_LOCAL_DATE)).toSet
+      val gen      = Faker.date.formatDateTime(Faker.date.offset(base, 0, 29), "yyyy-MM-dd")
+      val seen     = (1 to sampleCount * 8).map(_ => gen.sample()).toSet
+      seen.subsetOf(expected) shouldBe true
+      seen should not contain base.plusDays(30L).format(DateTimeFormatter.ISO_LOCAL_DATE)
+    }
+
+    "reproduce the documented zero-delta RandomDateFeeder mapping" in {
+      // docs/migration.md edge case: P == 0 && N == 0 is a valid legacy config that always returns
+      // the base date; it maps to offset(from, 0, 0), not the general (inverted) offset(from, 0, -1).
+      val base = LocalDateTime.of(2025, 6, 1, 12, 0, 0)
+      (1 to sampleCount).foreach { _ =>
+        Faker.date.offset(base, 0, 0).sample() shouldBe base
+      }
+    }
+
+    "reproduce the documented timezone-pattern migration recipe" in {
+      // docs/migration.md edge case: zone-aware legacy patterns map through atZone(tz) before formatting.
+      val base = LocalDateTime.of(2026, 1, 2, 3, 4, 5)
+      val s    = Faker.date
+        .offset(base, 2, 2)
+        .map(_.atZone(ZoneId.of("UTC")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX")))
+        .sample()
+      s shouldBe "2026-01-04T03:04:05Z"
+    }
+
+    "fail fast when a zone pattern is applied without the atZone recipe" in {
+      val gen = Faker.date.formatDateTime(
+        Faker.date.offset(LocalDateTime.of(2026, 1, 2, 3, 4, 5), 2, 2),
+        "yyyy-MM-dd'T'HH:mm:ssXXX",
+      )
+      assertThrows[UnsupportedTemporalTypeException] {
+        gen.sample()
       }
     }
 

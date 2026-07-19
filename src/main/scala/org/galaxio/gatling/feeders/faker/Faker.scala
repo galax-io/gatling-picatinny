@@ -13,7 +13,7 @@ import org.galaxio.gatling.utils.phone.{PhoneFormat, TypePhone}
 import org.galaxio.gatling.utils.{RandomDataGenerators, RandomPhoneGenerator}
 
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
+import java.time.temporal.{ChronoUnit, TemporalUnit}
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
@@ -370,6 +370,17 @@ object Faker {
     def offset(from: LocalDate, minDays: Long, maxDays: Long): Generator[LocalDate] = {
       require(minDays <= maxDays, s"minDays must be <= maxDays: $minDays > $maxDays")
       number.long(minDays, maxDays).map(from.plusDays)
+    }
+
+    def offset(
+        from: LocalDateTime,
+        minOffset: Long,
+        maxOffset: Long,
+        unit: TemporalUnit = ChronoUnit.DAYS,
+    ): Generator[LocalDateTime] = {
+      require(minOffset <= maxOffset, s"minOffset must be <= maxOffset: $minOffset > $maxOffset")
+      require(from.isSupported(unit), s"unit must be supported by LocalDateTime: $unit")
+      number.long(minOffset, maxOffset).map(from.plus(_, unit))
     }
 
     def range(
