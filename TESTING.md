@@ -168,9 +168,11 @@ in `build.sbt`.
 | Dependency hygiene (REPORT-ONLY, #276) | `sbt undeclaredCompileDependencies unusedCompileDependencies` — never CI-gated; run manually before each release (AGENTS.md Release Process) | declare the dependency in `project/Dependencies.scala` or remove it | accepted findings carry a justified `…DependenciesFilter` entry in `build.sbt` (macro artifacts, umbrella version pins, codegen-time deps) |
 
 Dependency updates are automated by Scala Steward (`.github/workflows/scala-steward.yml`,
-weekly + manual dispatch; policy in `.scala-steward.conf`). Every bot PR is auto-assigned to
-the standing **"maintenance"** milestone by the workflow post-step, so the
-every-PR-needs-a-milestone rule holds for bots too. Gatling itself is Steward-ignored —
+weekly + manual dispatch; policy in `.scala-steward.conf`). Every bot PR is auto-assigned by
+the workflow post-step to the current **active** milestone (the lowest-numbered open one,
+same definition as `scripts/check-linkage.sh`), so the
+every-PR-needs-a-milestone rule holds for bots too and dependency updates are tracked
+with the release they ship in. Gatling itself is Steward-ignored —
 host-runtime bumps are a deliberate maintainer decision.
 
 If a local run seems to miss a fresh finding, the scalafix incremental cache is stale — re-run
