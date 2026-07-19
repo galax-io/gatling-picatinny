@@ -24,5 +24,5 @@ Fail-fast: earlier gate failure skips later stages — except the MiMa step, whi
 1. Every gate is runnable locally with one documented command (FR-021). The single normative "one place" (SC-013) is `TESTING.md`'s gates section (seeded from the table above); `AGENTS.md` Commands is a mirror. Release-checklist entries (MiMa baseline bump, warning review, dependency-hygiene run) live in `AGENTS.md` Release Process — where releases are executed from — referenced from `TESTING.md`.
 2. A gate is introduced only at zero findings — no red-at-birth, no blanket exclusions (spec edge case).
 3. Shared exclusion: benchmark sources are invisible to coverage, lint, and diagnostics alike (FR-022).
-4. Bot (Scala Steward) PRs always carry the "maintenance" milestone; human PRs carry a real milestone + linked issue (clarification Q2).
+4. Bot (Scala Steward) PRs are auto-assigned to the current active milestone — lowest-numbered open, per `scripts/check-linkage.sh` (clarification Q2 as amended 2026-07-19; the standing "maintenance" milestone is retired); human PRs carry a real milestone + linked issue.
 5. `release.yml` and the publish path are outside this contract and unchanged.
