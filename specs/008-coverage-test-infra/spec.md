@@ -22,6 +22,10 @@
 
 - Q: Binary-compatibility check — blocking gate or advisory? → A: Advisory (warning-only) — the check reports incompatibilities visibly in CI but never fails the build; enforcement stays with review + the release checklist.
 
+### Session 2026-07-19
+
+- Q: Keep the standing "maintenance" milestone for bot dependency PRs? → A: No — supersedes Q2 of 2026-07-03. Bot dependency PRs are auto-assigned to the current ACTIVE milestone (the lowest-numbered open one, same definition as `scripts/check-linkage.sh`), so dependency updates ship — and are tracked — with the release they land in. The "maintenance" milestone (№29) is retired: its merged PRs were reassigned to the active release milestone, and the milestone deleted.
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -157,7 +161,7 @@ As a library maintainer, I want automated dependency-update proposals and a buil
 
 **Acceptance Scenarios**:
 
-1. **Given** the repository's automation configuration, **When** a dependency falls behind upstream, **Then** an automated update proposal (pull request) is opened against the default branch and auto-assigned to the standing "maintenance" milestone, satisfying the linkage gate.
+1. **Given** the repository's automation configuration, **When** a dependency falls behind upstream, **Then** an automated update proposal (pull request) is opened against the default branch and auto-assigned to the current active milestone (lowest-numbered open; clarified 2026-07-19), satisfying the linkage gate.
 2. **Given** the on-demand dependency-hygiene report (not CI-gated), **When** it is run on the feature branch, **Then** it reports zero undeclared compile-scope dependencies (code compiling only via transitive luck) and zero unused declared compile-scope dependencies.
 3. **Given** a deliberately added unused library declaration on a scratch branch, **When** the report is run, **Then** it flags exactly that declaration (negative case).
 
@@ -176,7 +180,7 @@ As a library maintainer, I want automated dependency-update proposals and a buil
 - Formatter vs. linter interplay: an auto-fix must not produce output the formatter then rewrites (fix order documented; the two must converge, not fight).
 - Binary-compatibility baseline when a class is new in this release: new API has no baseline and must pass without exclusions; the gate compares only against the latest published version, not unreleased history.
 - Warnings from the provided host runtime (Gatling) or third-party macros that the project cannot fix: must be suppressible per-site without weakening the category globally.
-- Automated dependency-update pull requests vs. repository linkage rules: resolved — bot-authored PRs are auto-assigned to a standing "maintenance" milestone, so the every-PR-needs-a-milestone rule holds without exempting bots; the linkage-gate mechanics for bot authorship are a planning detail.
+- Automated dependency-update pull requests vs. repository linkage rules: resolved — bot-authored PRs are auto-assigned to the current active milestone (lowest-numbered open; amended 2026-07-19, previously a standing "maintenance" milestone), so the every-PR-needs-a-milestone rule holds without exempting bots; the linkage-gate mechanics for bot authorship are a planning detail.
 - Existing violations at gate-introduction time: each new gate lands only after the codebase is brought to zero findings for its rule set — a gate that starts red or starts with blanket exclusions is not accepted.
 
 ## Requirements *(mandatory)*
@@ -202,7 +206,7 @@ As a library maintainer, I want automated dependency-update proposals and a buil
 - **FR-017**: Auto-fixable lint violations MUST be remediable by a single documented local command whose output is stable under the project formatter (running fix then format twice changes nothing). (follow-up)
 - **FR-018**: The verification build MUST check binary compatibility of the public API against the most recently published release and surface every incompatible change as a clearly visible warning — without failing the build (advisory mode, clarified 2026-07-04). Intentional breaks are acknowledged via explicit per-change exclusions carrying a written justification and the constitution-mandated version bump; reviewing outstanding warnings is a mandatory release-checklist step. (follow-up)
 - **FR-019**: The verification build MUST escalate a curated set of compiler diagnostics (unused symbols, non-exhaustive matches, deprecated API usage, suspicious inference) to errors across all library compile scopes (production, test, integration); tolerated diagnostics MUST be suppressed per-site with justification, never by disabling the category. (follow-up)
-- **FR-020**: The repository MUST have automated dependency-update proposals configured for the default branch, with each bot-authored pull request auto-assigned to a standing "maintenance" milestone so the PR↔issue↔milestone linkage rule holds for every PR. It MUST also provide an on-demand (report-only, not CI-gated) task reporting undeclared and unused compile-scope dependencies, run manually before each release, with zero findings at feature completion. (follow-up)
+- **FR-020**: The repository MUST have automated dependency-update proposals configured for the default branch, with each bot-authored pull request auto-assigned to the current active milestone (lowest-numbered open; amended 2026-07-19, previously a standing "maintenance" milestone) so the PR↔issue↔milestone linkage rule holds for every PR. It MUST also provide an on-demand (report-only, not CI-gated) task reporting undeclared and unused compile-scope dependencies, run manually before each release, with zero findings at feature completion. (follow-up)
 - **FR-021**: Contributor documentation MUST describe each new gate (lint, binary compatibility, strict diagnostics, dependency hygiene): how to run it locally, how to fix findings, and the authorized escape-hatch procedure. (follow-up)
 - **FR-022**: Static-analysis exclusions (benchmark/generated sources) MUST be consistent with the coverage exclusions of FR-001 — one shared definition of "code the gates ignore". (follow-up)
 
@@ -234,7 +238,7 @@ As a library maintainer, I want automated dependency-update proposals and a buil
 - Scope is strictly test code, build configuration (coverage settings), and documentation. No production source changes are expected; if covering a failure branch requires a production seam, that need surfaces at planning time and stays within backward-compatibility rules (internal/package-private only).
 - Closed milestone issues (#253, #254, #261) are already delivered and out of scope for this spec.
 - The three previously fixed flaky-test items on `main` (LogCapture ThreadLocal work) are complete; #109's sleep removal is the remaining flakiness item.
-- The static-analysis stories (US5–US8) come from a direct maintainer follow-up request, not from existing GitHub issues. Clarified 2026-07-03: they ship in milestone v1.24.0 (milestone 10) alongside the rest of this spec; four issues (one per gate) MUST be filed into that milestone before implementation to satisfy the repository's 1-issue-=-1-commit and PR-linkage rules — expected via `/speckit-taskstoissues` or manual filing. A standing "maintenance" milestone is additionally created for bot-authored dependency-update PRs.
+- The static-analysis stories (US5–US8) come from a direct maintainer follow-up request, not from existing GitHub issues. Clarified 2026-07-03: they ship in milestone v1.24.0 (milestone 10) alongside the rest of this spec; four issues (one per gate) MUST be filed into that milestone before implementation to satisfy the repository's 1-issue-=-1-commit and PR-linkage rules — expected via `/speckit-taskstoissues` or manual filing. A standing "maintenance" milestone was additionally created for bot-authored dependency-update PRs (retired 2026-07-19 — bot PRs now join the current active milestone; see Clarifications).
 - All new static-analysis gates apply to the library sbt build only (all its compile scopes: production, test, integration); the `examples/` overlay projects are not gated — their smoke tests continue to gate behavior against the published artifact.
 - Candidate tooling, final selection deferred to `/speckit-plan`: Scalafix (semantic lint + rewrites; needs SemanticDB), sbt-mima-plugin (binary compatibility), curated `scalacOptions` (e.g. `-Xlint`/`-Wunused` set or sbt-tpolecat) with `-Werror` in CI, Scala Steward (dependency-update automation; Dependabot does not support sbt), sbt-explicit-dependencies (undeclared/unused deps). WartRemover/Scapegoat overlap the Scalafix rule set; a single primary linter is preferred to avoid duplicate noise.
 - All candidate tools are build-time-only sbt plugins or repository automation — none add a runtime dependency to the published artifact, so constitution principle II is unaffected by the tooling itself. The maintainer's follow-up request constitutes the constitution-IV authorization to add these build dependencies; exact versions are still confirmed at plan time.
