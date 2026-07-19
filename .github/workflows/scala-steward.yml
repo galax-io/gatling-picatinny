@@ -31,18 +31,26 @@ jobs:
         with:
           timeout: 30min
 
-      # Every PR must carry a milestone (repo linkage rule). Bot PRs get the standing
-      # "maintenance" milestone (spec 008 clarification Q2); Steward branches are `update/*`.
-      - name: Assign maintenance milestone to Steward PRs
+      # Every PR must carry a milestone (repo linkage rule). Bot PRs join the current
+      # ACTIVE milestone — the lowest-numbered open one, same definition as
+      # scripts/check-linkage.sh (spec 008 clarification Q2 as amended 2026-07-19;
+      # the earlier standing "maintenance" milestone is retired). Steward branches are `update/*`.
+      - name: Assign active milestone to Steward PRs
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          active=$(gh api "repos/$GITHUB_REPOSITORY/milestones?state=open&per_page=100" \
+            --jq 'sort_by(.number) | .[0].title // ""')
+          if [ -z "$active" ]; then
+            # Degrade gracefully: no open milestone must not fail the whole
+            # (already successful) Steward run — surface it as a warning instead.
+            echo "::warning title=Steward milestone::no open milestone — Steward PRs left unassigned"
+            exit 0
+          fi
           gh pr list -R "$GITHUB_REPOSITORY" --state open --json number,headRefName,milestone \
             --jq '.[] | select(.headRefName | startswith("update/")) | select(.milestone == null) | .number' |
           while read -r pr; do
-            # Degrade gracefully: a missing/renamed 'maintenance' milestone must not fail the
-            # whole (already successful) Steward run — surface it as a warning instead.
-            gh pr edit "$pr" -R "$GITHUB_REPOSITORY" --milestone maintenance \
-              || echo "::warning title=Steward milestone::could not assign 'maintenance' to PR #$pr — does the milestone still exist?"
+            gh pr edit "$pr" -R "$GITHUB_REPOSITORY" --milestone "$active" \
+              || echo "::warning title=Steward milestone::could not assign '$active' to PR #$pr"
           done
