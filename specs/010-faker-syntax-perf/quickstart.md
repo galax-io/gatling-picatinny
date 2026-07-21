@@ -33,9 +33,11 @@ Capture BEFORE numbers on the pre-change commit, AFTER on the change:
 sbt 'Jmh/run -prof gc -f 1 -wi 3 -i 5 .*FakerBenchmark.*'
 ```
 
-Expected outcome: `gc.alloc.rate.norm` (B/op) strictly lower for the lorem-words and
-narrow-range long benchmarks; narrow-long path shows no `BigInt` allocation.
-Record both tables in the PR description.
+Expected outcome: `gc.alloc.rate.norm` (B/op) strictly lower for the lorem-words,
+ipv6, email, and narrow-range long benchmarks. Zero-`BigInt` on the narrow-long path
+is established by the static property (T015: no `BigInt` anywhere in the method) and
+corroborated by the B/op drop — `-prof gc` reports aggregate bytes, not per-class
+allocation. Record both tables in the PR description.
 
 ## 4. Targeted spot-checks (optional, fast)
 

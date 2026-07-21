@@ -44,7 +44,7 @@ decreased.
 2. **Given** a large sample from the IPv6 generator, **When** outputs are inspected, **Then** every value is eight colon-separated hexadecimal groups, exactly as before.
 3. **Given** a large sample from the CPF and German TIN generators, **When** check digits are recomputed independently, **Then** every value remains a valid, correctly check-digited identifier of the same length and shape as before.
 4. **Given** e-mail local-parts containing uppercase, accented, and disallowed characters (boundary case), **When** normalization runs, **Then** the normalized output is identical, character for character, to the previous normalization result.
-5. **Given** allocation measurement of one generated value on each of these paths, **When** compared to the previous implementation, **Then** measured per-value allocation is strictly lower.
+5. **Given** allocation measurement of one generated value on the representative measured paths (per FR-007 — lorem, IPv6, and the pre-existing email benchmark for this story), **When** compared to the previous implementation, **Then** measured per-value allocation is strictly lower.
 
 ---
 
@@ -115,9 +115,9 @@ key collisions).
 - E-mail normalization boundary inputs — uppercase, accented characters, characters the normalization strips, consecutive strippable characters — must normalize to outputs identical to the previous implementation.
 - Whole-number ranges at classification extremes: equal bounds; width exactly at the narrow/wide boundary; bounds at the representable minimum/maximum — classification and produced values must match previous behavior exactly (the boundary must not shift by one).
 - Wide-range whole-number sampling (rejection loop from PR #300) is explicitly out of optimization scope: its regression tests must pass unchanged.
-- Empty record, empty key selection, and prefix/suffix producing colliding key names — transform output must equal previous output (whatever collision semantics existed are preserved, not redefined).
+- Empty record, empty key selection, and empty prefix/suffix (renaming with an empty affix leaves key content identical) — transform output must equal previous output.
 - Zero- and one-word lorem-ipsum requests — degenerate assembly must produce the same output as before.
-- Distribution shape everywhere: uniformity and randomness source are unchanged — only allocation behavior may differ.
+- Distribution shape everywhere: uniformity is unchanged — only allocation behavior may differ. The randomness source is likewise unchanged, except IPv6, which deliberately moves to the thread-local source (see Assumptions) with the same uniform distribution over the same alphabet.
 - Check-digit algorithms (CPF, German TIN) must remain correct for every generated value, not just format-shaped.
 
 ## Requirements *(mandatory)*
@@ -129,7 +129,7 @@ key collisions).
 - **FR-003**: Bounded whole-number sampling MUST classify ranges as narrow or wide, and compute the narrow-path sampling bound, using only fixed-width arithmetic — no arbitrary-precision number objects per sample — while leaving wide-range sampling behavior (including its regression tests from PR #300) unchanged.
 - **FR-004**: Record transforms whose configuration is fixed at construction (key selection, key prefixing/suffixing, defaults filling) MUST perform configuration-derived computation once at construction time, not per record.
 - **FR-005**: The change MUST be purely internal: no public API signature, DSL behavior, feeder output shape, session variable name, or serialized format may change (Constitution II); the binary-compatibility check MUST report zero new issues.
-- **FR-006**: Each of the eight tracked issues MUST land with regression coverage asserting exact output parity, including at least one negative or boundary case per issue, at the unit/functional layer.
+- **FR-006**: Each of the eight tracked issues MUST end up covered at the unit/functional layer by regression tests asserting exact output parity with at least one negative or boundary case — seven land that coverage with their code change; #130 (evidence closure) is locked by the transform-chain regression including a suffix and empty-affix boundary, landed with the transform commits.
 - **FR-007**: The improvement MUST be evidenced by before/after benchmark measurements of representative optimized paths (at minimum: one text-assembly generator and the narrow-range whole-number path), demonstrating strictly reduced per-value allocation.
 - **FR-008**: Where an optimization would change any observable behavior, behavior parity wins and the optimization is narrowed or dropped — measurement fidelity is never traded for generator speed.
 
@@ -138,7 +138,7 @@ key collisions).
 ### Measurable Outcomes
 
 - **SC-001**: 100% of pre-existing tests pass unchanged — zero behavioral drift across all optimized paths.
-- **SC-002**: Measured per-value allocation on every optimized path is strictly lower than the pre-change baseline, and the narrow-range whole-number path allocates zero arbitrary-precision number objects.
+- **SC-002**: Measured per-value allocation on every benchmarked representative path (per FR-007: lorem words, IPv6, narrow-range whole-number, plus the pre-existing email benchmark) is strictly lower than the pre-change baseline; the narrow-range whole-number path additionally carries a static guarantee of zero arbitrary-precision number objects. Unmeasured optimized paths (CPF format, TIN, transforms) are covered by the same single-pass/hoisting properties and their parity tests, not by dedicated benchmarks.
 - **SC-003**: 100% of sampled outputs from every optimized generator match the previously expected formats and value sets (format shapes, check-digit validation, inclusive bounds, override semantics).
 - **SC-004**: All eight open milestone issues (#123, #124, #125, #129, #130, #131, #139, #304) are closed — seven by changes carrying their own regression tests, and #130 by documented refutation evidence (verification showed its premise no longer holds), completing the open performance scope of milestone v1.25.0.
 - **SC-005**: The published-API compatibility report shows zero new findings — consumers can upgrade with no source or binary change.

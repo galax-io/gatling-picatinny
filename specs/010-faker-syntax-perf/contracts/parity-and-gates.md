@@ -34,7 +34,7 @@ Java/Kotlin facade: untouched — it delegates to these methods and sees no diff
 | Compile + unit | `sbt compile test` | green, including all pre-existing `GeneratedFeederSpec` cases unchanged |
 | Coverage | scoverage floor | statement ≥75 / branch ≥66 (benchmark sources excluded) |
 | Binary compat | `sbt mimaFindBinaryIssues` | zero new findings |
-| Benchmark evidence (feature-level, FR-007) | `sbt "Jmh/run .*FakerBenchmark.*(lorem|long).* -prof gc"` before vs after | `gc.alloc.rate.norm` strictly lower on optimized paths; numbers recorded in PR description |
+| Benchmark evidence (feature-level, FR-007) | `sbt 'Jmh/run -prof gc -f 1 -wi 3 -i 5 .*FakerBenchmark.*'` before vs after (JMH regex is case-sensitive; method names are camelCase — match the whole class) | `gc.alloc.rate.norm` strictly lower on benchmarked paths (lorem, ipv6, narrow-long, email); numbers recorded in PR description |
 
 ## Per-issue regression contract (FR-006)
 

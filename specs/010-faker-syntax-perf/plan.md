@@ -13,7 +13,9 @@ classification, and two feeder-transform closures (`selectKeys`, `withDefaults`;
 `prefixKeys`/`suffixKeys` = #130 closes on refutation evidence, verification V002 —
 the compiler already emits a single indy concat there) — under a strict
 behavior-parity contract: identical
-value sets, formats, distributions, and RNG draw order; all pre-existing tests pass
+value sets, formats, and distributions, with RNG draw order preserved wherever the
+source is unchanged (ipv6 deliberately moves off the legacy shared-`Random` util onto
+`ThreadLocalRandom` — research R4/V014); all pre-existing tests pass
 unchanged; zero public-surface change. Technical approach per site is fixed in
 [research.md](research.md) (R2–R6): single-pass StringBuilder assembly, one shared
 locale-safe email-normalization helper (keeps `toLowerCase`, drops the regex chain),
@@ -54,6 +56,8 @@ existing `FakerBenchmark`.
 | FR-007 | Perf engineer verifies the optimization is real, not folklore | Unit/Functional | Benchmark methods for lorem-words and narrow-range long added to the existing FakerBenchmark; a unit-level smoke asserts each benchmark method returns a validly-shaped value (guards against dead benchmarks). Allocation numbers themselves come from before/after `Jmh/run -prof gc` runs recorded in the PR (quickstart §3) — strictly lower B/op is the pass condition. |
 | FR-008 | Locale-sensitive name (e.g. dotted-İ) flows into email normalization | Unit/Functional | Property test: new shared normalization helper output equals an inline reference of the old regex chain for generated names plus adversarial fixtures (uppercase, accents, `"--a--"`, `"..."`, symbols-only, digits-only, empty → `user` fallback on the email path). Negative: symbols-only input collapses to the fallback, never an empty local part; this test is the tripwire that would force dropping a non-parity optimization. |
 
+*Sample-size floor: every "large sample" assertion in these sketches and in tasks.md draws ≥1000 values.*
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -78,6 +82,7 @@ specs/010-faker-syntax-perf/
 ├── quickstart.md        # Phase 1 — 4-step validation guide (parity, lint+MiMa, JMH evidence, spot checks)
 ├── contracts/
 │   └── parity-and-gates.md  # Phase 1 — frozen public surface + per-commit gates
+├── benchmarks.md        # created during implementation (T005/T016/T021) — BEFORE/AFTER gc.alloc.rate.norm tables
 └── tasks.md             # Phase 2 (/speckit-tasks — NOT created by /speckit-plan)
 ```
 
@@ -102,4 +107,6 @@ overlays are explicitly untouched.
 
 ## Complexity Tracking
 
-No constitution violations — table intentionally empty.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| Constitution III "red → green" read literally (failing test first) is adapted to **reference-style parity tests** (written first, green on OLD code, must stay green after) | Pure parity refactor: FR-001 forbids any behavior change, so a genuinely failing-first test is impossible — there is no new behavior to be red against | Fake-red (assert a wrong value, then "fix" the assertion) is test theater and violates "assert exact real values"; reference-style preserves the principle's substance — tests precede code, exact values, ≥1 negative/boundary per issue |

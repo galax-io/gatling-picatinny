@@ -16,6 +16,10 @@ same issue land in that issue's single commit.
 
 ## Format: `[ID] [P?] [Story] Description`
 
+**Line-ref caveat**: `path:line` anchors below were verified on the PRE-rebase branch;
+T002's rebase + scalafmt bump may shift them. Symbol names (`nextLongInclusive`,
+`selectKeys`, `lorem.words`, …) are authoritative; line numbers are indicative.
+
 ## Phase 1: Setup
 
 **Purpose**: Sync artifacts and base the branch on current main
@@ -30,7 +34,7 @@ same issue land in that issue's single commit.
 
 **Purpose**: Benchmark instrumentation + BEFORE numbers — FR-007 evidence needs a pre-change baseline, so this MUST precede any optimization
 
-- [ ] T004 Add JMH benchmark methods `fakerLoremWordsSample` (count 50), `fakerNarrowLongSample` (e.g. `number.long(0L, 1_000_000L)`), `fakerIpv6Sample` to src/main/scala/org/galaxio/gatling/feeders/faker/FakerBenchmark.scala + a layer-1 smoke case in src/test/scala/org/galaxio/gatling/feeders/faker/GeneratedFeederSpec.scala asserting each returns a validly-shaped value (plan FR-007 row); commit `test(faker): benchmark coverage for lorem/long/ipv6 hot paths`
+- [ ] T004 Add JMH benchmark methods `fakerLoremWordsSample` (count 50), `fakerNarrowLongSample` (e.g. `number.long(0L, 1_000_000L)`), `fakerIpv6Sample` to src/main/scala/org/galaxio/gatling/feeders/faker/FakerBenchmark.scala (the pre-existing `fakerEmailSample` already covers the email path — reuse, do not duplicate) + a layer-1 smoke case in src/test/scala/org/galaxio/gatling/feeders/faker/GeneratedFeederSpec.scala asserting each returns a validly-shaped value (plan FR-007 row); commit `test(faker): benchmark coverage for lorem/long/ipv6 hot paths`
 - [ ] T005 Capture BEFORE allocation numbers: `sbt 'Jmh/run -prof gc -f 1 -wi 3 -i 5 .*FakerBenchmark.*'`; record `gc.alloc.rate.norm` (B/op) table in specs/010-faker-syntax-perf/benchmarks.md (BEFORE column; quickstart §3)
 
 **Checkpoint**: baseline green + BEFORE numbers on disk — story work may begin
@@ -78,7 +82,7 @@ All tasks below touch src/main/scala/org/galaxio/gatling/feeders/faker/Faker.sca
 
 **Independent Test**: multi-record transform runs produce map-equal outputs vs today incl. boundary records; static config computed once per construction
 
-- [ ] T017 [US3] #129+#131 tests (reference-style, green on OLD code) in src/test/scala/org/galaxio/gatling/feeders/faker/GeneratedFeederSpec.scala: selectKeys over records with mixed present/absent/unselected keys + empty record + empty selection (boundary); withDefaults present-key-wins / absent-key-fills / duplicate-default-keys-last-wins in one multi-record run; chain regression `selectKeys → prefixKeys → withDefaults` over ≥3 heterogeneous records asserting full map equality (also locks #130 behavior)
+- [ ] T017 [US3] #129+#131 tests (reference-style, green on OLD code) in src/test/scala/org/galaxio/gatling/feeders/faker/GeneratedFeederSpec.scala: selectKeys over records with mixed present/absent/unselected keys + empty record + empty selection (boundary); withDefaults present-key-wins / absent-key-fills / duplicate-default-keys-last-wins in one multi-record run; chain regression `selectKeys → prefixKeys → withDefaults` over ≥3 heterogeneous records asserting full map equality, plus a `suffixKeys` case and empty-prefix/empty-suffix boundary (renamed keys identical in content — data-model "empty affix = identity" invariant; together these lock #130 behavior with its own boundary case per FR-006)
 - [ ] T018 [US3] #129 impl: `selectKeys` (src/main/scala/org/galaxio/gatling/feeders/faker/Syntax.scala:96-99) — replace `.view.filterKeys(keySet.contains).toMap` with single-pass `filter` on the widened record; keep hoisted `keySet`; commit `perf(feeders): single-pass selectKeys record filtering (#129)`
 - [ ] T019 [US3] #131 impl: `withDefaults` (Syntax.scala:102-103) — hoist `defaults.toMap` into construction-time `val`; per-record stays `defaultsMap ++ record` (record wins); commit `perf(feeders): hoist withDefaults static map to construction (#131)`
 - [ ] T020 [P] [US3] #130 evidence closure: draft GitHub comment for issue #130 from harness E002/V002 — `javap` of `Syntax$FeederOps$.$anonfun$prefixKeys$2` showing single `invokedynamic makeConcatWithConstants` (Scala 2.13 lowers simple interpolation; `prefix + key` bytecode-identical; premise obsolete) — propose closing as not-planned. **Requires maintainer confirmation before posting/closing** (no self-closing)
@@ -91,7 +95,7 @@ All tasks below touch src/main/scala/org/galaxio/gatling/feeders/faker/Faker.sca
 
 **Purpose**: Evidence completion, full gates, delivery
 
-- [ ] T021 Full AFTER benchmark sweep: `sbt 'Jmh/run -prof gc -f 1 -wi 3 -i 5 .*FakerBenchmark.*'`; complete BEFORE/AFTER table in specs/010-faker-syntax-perf/benchmarks.md; verify every optimized path strictly lower B/op (SC-002); numbers go into the implementation PR description (FR-007)
+- [ ] T021 Full AFTER benchmark sweep: `sbt 'Jmh/run -prof gc -f 1 -wi 3 -i 5 .*FakerBenchmark.*'`; complete BEFORE/AFTER table in specs/010-faker-syntax-perf/benchmarks.md; verify every benchmarked path (lorem, ipv6, narrow-long, email — SC-002 scope) strictly lower B/op; numbers go into the implementation PR description (FR-007)
 - [ ] T022 Full gate run (contracts/parity-and-gates.md): `sbt scalafmtAll scalafmtSbt` then `sbt scalafmtCheckAll scalafmtSbtCheck "scalafixAll --check" compile test` + coverage ≥75/66 + `sbt mimaFindBinaryIssues` zero new findings (SC-001/SC-005)
 - [ ] T023 Execute quickstart.md §1–§4 end-to-end as final validation; fix any drift found
 - [ ] T024 Implementation PR: push branch, open PR to main (separate concern from docs PR #305), assign milestone "v1.25.0 — Perf: Faker", body: closes #123 #124 #125 #129 #131 #139 #304 (+#130 per T020 decision) + benchmark tables (per-action permission for push/PR)

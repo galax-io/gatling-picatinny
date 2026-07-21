@@ -92,10 +92,13 @@ implementation (the old chain) over generated names plus adversarial fixtures
 - `de.steueridentifikationsnummer` (`:709-714`): one `StringBuilder`; first digit 1-9 then 10 digits 0-9 appended directly — no Range `.map`, no prepend.
 - `br.cpf` (`:628-632`): stella generation untouched; hoist the format regex to a private compiled `Pattern` used by the `formatted = true` branch (allocation per call drops from Pattern+Matcher+String to Matcher+String). CNPJ has the identical pattern-per-call shape but is NOT in issue scope — left untouched (Constitution IV, no opportunistic refactors); noted for a possible follow-up issue.
 
-**Rationale**: matches each issue's own fix sketch; output strings are byte-identical
-(same draw order from `ThreadLocalRandom`/`RandomDataGenerators`, same separators).
-Draw order preservation matters: `Vector.fill(8)(hexString(4))` evaluates left-to-right,
-as does sequential append — same RNG consumption sequence.
+**Rationale**: matches each issue's own fix sketch; output shapes are identical.
+Draw-order/source preservation: lorem and TIN keep their existing `ThreadLocalRandom`
+consumption sequence (`Vector.fill`/Range-map evaluate left-to-right, as does
+sequential append). ipv6 is the deliberate exception — its RNG *source* changes
+(legacy shared `Random` → `ThreadLocalRandom`, see the decision above), so parity
+there is distribution-level (same uniform draw over the same alphabet, same 8×4
+shape), not stream-level.
 
 **Alternatives considered**: `String.join`/`mkString` on an `Array` — still an
 intermediate collection, rejected; `java.util.StringJoiner` — equivalent to
