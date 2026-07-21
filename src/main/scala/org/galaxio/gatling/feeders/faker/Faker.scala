@@ -849,7 +849,17 @@ object Faker {
     def words(count: Int): Generator[String] = {
       require(count > 0, s"count must be > 0: $count")
       val data = FakerData.loremWords
-      Generator.delay(Vector.fill(count)(data(ThreadLocalRandom.current().nextInt(data.size))).mkString(" "))
+      Generator.delay {
+        val rnd = ThreadLocalRandom.current()
+        val sb  = new java.lang.StringBuilder(count * 8)
+        var i   = 0
+        while (i < count) {
+          if (i > 0) sb.append(' ')
+          sb.append(data(rnd.nextInt(data.size)))
+          i += 1
+        }
+        sb.toString
+      }
     }
 
     def sentence(wordsCount: Int = 8): Generator[String] =
