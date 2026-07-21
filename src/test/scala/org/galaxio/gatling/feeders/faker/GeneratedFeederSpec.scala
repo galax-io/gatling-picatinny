@@ -253,6 +253,15 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       feeder.withDefaults("currency" -> "USD", "active" -> true).next() shouldBe Map("currency" -> "EUR", "active" -> true)
     }
 
+    "fill defaults per record with record-wins, absent-fills, and duplicate-default-last-wins semantics" in {
+      val out = Iterator(
+        Map[String, Any]("currency" -> "EUR"),
+        Map.empty[String, Any],
+      ).withDefaults("currency" -> "USD", "active" -> true, "active" -> false)
+      out.next() shouldBe Map("currency" -> "EUR", "active" -> false)
+      out.next() shouldBe Map("currency" -> "USD", "active" -> false)
+    }
+
     "require keys before records are consumed by scenarios" in {
       val valid = Iterator.single(Map("id" -> "42", "email" -> "a@example.com")).requireKeys("id", "email")
       valid.next() shouldBe Map("id" -> "42", "email" -> "a@example.com")
