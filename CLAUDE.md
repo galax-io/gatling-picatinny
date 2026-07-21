@@ -1,5 +1,7 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-Active plan: [specs/009-faker-datetime-offset/plan.md](specs/009-faker-datetime-offset/plan.md)
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/010-faker-syntax-perf/plan.md
 <!-- SPECKIT END -->
