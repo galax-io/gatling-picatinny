@@ -525,6 +525,53 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       email should include("john")
     }
 
+    "normalize email local parts identically to the legacy regex chain" in {
+      def referenceLocalPart(name: String): String = {
+        val lp = name.toLowerCase.replaceAll("[^a-z0-9]+", ".").stripPrefix(".").stripSuffix(".")
+        if (lp.isEmpty) "user" else lp
+      }
+      val domain                                   = "corp.com"
+      val fixtures                                 = Seq(
+        "John Smith",
+        "MiXeD---Case42",
+        "--a--",
+        "...",
+        "!!!",
+        "",
+        "1234",
+        "  spaced  out  ",
+        "Áccent Ünál",
+        "İstanbul İnal", // dotted İ: String.toLowerCase special casing
+        "ж_кириллица-42",
+        "🙂x🙂y",        // non-BMP: surrogate pairs must collapse per code unit like the regex did
+        "x🙂🙂",         // trailing surrogate run must trim like a trailing dot
+      )
+      val nameGen                                  = Gen.oneOf(
+        Gen.oneOf(fixtures),
+        Gen.asciiPrintableStr,
+        Gen.listOf(Gen.oneOf(Gen.alphaNumChar, Gen.oneOf(' ', '-', '.', '_', '!', 'É', 'ж', 'İ'))).map(_.mkString),
+      )
+      forAll(nameGen) { name =>
+        val out        = Faker.internet.email(name, domain).sample()
+        out should endWith("@" + domain)
+        val local      = out.dropRight(domain.length + 1)
+        val normalized = local.dropRight(7) // strip "." + 6-char random suffix
+        normalized shouldBe referenceLocalPart(name)
+      }
+      fixtures.foreach { name =>
+        val out        = Faker.internet.email(name, domain).sample()
+        val normalized = out.dropRight(domain.length + 1).dropRight(7)
+        normalized shouldBe referenceLocalPart(name)
+      }
+    }
+
+    "produce well-formed company email names" in {
+      (1 to 1000).foreach { _ =>
+        val name = Faker.person.companyEmailName().sample()
+        name should fullyMatch regex "[a-z0-9]+(\\.[a-z0-9]+)*"
+      }
+    }
+
     "generate usernames" in {
       val username = Faker.internet.username().sample()
       username should not be empty

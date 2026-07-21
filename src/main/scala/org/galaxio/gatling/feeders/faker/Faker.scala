@@ -193,7 +193,30 @@ object Faker {
       oneOf(FakerData.jobTitles)
 
     def companyEmailName(): Generator[String] =
-      fullName().map(_.toLowerCase.replaceAll("[^a-z0-9]+", ".").stripPrefix(".").stripSuffix("."))
+      fullName().map(normalizeEmailLocalPart)
+  }
+
+  /** Lowercases the name, collapses every run of non-`[a-z0-9]` chars to a single dot, and trims leading/trailing dots.
+    * Single-pass equivalent of `toLowerCase.replaceAll("[^a-z0-9]+", ".").stripPrefix(".").stripSuffix(".")` — the initial
+    * `toLowerCase` stays because its locale-aware special casing (e.g. U+0130) is not reproducible per char.
+    */
+  private def normalizeEmailLocalPart(name: String): String = {
+    val lowered    = name.toLowerCase
+    val sb         = new java.lang.StringBuilder(lowered.length)
+    var pendingDot = false
+    var i          = 0
+    while (i < lowered.length) {
+      val c = lowered.charAt(i)
+      if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+        if (pendingDot && sb.length > 0) sb.append('.')
+        pendingDot = false
+        sb.append(c)
+      } else {
+        pendingDot = true
+      }
+      i += 1
+    }
+    sb.toString
   }
 
   /** Internet-oriented generators. */
@@ -235,7 +258,7 @@ object Faker {
 
     private def emailFromName(name: String, domain: String, suffix: String): String = {
       require(domain.nonEmpty, "Email domain must be non-empty")
-      val localPart           = name.toLowerCase.replaceAll("[^a-z0-9]+", ".").stripPrefix(".").stripSuffix(".")
+      val localPart           = normalizeEmailLocalPart(name)
       val normalizedLocalPart = if (localPart.isEmpty) "user" else localPart
       s"$normalizedLocalPart.$suffix@$domain"
     }
