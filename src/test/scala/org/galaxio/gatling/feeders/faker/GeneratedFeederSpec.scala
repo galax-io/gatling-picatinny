@@ -604,8 +604,12 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     }
 
     "generate valid IPv6 addresses" in {
-      val ipv6 = Faker.internet.ipv6().sample()
-      ipv6.split(":") should have length 8
+      (1 to 1000).foreach { _ =>
+        val ipv6   = Faker.internet.ipv6().sample()
+        val groups = ipv6.split(":")
+        groups should have length 8
+        all(groups.toSeq) should fullyMatch regex "[0-9a-f]{4}"
+      }
     }
 
     "generate domains from catalog" in {
