@@ -1425,6 +1425,17 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     }
   }
 
+  "FakerBenchmark hot-path methods" should {
+    "produce validly-shaped values" in {
+      val bench  = new FakerBenchmark
+      bench.fakerLoremWordsSample().split(" ") should have length 50
+      val narrow = bench.fakerNarrowLongSample()
+      narrow should (be >= 0L and be <= 1_000_000L)
+      bench.fakerIpv6Sample().split(":") should have length 8
+      bench.fakerEmailSample() should include("@")
+    }
+  }
+
   private def validateCpf(cpf: String): Boolean = {
     val digits                 = cpf.map(_.asDigit)
     def check(count: Int): Int = {

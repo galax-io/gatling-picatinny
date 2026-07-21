@@ -17,6 +17,9 @@ class FakerBenchmark extends JmhBenchmark {
   @nowarn("cat=deprecation") private val legacyPhoneFeeder = RandomPhoneFeeder("phone", TypePhone.E164PhoneNumber)
 
   private val emailGenerator      = Faker.internet.email()
+  private val loremWordsGenerator = Faker.lorem.words(50)
+  private val narrowLongGenerator = Faker.number.long(0L, 1_000_000L)
+  private val ipv6Generator       = Faker.internet.ipv6()
   private val usPhoneGenerator    = Faker.phone.mobile(Country.US)
   private val ruCompanyInn        = Faker.ru.inn.company()
   private val transactionId       = Faker.finance.transactionId()
@@ -52,6 +55,18 @@ class FakerBenchmark extends JmhBenchmark {
   @Benchmark
   def fakerEmailSample(): String =
     emailGenerator.sample()
+
+  @Benchmark
+  def fakerLoremWordsSample(): String =
+    loremWordsGenerator.sample()
+
+  @Benchmark
+  def fakerNarrowLongSample(): Long =
+    narrowLongGenerator.sample()
+
+  @Benchmark
+  def fakerIpv6Sample(): String =
+    ipv6Generator.sample()
 
   @Benchmark
   def fakerUsPhoneSample(): String =
