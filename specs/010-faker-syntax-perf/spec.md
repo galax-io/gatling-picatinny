@@ -84,8 +84,10 @@ A load-test author chains record transforms onto feeders — selecting a subset 
 keys, prefixing or suffixing key names, filling in default values. The
 configuration of such a transform (which keys, which prefix, which defaults) is
 fixed when the chain is built, yet today parts of it are recomputed for every record
-flowing through: renamed keys are re-interpolated per record, the defaults map is
-rebuilt per record, key selection builds intermediate views per record. The author
+flowing through: the defaults map is rebuilt per record and key selection builds
+intermediate structures per record. *(Amended 2026-07-21: key renaming was also
+suspected of per-record waste, but verification showed the compiled code is already
+minimal there — that part closes on evidence, not on a code change.)* The author
 needs transformed records identical to today's — same keys, same values, same
 override semantics — with configuration-derived work done once when the transform is
 constructed.
@@ -104,7 +106,7 @@ key collisions).
 1. **Given** a key-selection transform and records containing a mix of selected, unselected, and absent keys (boundary case), **When** records are transformed, **Then** each output record contains exactly the selected keys present in the input, identical to previous behavior.
 2. **Given** a prefixing or suffixing transform, **When** records are transformed, **Then** output key names and values equal the previous implementation's output for the same input.
 3. **Given** a defaults-filling transform where some default keys are present in the record and some are absent, **When** records are transformed, **Then** record values win over defaults for present keys and defaults appear for absent keys — exact previous override semantics.
-4. **Given** any of these transforms processing N records, **When** work is measured, **Then** configuration-derived computation (renamed key names, defaults map, selected-key set) happens once per transform construction, not once per record.
+4. **Given** any of these transforms processing N records, **When** work is measured, **Then** static configuration (selected-key set, defaults map, prefix/suffix strings) is captured once at transform construction, and per-record work is a single pass over the record — at most one plain string concatenation per renamed key, with no per-record rebuilding of configuration and no repeated string-interpolation machinery. *(Amended 2026-07-21 during planning: renamed key names are record-derived — records carry no homogeneity guarantee — so they cannot be precomputed at construction; see research R5.)*
 
 ---
 
@@ -138,7 +140,7 @@ key collisions).
 - **SC-001**: 100% of pre-existing tests pass unchanged — zero behavioral drift across all optimized paths.
 - **SC-002**: Measured per-value allocation on every optimized path is strictly lower than the pre-change baseline, and the narrow-range whole-number path allocates zero arbitrary-precision number objects.
 - **SC-003**: 100% of sampled outputs from every optimized generator match the previously expected formats and value sets (format shapes, check-digit validation, inclusive bounds, override semantics).
-- **SC-004**: All eight open milestone issues (#123, #124, #125, #129, #130, #131, #139, #304) are closed by changes carrying their own regression tests, completing the open performance scope of milestone v1.25.0.
+- **SC-004**: All eight open milestone issues (#123, #124, #125, #129, #130, #131, #139, #304) are closed — seven by changes carrying their own regression tests, and #130 by documented refutation evidence (verification showed its premise no longer holds), completing the open performance scope of milestone v1.25.0.
 - **SC-005**: The published-API compatibility report shows zero new findings — consumers can upgrade with no source or binary change.
 
 ## Assumptions
@@ -146,7 +148,7 @@ key collisions).
 - Scope is exactly the eight open issues in milestone 12 ("v1.25.0 — Perf: Faker"); the milestone's twenty closed issues are already delivered and out of scope.
 - Issue #123 cites a Java source path from the original audit; the lorem-ipsum generator actually lives in the Scala core (the audit pointer is stale). The planning phase resolves exact locations; behavior scope is unaffected.
 - Issues #129–#131 were refiled from the templating module to the feeder-transform module (per the milestone description); the affected transforms are the feeder record transforms (key selection, prefix/suffix, defaults), and the templating module is out of scope.
-- The randomness source and distribution shape of every generator are unchanged; only allocation behavior may differ.
+- Distribution shape of every generator is unchanged. The randomness source is also unchanged, with one deliberate exception: IPv6 generation moves off the legacy shared-`Random` utility (`RandomDataGenerators.hexString`) onto the thread-local RNG the rest of the fake-data API already uses — same uniform distribution over the same lowercase-hex alphabet, no user-visible determinism existed to preserve. *(Amended 2026-07-21: new hot-path code must not deepen dependence on the legacy pre-Faker utility surface.)*
 - Benchmark measurements are evidence attached to the work, not a CI-enforced performance gate; no new benchmark infrastructure beyond the project's existing benchmark practice is introduced.
 - No user-facing documentation or changelog entries are expected — the changes are internal optimizations with no API surface; each issue's "docs updated if user-facing" acceptance item resolves to not-applicable unless planning discovers otherwise.
 - House delivery rules apply: one issue = one semantic commit, each independently green.
