@@ -253,8 +253,24 @@ object Faker {
         s"$a.$b.$c.$d"
       }
 
+    private val Ipv6HexDigits = "0123456789abcdef"
+
     def ipv6(): Generator[String] =
-      Generator.delay(Vector.fill(8)(RandomDataGenerators.hexString(4)).mkString(":"))
+      Generator.delay {
+        val rnd   = ThreadLocalRandom.current()
+        val sb    = new java.lang.StringBuilder(39)
+        var group = 0
+        while (group < 8) {
+          if (group > 0) sb.append(':')
+          var i = 0
+          while (i < 4) {
+            sb.append(Ipv6HexDigits.charAt(rnd.nextInt(16)))
+            i += 1
+          }
+          group += 1
+        }
+        sb.toString
+      }
 
     private def emailFromName(name: String, domain: String, suffix: String): String = {
       require(domain.nonEmpty, "Email domain must be non-empty")
