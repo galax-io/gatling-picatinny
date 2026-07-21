@@ -1376,6 +1376,25 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
         Faker.lorem.words(0)
       }
     }
+
+    "generate a single catalog word with no separator for words(1)" in {
+      (1 to 1000).foreach { _ =>
+        val one = Faker.lorem.words(1).sample()
+        one should not include " "
+        FakerData.loremWords should contain(one)
+      }
+    }
+
+    "join exactly N catalog words with single spaces" in {
+      forAll(Gen.choose(2, 30)) { n =>
+        val text  = Faker.lorem.words(n).sample()
+        val words = text.split(" ", -1)
+        words should have length n
+        all(words.toSeq) should not be empty
+        words.foreach(w => FakerData.loremWords should contain(w))
+        text.count(_ == ' ') shouldBe n - 1
+      }
+    }
   }
 
   "Faker.localization" should {
