@@ -1016,6 +1016,17 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
         }
       }
     }
+
+    "generate formatted CPF with valid checksum and raw CPF without separators" in {
+      (1 to 1000).foreach { _ =>
+        val formatted = Faker.br.cpf(formatted = true).sample()
+        formatted should fullyMatch regex "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
+        withClue(s"formatted CPF $formatted checksum: ") {
+          validateCpf(formatted.filterNot(c => c == '.' || c == '-')) shouldBe true
+        }
+        Faker.br.cpf(formatted = false).sample() should not include "."
+      }
+    }
   }
 
   "Argentinian identifiers" should {
@@ -1236,6 +1247,15 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       (1 to sampleCount).foreach { _ =>
         val tin = Faker.de.steueridentifikationsnummer().sample()
         tin should fullyMatch regex "[1-9]\\d{10}"
+      }
+    }
+
+    "generate TIN with non-zero first digit and digits-only body across a large sample" in {
+      (1 to 1000).foreach { _ =>
+        val tin = Faker.de.steueridentifikationsnummer().sample()
+        tin should have length 11
+        tin.charAt(0) should not be '0'
+        tin should fullyMatch regex "[1-9][0-9]{10}"
       }
     }
   }
