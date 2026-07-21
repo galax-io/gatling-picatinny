@@ -2,6 +2,7 @@ package org.galaxio.gatling.feeders.faker
 
 import org.galaxio.gatling.feeders.LuhnValidator
 import org.galaxio.gatling.feeders.faker.Predef._
+import org.galaxio.gatling.utils.phone.PhoneFormat
 import org.scalacheck.Gen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -108,6 +109,13 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     "toString is readable" in {
       Generator.const(42).toString shouldBe "Generator(<lazy>)"
     }
+
+    "withFilter supports for-comprehension guards" in {
+      val gen = for { n <- Faker.number.int(0, 10) if n >= 5 } yield n
+      (1 to sampleCount).foreach { _ =>
+        gen.sample() should be >= 5
+      }
+    }
   }
 
   "Collection syntax" should {
@@ -133,6 +141,12 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       val records = Map("key" -> "value").toSingleRecordFeeder
       records should have size 1
       records.head shouldBe Map("key" -> "value")
+    }
+
+    "reject materializing an empty collection" in {
+      assertThrows[IllegalArgumentException] {
+        Vector.empty[String].toFeeder("country")
+      }
     }
   }
 
@@ -254,6 +268,22 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     "takeRecords rejects negative" in {
       assertThrows[IllegalArgumentException] {
         Iterator.continually(Map("n" -> 1)).takeRecords(-1)
+      }
+    }
+
+    "expose the generated alias for named construction" in {
+      GeneratedFeeder.generated("id" -> Generator.const("42")).next() shouldBe Map("id" -> "42")
+    }
+
+    "reject empty field name when enriching a feeder" in {
+      assertThrows[IllegalArgumentException] {
+        GeneratedFeeder.withGenerated(Iterator.single(Map("a" -> 1)), "", Generator.const(1))
+      }
+    }
+
+    "reject enrichment without fields" in {
+      assertThrows[IllegalArgumentException] {
+        GeneratedFeeder.withGenerated(Iterator.single(Map("a" -> 1)))
       }
     }
   }
@@ -393,6 +423,17 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       Faker.number.negativeInt.sample() should be < 0
     }
 
+    "generate positive and negative longs" in {
+      (1 to sampleCount).foreach { _ =>
+        Faker.number.positiveLong.sample() should be > 0L
+        Faker.number.negativeLong.sample() should be < 0L
+      }
+    }
+
+    "handle min == max for double" in {
+      Faker.number.double(3.14, 3.14).sample() shouldBe 3.14
+    }
+
     "generate percentage 0-100" in {
       (1 to sampleCount).foreach { _ =>
         val v = Faker.number.percentage.sample()
@@ -452,6 +493,11 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
         s.length should (be >= min and be <= max)
       }
     }
+
+    "reject null and empty regex patterns" in {
+      assertThrows[IllegalArgumentException](Faker.string.matching(null))
+      assertThrows[IllegalArgumentException](Faker.string.matching(""))
+    }
   }
 
   "Faker.uuid" should {
@@ -505,6 +551,12 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
 
     "generate prefixes from catalog" in {
       FakerData.personPrefixes should contain(Faker.person.prefix().sample())
+    }
+
+    "generate dot-separated lowercase company email names" in {
+      (1 to sampleCount).foreach { _ =>
+        Faker.person.companyEmailName().sample() should fullyMatch regex "[a-z0-9]+(\\.[a-z0-9]+)*"
+      }
     }
   }
 
@@ -566,6 +618,18 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     "generate domains from catalog" in {
       FakerData.domains should contain(Faker.internet.domain().sample())
     }
+
+    "fall back to the 'user' local part when the name has no alphanumerics" in {
+      val email = Faker.internet.email("!!!", "corp.com").sample()
+      email should startWith("user.")
+      email should endWith("@corp.com")
+    }
+
+    "reject empty email domain" in {
+      assertThrows[IllegalArgumentException] {
+        Faker.internet.email("John Smith", "").sample()
+      }
+    }
   }
 
   "Faker.location" should {
@@ -603,6 +667,11 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       Faker.location.postalCode(Country.JP).sample() should fullyMatch regex "\\d{7}"
       Faker.location.postalCode(Country.AU).sample() should fullyMatch regex "\\d{4}"
       Faker.location.postalCode(Country.MX).sample() should fullyMatch regex "\\d{5}"
+      Faker.location.postalCode(Country.DE).sample() should fullyMatch regex "\\d{5}"
+      Faker.location.postalCode(Country.CN).sample() should fullyMatch regex "\\d{6}"
+      Faker.location.postalCode(Country.IN).sample() should fullyMatch regex "\\d{6}"
+      Faker.location.postalCode(Country.CA).sample() should fullyMatch regex "[A-Z0-9]{6}"
+      Faker.location.postalCode(Country.custom("ZZ")).sample() should fullyMatch regex "[a-zA-Z0-9]{6}"
     }
 
     "generate latitude within valid range" in {
@@ -797,6 +866,53 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
         Faker.date.range(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 1, 3), minLengthDays = 5)
       }
     }
+
+    "reject date ranges with inverted length bounds" in {
+      assertThrows[IllegalArgumentException] {
+        Faker.date.range(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31), minLengthDays = 5, maxLengthDays = 3)
+      }
+    }
+
+    "generate today's date for an explicit zone" in {
+      val zone   = ZoneId.of("UTC")
+      val before = LocalDate.now(zone)
+      val d      = Faker.date.today(zone).sample()
+      val after  = LocalDate.now(zone)
+      d.isBefore(before) shouldBe false
+      d.isAfter(after) shouldBe false
+    }
+
+    "generate the current datetime for an explicit zone" in {
+      val zone   = ZoneId.of("UTC")
+      val before = LocalDateTime.now(zone)
+      val d      = Faker.date.now(zone).sample()
+      val after  = LocalDateTime.now(zone)
+      d.isBefore(before) shouldBe false
+      d.isAfter(after) shouldBe false
+    }
+
+    "generate datetimes between boundaries" in {
+      val from = LocalDateTime.of(2025, 1, 1, 0, 0)
+      val to   = LocalDateTime.of(2025, 1, 2, 0, 0)
+      (1 to sampleCount).foreach { _ =>
+        val d = Faker.date.between(from, to).sample()
+        d.isBefore(from) shouldBe false
+        d.isAfter(to) shouldBe false
+      }
+    }
+
+    "handle equal datetime boundaries and reject inverted ones" in {
+      val at = LocalDateTime.of(2025, 6, 15, 12, 30)
+      Faker.date.between(at, at).sample() shouldBe at
+      assertThrows[IllegalArgumentException] {
+        Faker.date.between(at.plusSeconds(1), at)
+      }
+    }
+
+    "format generated local datetimes for Gatling session values" in {
+      val at = LocalDateTime.of(2026, 1, 2, 3, 4, 5)
+      Faker.date.between(at, at).format("yyyy-MM-dd'T'HH:mm:ss").sample() shouldBe "2026-01-02T03:04:05"
+    }
   }
 
   "Faker.finance" should {
@@ -879,6 +995,14 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
 
     "generate order IDs" in {
       Faker.commerce.orderId().sample() should startWith("ord-")
+    }
+
+    "generate prices in USD within the requested bounds" in {
+      (1 to sampleCount).foreach { _ =>
+        val price = Faker.commerce.price(BigDecimal(5), BigDecimal(9)).sample()
+        price.currency shouldBe "USD"
+        price.amount should (be >= BigDecimal(5) and be <= BigDecimal(9))
+      }
     }
   }
 
@@ -1194,6 +1318,8 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       Faker.passport.number(Country.US).sample() should fullyMatch regex "\\d{9}"
       Faker.passport.number(Country.AR).sample() should fullyMatch regex "[A-Z0-9]{9}"
       Faker.passport.number(Country.BR).sample() should fullyMatch regex "[A-Z0-9]{8}"
+      Faker.passport.number(Country.RU).sample() should fullyMatch regex "\\d{10}"
+      Faker.passport.number(Country.custom("ZZ")).sample() should fullyMatch regex "[A-Z0-9]{9}"
     }
   }
 
@@ -1259,6 +1385,59 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       }
       error.getMessage should include("No phone formats configured")
     }
+
+    "generate toll-free numbers in the fixed US pattern" in {
+      (1 to sampleCount).foreach { _ =>
+        Faker.phone.tollFree().sample() should fullyMatch regex "\\((800|833|844|855|866|877|888)\\) \\d{3}-\\d{4}"
+      }
+    }
+
+    "format mobile numbers in national and international modes" in {
+      (1 to sampleCount).foreach { _ =>
+        Faker.phone.mobile(Country.RU, PhoneFormatMode.National).sample() should
+          fullyMatch regex "\\+7 \\d{3} \\d{3}-\\d{2}-\\d{2}"
+        Faker.phone.mobile(Country.RU, PhoneFormatMode.International).sample() should
+          fullyMatch regex "\\+7 \\d{3} \\d{3}-\\d{2}-\\d{2}"
+      }
+    }
+
+    "generate toll-free numbers via the TollFree format mode" in {
+      Faker.phone.mobile(Country.US, PhoneFormatMode.TollFree).sample() should
+        fullyMatch regex "\\((800|833|844|855|866|877|888)\\) \\d{3}-\\d{4}"
+    }
+
+    "generate phones from explicit custom formats" in {
+      val format = PhoneFormat("+99", 8, Seq("55"), "+XX XXXX XXXX")
+      (1 to sampleCount).foreach { _ =>
+        Faker.phone.fromFormats(PhoneFormatMode.E164, format).sample() should fullyMatch regex "\\+99\\d{8}"
+      }
+    }
+
+    "reject fromFormats without formats" in {
+      assertThrows[IllegalArgumentException] {
+        Faker.phone.fromFormats(PhoneFormatMode.E164)
+      }
+    }
+
+    "build default US phones when no country or code is configured" in {
+      (1 to sampleCount).foreach { _ =>
+        Faker.phone.builder.build.sample() should fullyMatch regex "\\+1(201|212)\\d{7}"
+      }
+    }
+
+    "apply area code, length, and template overrides to a country preset" in {
+      (1 to sampleCount).foreach { _ =>
+        val phone = Faker.phone.builder
+          .forCountry(Country.RU)
+          .withAreaCodes("999")
+          .withLength(10)
+          .withTemplate("+X (XXX) XXX-XX-XX")
+          .withFormat(PhoneFormatMode.National)
+          .build
+          .sample()
+        phone should fullyMatch regex "\\+7 \\(999\\) \\d{3}-\\d{2}-\\d{2}"
+      }
+    }
   }
 
   "Faker.weather" should {
@@ -1321,6 +1500,10 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       Faker.localization.currency(Country.CA).sample() shouldBe "CAD"
       Faker.localization.currency(Country.AU).sample() shouldBe "AUD"
       Faker.localization.currency(Country.MX).sample() shouldBe "MXN"
+      Faker.localization.currency(Country.AR).sample() shouldBe "ARS"
+      Faker.localization.currency(Country.BR).sample() shouldBe "BRL"
+      Faker.localization.currency(Country.AE).sample() shouldBe "AED"
+      Faker.localization.currency(Country.custom("ZZ")).sample() shouldBe "USD"
     }
 
     "map countries to language codes" in {
@@ -1329,6 +1512,18 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       Faker.localization.languageCode(Country.FR).sample() shouldBe "fr"
       Faker.localization.languageCode(Country.JP).sample() shouldBe "ja"
       Faker.localization.languageCode(Country.CN).sample() shouldBe "zh"
+      Faker.localization.languageCode(Country.AR).sample() shouldBe "es"
+      Faker.localization.languageCode(Country.DE).sample() shouldBe "de"
+      Faker.localization.languageCode(Country.ES).sample() shouldBe "es"
+      Faker.localization.languageCode(Country.IT).sample() shouldBe "it"
+      Faker.localization.languageCode(Country.IN).sample() shouldBe "hi"
+      Faker.localization.languageCode(Country.MX).sample() shouldBe "es"
+      Faker.localization.languageCode(Country.US).sample() shouldBe "en"
+      Faker.localization.languageCode(Country.custom("ZZ")).sample() shouldBe "en"
+    }
+
+    "pick localization countries from the built-in catalog" in {
+      Faker.localization.country().sample() shouldBe a[Country]
     }
   }
 
@@ -1414,6 +1609,14 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
     "provide Java-friendly BigDecimal in Money" in {
       val m = Money(BigDecimal("19.99"), "USD")
       m.javaAmount shouldBe new java.math.BigDecimal("19.99")
+    }
+
+    "uppercase iso2 and keep the explicit display name in custom Country" in {
+      val named = Country.custom("zz", "Zetland")
+      named.iso2 shouldBe "ZZ"
+      named.displayName shouldBe "Zetland"
+
+      Country.custom("yy").displayName shouldBe "YY"
     }
   }
 
