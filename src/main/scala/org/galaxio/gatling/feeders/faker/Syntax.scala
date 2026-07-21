@@ -99,8 +99,10 @@ object Syntax {
     }
 
     /** Adds default values when keys are missing from a feeder record. */
-    def withDefaults(defaults: (String, Any)*): Feeder[Any] =
-      feeder.map(record => defaults.toMap ++ GeneratedFeeder.widenRecord(record))
+    def withDefaults(defaults: (String, Any)*): Feeder[Any] = {
+      val defaultsMap = defaults.toMap
+      feeder.map(record => defaultsMap ++ GeneratedFeeder.widenRecord(record))
+    }
 
     /** Fails fast when a feeder record does not contain all required keys. */
     def requireKeys(keys: String*): Feeder[A] =
