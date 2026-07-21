@@ -329,6 +329,67 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       samples.exists(_ < 0) shouldBe true
     }
 
+    "keep long narrow/wide classification equivalent to the arbitrary-precision reference" in {
+      // Executable form of the research R2 equivalence proof: the Long-span predicate used by
+      // nextLongInclusive must agree with a BigInt-width reference on every (min, max) pair,
+      // with the boundary at mathematical distance == Long.MaxValue falling on the wide side.
+      def referenceIsNarrow(min: Long, max: Long): Boolean =
+        BigInt(max) - BigInt(min) + 1 <= BigInt(Long.MaxValue)
+      def spanIsNarrow(min: Long, max: Long): Boolean      = {
+        val span = max - min
+        span >= 0 && span < Long.MaxValue
+      }
+      val corners                                          =
+        Seq(
+          Long.MinValue,
+          Long.MinValue + 1,
+          Long.MinValue + 2,
+          -2L,
+          -1L,
+          0L,
+          1L,
+          2L,
+          Long.MaxValue - 2,
+          Long.MaxValue - 1,
+          Long.MaxValue,
+        )
+      for {
+        min <- corners
+        max <- corners
+        if min <= max
+      } withClue(s"($min, $max): ") {
+        spanIsNarrow(min, max) shouldBe referenceIsNarrow(min, max)
+      }
+      forAll(Gen.choose(Long.MinValue, Long.MaxValue), Gen.choose(Long.MinValue, Long.MaxValue)) { (a, b) =>
+        val min = math.min(a, b)
+        val max = math.max(a, b)
+        spanIsNarrow(min, max) shouldBe referenceIsNarrow(min, max)
+      }
+    }
+
+    "respect inclusive bounds at classification-boundary long ranges" in {
+      val boundaryRanges = Seq(
+        (0L, Long.MaxValue - 1),        // widest narrow range: sampling bound == Long.MaxValue
+        (-1L, Long.MaxValue - 1),       // distance exactly Long.MaxValue — must take the wide path
+        (Long.MinValue, -2L),           // wide path with negative max: upper bound must hold too (#300)
+        (Long.MinValue, Long.MaxValue), // full range
+        (7L, 7L),                       // equal bounds — deterministic
+      )
+      boundaryRanges.foreach { case (min, max) =>
+        (1 to 1000).foreach { _ =>
+          val v = Faker.number.long(min, max).sample()
+          withClue(s"[$min, $max] produced $v: ") {
+            v should (be >= min and be <= max)
+          }
+        }
+      }
+    }
+
+    "reach both endpoints of a tiny long range" in {
+      val seen = (1 to 1000).map(_ => Faker.number.long(0L, 1L).sample()).toSet
+      seen shouldBe Set(0L, 1L)
+    }
+
     "generate doubles within range" in {
       forAll(Gen.choose(0.0, 1000.0)) { max =>
         whenever(max > 0.01) {
