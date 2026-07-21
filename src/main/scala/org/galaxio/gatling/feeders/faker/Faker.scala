@@ -92,16 +92,20 @@ object Faker {
     private def nextLongInclusive(min: Long, max: Long): Long =
       if (min == max) min
       else if (min == Long.MinValue && max == Long.MaxValue) ThreadLocalRandom.current().nextLong()
-      else if (BigInt(max) - BigInt(min) + 1 <= BigInt(Long.MaxValue)) {
-        val bound = (BigInt(max) - BigInt(min) + 1).toLong
-        min + ThreadLocalRandom.current().nextLong(bound)
-      } else {
-        @tailrec
-        def retry(): Long = {
-          val value = ThreadLocalRandom.current().nextLong()
-          if (value >= min && value <= max) value else retry()
+      else {
+        // span wraps negative iff the mathematical distance max - min >= 2^63; the narrow predicate
+        // below is equivalent to BigInt(max) - BigInt(min) + 1 <= Long.MaxValue on every input pair
+        // (boundary: distance exactly Long.MaxValue stays wide), so span + 1 never overflows.
+        val span = max - min
+        if (span >= 0 && span < Long.MaxValue) min + ThreadLocalRandom.current().nextLong(span + 1L)
+        else {
+          @tailrec
+          def retry(): Long = {
+            val value = ThreadLocalRandom.current().nextLong()
+            if (value >= min && value <= max) value else retry()
+          }
+          retry()
         }
-        retry()
       }
 
     private def randomBigInt(exclusiveUpperBound: BigInt): BigInt = {
