@@ -12,3 +12,5 @@ duplicates (if anything). Never paste raw tool output here.
 - [O-006] build.sbt: JmhPlugin, coverage 75/66 + benchmark exclusions, MiMa 1.23.0 → gates real (V011, V012).
 - [O-007] source re-reads: CPF stella (V006), selectKeys hoist (V008), withDefaults test lock (V009), substrate fan-out (V005), assembly sites (V013), no Faker.java (V007).
 - [O-008] user challenged ipv6 plan (hexString) → read impl: shared scala.util.Random + Iterator chain; hexString NOT @deprecated but legacy surface; R4/spec/plan amended to inline TLR hex (V014).
+- [O-009] implement: 7 code issues committed (#139 #124 #125 #123 #304 #129 #131, one commit each); JMH after: ipv6 -96.5% B/op, narrowLong -100%, lorem -66%, email -39%. Coverage gate 74.59<75 stmt: all uncovered stmts pre-existing (none in feature diff) — main drifted below floor before this branch.
+- [O-010] self-review of #305: O-009 coverage claim REFUTED — CI gate runs coverage over unit+IntegrationTest (ci.yml:282 coverageAggregate) and passes >=75/66 on this PR; local unit-only run under-measured. No main drift; coverage-debt chip premise wrong.
