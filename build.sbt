@@ -74,7 +74,7 @@ lazy val root = (project in file("."))
     // mimaReportBinaryIssues under continue-on-error with ::warning:: annotations. Baseline =
     // latest published release; bumped by the release checklist (AGENTS.md). Intentional breaks:
     // mimaBinaryIssueFilters entry + justification + version bump (constitution II).
-    mimaPreviousArtifacts                 := Set("org.galaxio" %% "gatling-picatinny" % "1.23.0"),
+    mimaPreviousArtifacts                 := Set("org.galaxio" %% "gatling-picatinny" % "1.25.0"),
     // Intentional break: the implicit GatlingConfiguration parameter on
     // SeparatedValuesFeeder.apply(Seq[String], ...) and apply(Seq[Map], ...) was dead in the
     // method body (flagged by -Wunused during #275) and inconsistent with the third
