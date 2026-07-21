@@ -123,7 +123,9 @@ Gatling MUST stay `Provided` — it is the host runtime, not a bundled dependenc
 2. Run `sbt scalafmtAll scalafmtSbt` before committing.
 3. CI gate: `sbt scalafmtCheckAll scalafmtSbtCheck compile test` MUST pass.
 4. Integration gate (when touching Redis, diagnostics, JWT): `sbt "IntegrationTest / test"`.
-5. PRs only — force-push and merge commits in PR branches are prohibited (rebase only).
+5. PRs only — merge commits in PR branches are prohibited (rebase only); after a rebase,
+   update the PR branch with `git push --force-with-lease`. Force-pushing `main` or
+   `release/*` is prohibited.
 6. Commits MUST be semantic (conventional commits) and leave the build green.
 7. New or changed examples in `examples/` MUST compile against the published artifact
    version, not a local snapshot, before release.
@@ -146,4 +148,4 @@ versioning policy below, and propagate changes to affected templates and AGENTS.
 Violations require explicit justification in the plan's Complexity Tracking table
 before merging.
 
-**Version**: 1.1.4 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-07-04
+**Version**: 1.1.5 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-07-21
