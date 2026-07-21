@@ -211,6 +211,38 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       feeder.dropKeys("debug").next() shouldBe Map("id" -> "42", "email" -> "a@example.com")
     }
 
+    "select keys across mixed, absent, and empty selections" in {
+      val records  = Iterator(
+        Map[String, Any]("id" -> "1", "debug" -> true, "email" -> "a@x.com"),
+        Map[String, Any]("id" -> "2"),
+        Map.empty[String, Any],
+      )
+      val selected = records.selectKeys("id", "email", "missing")
+      selected.next() shouldBe Map("id" -> "1", "email" -> "a@x.com")
+      selected.next() shouldBe Map("id" -> "2")
+      selected.next() shouldBe Map.empty[String, Any]
+      Iterator.single(Map[String, Any]("k" -> 1)).selectKeys().next() shouldBe Map.empty[String, Any]
+    }
+
+    "keep transform chains stable across heterogeneous records incl. suffix and empty affixes" in {
+      val records = Iterator(
+        Map[String, Any]("id" -> "1", "name" -> "Ada", "debug" -> true),
+        Map[String, Any]("id" -> "2", "role" -> "admin"),
+        Map.empty[String, Any],
+      )
+      val out     = records
+        .selectKeys("id", "name", "role")
+        .prefixKeys("u_")
+        .withDefaults("u_name" -> "n/a", "u_role" -> "user")
+      out.next() shouldBe Map("u_id" -> "1", "u_name" -> "Ada", "u_role" -> "user")
+      out.next() shouldBe Map("u_id" -> "2", "u_name" -> "n/a", "u_role" -> "admin")
+      out.next() shouldBe Map("u_name" -> "n/a", "u_role" -> "user")
+
+      Iterator.single(Map[String, Any]("k" -> 1)).suffixKeys("_x").next() shouldBe Map("k_x" -> 1)
+      Iterator.single(Map[String, Any]("k" -> 1)).prefixKeys("").next() shouldBe Map("k" -> 1)
+      Iterator.single(Map[String, Any]("k" -> 1)).suffixKeys("").next() shouldBe Map("k" -> 1)
+    }
+
     "select selected keys" in {
       val feeder = Iterator.single(Map("id" -> "42", "debug" -> true, "email" -> "a@example.com"))
       feeder.selectKeys("id", "email").next() shouldBe Map("id" -> "42", "email" -> "a@example.com")

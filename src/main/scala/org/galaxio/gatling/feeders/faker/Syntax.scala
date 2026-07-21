@@ -95,7 +95,7 @@ object Syntax {
     /** Keeps only selected keys from each feeder record. */
     def selectKeys(keys: String*): Feeder[Any] = {
       val keySet = keys.toSet
-      feeder.map(record => GeneratedFeeder.widenRecord(record).view.filterKeys(keySet.contains).toMap)
+      feeder.map(record => GeneratedFeeder.widenRecord(record).filter { case (key, _) => keySet.contains(key) })
     }
 
     /** Adds default values when keys are missing from a feeder record. */
