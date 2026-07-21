@@ -91,15 +91,15 @@ object Faker {
 
     private def nextLongInclusive(min: Long, max: Long): Long =
       if (min == max) min
+      else if (min == Long.MinValue && max == Long.MaxValue) ThreadLocalRandom.current().nextLong()
       else if (BigInt(max) - BigInt(min) + 1 <= BigInt(Long.MaxValue)) {
         val bound = (BigInt(max) - BigInt(min) + 1).toLong
         min + ThreadLocalRandom.current().nextLong(bound)
-      } else if (min == Long.MinValue) ThreadLocalRandom.current().nextLong()
-      else {
+      } else {
         @tailrec
         def retry(): Long = {
           val value = ThreadLocalRandom.current().nextLong()
-          if (value >= min) value else retry()
+          if (value >= min && value <= max) value else retry()
         }
         retry()
       }

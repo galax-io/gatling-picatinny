@@ -305,6 +305,30 @@ class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrive
       }
     }
 
+    "correctly generate longs when range is wider than Long.MaxValue" in {
+      val minOffset = Long.MinValue
+      val maxOffset = -1L
+      (1 to sampleCount).foreach { _ =>
+        val v = Faker.number.long(minOffset, maxOffset).sample()
+        v should (be >= minOffset and be <= maxOffset)
+      }
+
+      val minOffset2 = Long.MinValue + 1
+      val maxOffset2 = 100L
+      (1 to sampleCount).foreach { _ =>
+        val v = Faker.number.long(minOffset2, maxOffset2).sample()
+        v should (be >= minOffset2 and be <= maxOffset2)
+      }
+
+      val minOffset3 = Long.MinValue
+      val maxOffset3 = Long.MaxValue
+      val samples    = (1 to sampleCount).map { _ =>
+        Faker.number.long(minOffset3, maxOffset3).sample()
+      }
+      samples.exists(_ > 0) shouldBe true
+      samples.exists(_ < 0) shouldBe true
+    }
+
     "generate doubles within range" in {
       forAll(Gen.choose(0.0, 1000.0)) { max =>
         whenever(max > 0.01) {
