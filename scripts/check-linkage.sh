@@ -125,8 +125,10 @@ printf '\n'
 # All issues + PRs carrying this milestone (REST returns both; PRs carry a .pull_request key).
 items=$(gh api --paginate --slurp "repos/$REPO/issues?milestone=$MS&state=all&per_page=100" | jq 'add')
 
-pr_numbers=$(jq -r '.[] | select(.pull_request != null) | .number' <<<"$items")
-issue_numbers=$(jq -r '.[] | select(.pull_request == null) | .number' <<<"$items")
+# GitHub's milestone list filter can return stale members (observed: an item whose
+# own payload carries a different milestone.number) — trust each item's payload, not the filter.
+pr_numbers=$(jq -r --argjson ms "$MS" '.[] | select(.pull_request != null and .milestone.number == $ms) | .number' <<<"$items")
+issue_numbers=$(jq -r --argjson ms "$MS" '.[] | select(.pull_request == null and .milestone.number == $ms) | .number' <<<"$items")
 
 linked_issues=" "   # space-delimited set of issue numbers a PR points at
 
