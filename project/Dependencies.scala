@@ -119,7 +119,7 @@ object Dependencies {
   // so no Jakarta EL implementation is needed.
   lazy val idValidationTest: Seq[ModuleID] = Seq(
     "dev.personnummer"        % "personnummer"        % "3.5.0"       % "test,it",
-    "org.hibernate.validator" % "hibernate-validator" % "9.1.2.Final" % "test,it",
+    "org.hibernate.validator" % "hibernate-validator" % "9.1.3.Final" % "test,it",
   )
 
   lazy val circeDeps: Seq[ModuleID] = Seq(
