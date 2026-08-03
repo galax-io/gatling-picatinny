@@ -106,7 +106,7 @@ object Dependencies {
     // commons-validator: ISBN / EAN / Luhn check-digit computation (routines.checkdigit). Exclude
     // transitive deps unused by the check-digit routines. Also exclude commons-collections 3.2.2
     // (CVE-2015-6420 gadget) — the check-digit package does not use the collections API.
-    ("commons-validator"     % "commons-validator"  % "1.10.1")
+    ("commons-validator"     % "commons-validator"  % "1.11.0")
       .exclude("commons-beanutils", "commons-beanutils")
       .exclude("commons-digester", "commons-digester")
       .exclude("commons-logging", "commons-logging")
