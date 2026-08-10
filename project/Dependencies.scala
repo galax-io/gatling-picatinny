@@ -80,7 +80,7 @@ object Dependencies {
   )
 
   lazy val scalaTestPlus: Seq[ModuleID] = Seq(
-    "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % "test,it",
+    "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % "test,it",
   )
 
   lazy val scalaMock: Seq[ModuleID] = Seq(
