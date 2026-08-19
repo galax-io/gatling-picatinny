@@ -47,14 +47,18 @@ jobs:
       - uses: ./.github/actions/sbt-setup
 
       - name: Compile & test
-        # Integration tests (IntegrationTest/test) and template tests run in ci.yml on PRs
+        # Integration tests (integration/testOnly) and template tests run in ci.yml on PRs
         # before merge — no need to re-run with Docker/external services during release.
-        run: sbt compile Test/test
+        # `testOnly`, not `test`: release publishes from sbt 1 today (spec 012, FR-017), but on
+        # sbt 2 `test` is `testQuick` and would turn this pre-publish gate into a no-op the moment
+        # the default pin moves.
+        run: sbt compile "Test/testOnly"
 
       - name: Run Trivy vulnerability gate
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
+          skip-dirs: target
           scan-ref: .
           hide-progress: true
           format: sarif
@@ -73,6 +77,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
+          skip-dirs: target
           scan-ref: .
           format: github
           output: dependency-results.sbom.json

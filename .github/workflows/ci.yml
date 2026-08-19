@@ -86,7 +86,9 @@ jobs:
         with:
           java-version: ${{ matrix.java-version }}
       - name: Test
-        run: sbt Test/test
+        # `testOnly`, not `test`: on sbt 2 `test` is `testQuick` and reports success having run
+        # zero tests. This leg is sbt 1, but CI, docs and the sbt 2 gate stay on one spelling.
+        run: sbt "Test/testOnly"
       - name: Publish unit test results (Java ${{ matrix.java-version }})
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
@@ -279,7 +281,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/sbt-setup
       - name: Coverage
-        run: sbt clean coverage test "IntegrationTest/test" coverageOff coverageReport coverageAggregate
+        run: sbt clean coverage "Test/testOnly" "integration/testOnly" coverageOff coverageReport coverageAggregate
       - name: Publish test results (unit + integration)
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
@@ -306,7 +308,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/sbt-setup
       - name: Run Redis integration tests
-        run: sbt "IntegrationTest / test"
+        run: sbt integration/testOnly
       - name: Publish integration test results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
