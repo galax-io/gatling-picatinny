@@ -145,7 +145,7 @@ Required getters throw `SimulationConfigException` when a value is missing or ha
 JVM system properties override values from `simulation.conf`, which is useful for CI and environment-specific runs:
 
 ```bash
-sbt Gatling/test -DbaseUrl=https://test.example.org -Dintensity="120 rpm"
+sbt -DbaseUrl=https://test.example.org -Dintensity="120 rpm" 'Gatling/testOnly *'
 ```
 
 Workload defaults are validated when they are first read:

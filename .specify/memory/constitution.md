@@ -45,14 +45,14 @@ change:
    `ActorSystem` + `RecordingStatsEngine` (the `transactions/Mocks` harness), no app run.
    **Feeder determinism and transaction-boundary behavior are covered HERE** (component
    layer), NOT by Testcontainers.
-3. **External integration** (`it`, `IntegrationTest` config): two sub-classes —
+3. **External integration** (the `integration` subproject, ordinary `Test` config): two sub-classes —
    - **Container-backed** (Testcontainers MANDATORY): Redis side effects/session state,
      Vault feeders, JDBC storage — assert exact stored/read values against a real
      container; never a recording-proxy fake as the target.
    - **Non-container** (real state, no container): JWT generation/verification (real
      keys/crypto) and startup diagnostics (real JVM/console state) — real tests
-     asserting real values (in `Test` or `it`), no Testcontainers required.
-4. **Full Gatling e2e** (in the `examples/` overlays, run by `sbt Gatling/test`): a real
+     asserting real values (in the root project's `Test` or in the `integration` subproject), no Testcontainers required.
+4. **Full Gatling e2e** (in the `examples/` overlays, run by `sbt 'Gatling/testOnly *'`): a real
    `Simulation` exercises picatinny DSL (feeders, JWT, transactions, converters) over real
    HTTP against a WireMock server that **echoes request values back**; Gatling **`check`**
    validates the RESPONSES (the feeder value + JWT round-trip). Assert on RESPONSE handling
@@ -64,7 +64,8 @@ change:
 6. **Facade delegation** (`Test`, JUnit 5): facade output == Scala-core output; no
    facade-only logic.
 
-Coverage gate (`sbt-scoverage`): statement ≥75% / branch ≥66% (`coverageFailOnMinimum`);
+Coverage gate (`sbt-scoverage`): statement ≥75% / branch ≥66% (`coverageFailOnMinimum`); measured
+81.40-81.44% / 75.33-75.49% on 2026-08-20, identical across both supported sbt majors within a run;
 floor is data-driven (set just under measured) and ratcheted up as real coverage rises —
 never padded with low-value tests on generated/benchmark code; benchmark sources are
 excluded from the denominator (see TESTING.md "Coverage ratchet").
@@ -80,6 +81,9 @@ Default to the minimal change that satisfies the task.
 
 - Opportunistic refactors outside task scope are PROHIBITED.
 - New dependencies MUST be explicitly authorized before adding to `build.sbt`.
+- A new sbt plugin or build capability MUST state its availability on BOTH supported sbt majors.
+  A capability available on only one major requires a recorded exemption (TESTING.md "Supported
+  sbt majors") naming the capability, the unsupported major, the reason, and a revisit condition.
 - Public API signature changes MUST be explicitly authorized.
 - Changing serialized config/profile formats MUST be explicitly authorized.
 - Complexity MUST be justified in the plan's Complexity Tracking table when a
@@ -97,18 +101,21 @@ Rules that MUST be followed without exception:
 - Once a tag is pushed and Sonatype deployment starts, the tag MUST NOT be deleted.
 - Version numbers MUST NOT be reused — Sonatype Central permanently rejects duplicates.
 - Patch fixes land on `main` first, then are cherry-picked onto the release branch.
+- Official publication to Maven Central runs on the DEFAULT sbt major (sbt 1.x). Before tagging,
+  the full gate suite MUST be green on both supported majors.
 
 ## Stack Constraints
 
 Technology stack is fixed. Exact versions are in `build.sbt` / `project/Dependencies.scala`
-(source of truth). Changes require explicit authorization.
+(source of truth), and the default sbt major in `project/build.properties`. Changes require
+explicit authorization.
 
 | Concern | Value |
 |---------|-------|
 | Language | Scala 2.13.x |
-| Build tool | sbt |
+| Build tool | sbt 1.12.15 (default pin, publishes releases) **and** sbt 2.0.6 (verified secondary, `sbt --sbt-version 2.0.6 <task>`) |
 | Compile target | Java 17 (`--release 17`) |
-| CI runtime | Temurin 21 |
+| CI runtime | Temurin 17 and 21 (matrix) |
 | Gatling | 3.13.x (`Provided` scope — MUST remain `Provided`) |
 | Core deps | PureConfig, Circe, json4s, Jackson, Scala Logging, Generex, JWT, fast-uuid |
 | Test infra | ScalaTest, JUnit 5 (sbt-jupiter-interface), Testcontainers |
@@ -121,14 +128,16 @@ Gatling MUST stay `Provided` — it is the host runtime, not a bundled dependenc
 
 1. Branch from `main` for every change. No direct commits to `main` or `release/*`.
 2. Run `sbt scalafmtAll scalafmtSbt` before committing.
-3. CI gate: `sbt scalafmtCheckAll scalafmtSbtCheck compile test` MUST pass.
-4. Integration gate (when touching Redis, diagnostics, JWT): `sbt "IntegrationTest / test"`.
+3. CI gate: `sbt scalafmtCheckAll scalafmtSbtCheck compile "Test/testOnly"` MUST pass. Use
+   `testOnly`, never `test`: on sbt 2 `test` is `testQuick` and passes having run zero tests.
+4. Integration gate (when touching Redis, diagnostics, JWT): `sbt integration/testOnly`.
 5. PRs only — merge commits in PR branches are prohibited (rebase only); after a rebase,
    update the PR branch with `git push --force-with-lease`. Force-pushing `main` or
    `release/*` is prohibited.
 6. Commits MUST be semantic (conventional commits) and leave the build green.
 7. New or changed examples in `examples/` MUST compile against the published artifact
-   version, not a local snapshot, before release.
+   version, not a local snapshot, before release. The Scala/sbt overlay MUST additionally build and
+   run its e2e scenario under both supported sbt majors.
 
 ## Governance
 
@@ -148,4 +157,4 @@ versioning policy below, and propagate changes to affected templates and AGENTS.
 Violations require explicit justification in the plan's Complexity Tracking table
 before merging.
 
-**Version**: 1.1.5 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-07-21
+**Version**: 1.2.0 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-08-20

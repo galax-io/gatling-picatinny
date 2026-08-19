@@ -157,7 +157,7 @@ stageDuration = 5 minutes
 Run it, overriding any value with `-D`:
 
 ```bash
-sbt Gatling/test -DbaseUrl=https://test.example.org -Dintensity="120 rpm"
+sbt -DbaseUrl=https://test.example.org -Dintensity="120 rpm" 'Gatling/testOnly *'
 ```
 
 > The banner and all config/diagnostic output go through **SLF4J**; Picatinny ships no `logback.xml`. Add the recommended config so output renders the way you expect — see [Logging & Secret Masking](docs/logging.md).
@@ -265,21 +265,48 @@ Full reference + recommended `logback.xml` + [1.23.0 migration](docs/logging.md#
 
 ## Contributing
 
+### Supported sbt versions
+
+The build works from a single unmodified checkout under **two** sbt majors:
+
+| Major | Version | Role |
+|-------|---------|------|
+| sbt 1 | 1.12.15 | **Default** — what a bare `sbt` uses (pinned in `project/build.properties`). Publishes releases. |
+| sbt 2 | 2.0.6   | Secondary — verified daily in CI. |
+
+Run any task against the secondary major with the launcher flag; no file is edited:
+
+```bash
+sbt --sbt-version 2.0.6 compile
+```
+
+You only need one major installed locally; CI covers the other. Two things to know:
+
+- **Use `testOnly`, never `test`.** On sbt 2, `test` is `testQuick`: it reports success having run
+  *zero* tests, off a global cache that survives `clean` and `rm -rf target`. Every command below
+  uses `testOnly` for that reason.
+- **If the default pin ever moves to sbt 2**, run `sbt shutdown` (or set `SBT_NATIVE_CLIENT=false`)
+  before switching back down with `--sbt-version 1.12.15` — with a server already running, the
+  native client reads the major from `project/build.properties` and ignores the flag.
+
 ```bash
 # Build
 sbt compile
 
 # Run unit tests
-sbt test
+sbt "Test/testOnly"
 
-# Run integration tests
-sbt IntegrationTest/test
+# Run integration tests (Docker required)
+sbt integration/testOnly
 
 # Check formatting
 sbt scalafmtCheckAll
 
 # Format code
 sbt scalafmtAll
+
+# Anything above, on the secondary major
+sbt --sbt-version 2.0.6 "Test/testOnly"
 ```
 
 ## License

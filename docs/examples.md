@@ -36,6 +36,6 @@ All three example folders are source overlays applied on top of a project genera
 |---|---|---|---|
 | Java | [examples/java-maven-example](../examples/java-maven-example) | Maven | `mvn gatling:test` |
 | Kotlin | [examples/kotlin-gradle-example](../examples/kotlin-gradle-example) | Gradle | `./gradlew gatlingRun` |
-| Scala | [examples/scala-sbt-example](../examples/scala-sbt-example) | sbt | `sbt Gatling/test` |
+| Scala | [examples/scala-sbt-example](../examples/scala-sbt-example) | sbt | `sbt 'Gatling/testOnly *'` |
 
 Each project covers the same set of simulations (Debug, Stability, MaxPerformance) so you can compare Java / Kotlin / Scala patterns side-by-side. Start with the `Debug` simulation — it is the smallest runnable entry point. See the [Start here](../README.md#start-here) section for a guided first-run path.

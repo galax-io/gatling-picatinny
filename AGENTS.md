@@ -8,17 +8,22 @@ Principal Engineer: Scala 2.13, Gatling DSL, Java/Kotlin facade design, HTTP/Red
 
 ## Stack
 
-Scala 2.13.18, sbt, Java 17 (compile target; CI runs on Temurin 21), Gatling 3.13.5 (`Provided`). PureConfig, Circe, json4s, Jackson, Scala Logging, Generex, JWT, fast-uuid. ScalaTest + JUnit (sbt-jupiter-interface), Testcontainers (Redis integration), JMH (benchmarks).
+Scala 2.13.18, **sbt 1.12.15 (default pin) / sbt 2.0.6 (verified secondary)**, Java 17 (compile target; CI runs on Temurin 17 and 21), Gatling 3.13.5 (`Provided`). PureConfig, Circe, json4s, Jackson, Scala Logging, Generex, JWT, fast-uuid. ScalaTest + JUnit (sbt-jupiter-interface), Testcontainers (Redis integration), JMH (benchmarks).
 
 ## Commands
+
+Supported sbt majors: **1.12.15** (default — what a bare `sbt` uses, pinned in
+`project/build.properties`) and **2.0.6** (secondary). Run any task on the secondary with
+`sbt --sbt-version 2.0.6 <task>`. Use `testOnly`, never `test`: on sbt 2 `test` is `testQuick` and
+reports success having run zero tests.
 
 ```bash
 sbt scalafmtAll scalafmtSbt                                          # format
 sbt scalafixAll scalafmtAll                                          # lint fix (then format; they converge)
 sbt "scalafixAll --check"                                            # lint gate (CI-enforced; TESTING.md "Static analysis & gates")
-sbt scalafmtCheckAll scalafmtSbtCheck compile test "IntegrationTest / test"  # verify
-sbt compile test                                                    # CI (unit only)
-sbt "IntegrationTest / test"                                        # integration (Docker / Redis)
+sbt scalafmtCheckAll scalafmtSbtCheck compile "Test/testOnly" integration/testOnly  # verify
+sbt compile "Test/testOnly"                                         # CI (unit only)
+sbt integration/testOnly                                            # integration (Docker / Redis)
 sbt Jmh/run                                                         # benchmarks
 ```
 
@@ -45,18 +50,18 @@ Authoritative: **[TESTING.md](TESTING.md)** (constitution §III). Test-first; as
 
 1. Unit/functional (`Test`) — pure fns + HTTP (`HttpJsonFeeder`/`THttpClient`) via ScalaMock; no server in the library.
 2. DSL/action component (conditional, `Test`) — `transactions/Mocks` ActorSystem harness; feeder-determinism + tx boundaries.
-3. External integration (`it`) — Testcontainers Redis/Vault/JDBC; JWT/diagnostics non-container.
-4. E2e — real `Simulation` driving picatinny DSL (feeders/JWT/transactions/converters) over real HTTP vs **WireMock** in `examples/`, `sbt Gatling/test`. Assert RESPONSES with Gatling `check` (values round-trip via the mock echo); never `WireMock.verify`/re-decode the request (mock-testing-mock). WireMock overlay-only.
+3. External integration (`integration` subproject) — Testcontainers Redis/Vault/JDBC; JWT/diagnostics non-container.
+4. E2e — real `Simulation` driving picatinny DSL (feeders/JWT/transactions/converters) over real HTTP vs **WireMock** in `examples/`, `sbt 'Gatling/testOnly *'`. Assert RESPONSES with Gatling `check` (values round-trip via the mock echo); never `WireMock.verify`/re-decode the request (mock-testing-mock). WireMock overlay-only.
 5. Compile guard (`Test`).
 6. Facade delegation (`Test`, JUnit 5).
 
-Coverage floor 75/66 (stmt/branch; data-driven ratchet — TESTING.md "Coverage ratchet"). Every `/speckit-plan` fills the code-free "Test Model" table (gate).
+Coverage floor 75/66 (stmt/branch; measured 81.40-81.44/75.33-75.49 on 2026-08-20, majors agree exactly within a run; data-driven ratchet — TESTING.md "Coverage ratchet"). Every `/speckit-plan` fills the code-free "Test Model" table (gate).
 
 ## Boundaries
 
-**Always:** format before commit, branch from `main`, keep commits semantic and green, preserve backward compat for published Scala/Java APIs and example overlays. `build.sbt`/`project/` = dependency truth, `.github/workflows/` = CI/release truth.
+**Always:** format before commit, branch from `main`, keep commits semantic and green, preserve backward compat for published Scala/Java APIs and example overlays. `build.sbt`/`project/` = dependency truth, `project/build.properties` = the single default-sbt-major pin, `.github/workflows/` = CI/release truth.
 
-**Ask first:** new deps or upgrades, changing public API signatures / DSL behavior / serialized config/profile formats, editing another repo, release/publish workflow changes.
+**Ask first:** new deps or upgrades, changing public API signatures / DSL behavior / serialized config/profile formats, editing another repo, release/publish workflow changes. A new sbt plugin or build capability MUST state its availability on **both** supported majors; a single-major capability needs a recorded exemption (TESTING.md).
 
 **Never:** force-push or commit to `main`, merge commits in PR branches (rebase only), commit broken code, opportunistic refactors outside scope, mock Gatling runtime where a real integration path exists.
 
@@ -72,14 +77,14 @@ Every piece of work is tied to a milestone. No exceptions unless explicitly told
 ## Commits & PRs
 
 - **Spec-first.** `specs/NNN-*/` artifacts → `docs(speckit): add NNN-<feature> spec/plan/tasks` commit BEFORE any `feat`/`fix`. Never folded into implementation.
-- **1 issue = 1 commit.** Each tracked GitHub issue maps to one semantic commit (`feat(scope): … (#NNN)`), green on its own (`sbt compile test`). Docs, tweaks, and out-of-scope improvements go in separate PRs — never mixed with issue commits.
+- **1 issue = 1 commit.** Each tracked GitHub issue maps to one semantic commit (`feat(scope): … (#NNN)`), green on its own (`sbt compile "Test/testOnly"` on the default major). Docs, tweaks, and out-of-scope improvements go in separate PRs — never mixed with issue commits.
 - **Intent, not path.** No add-then-remove within a PR. Squash churn before review.
 - **1 concern per PR.** Feature ≠ docs/README. Stack dependent PRs; update with `--force-with-lease`.
 - **Idiomatic Scala.** `Try`/`Option`/`Either`, pattern matching, `flatMap`/`collect`. No `try/catch` for control flow, `== null`, `indexOf`/`substring`, or double conversions.
 
 ## Release Process (MANDATORY)
 
-Trunk-based with release branches. Trunk is `main`; `release/*` branches are cut from `main` for stabilization. Pushing a `vX.Y.Z` tag on `main` or a `release/*` branch publishes to Maven Central (via sbt-ci-release / dynver) and creates a GitHub Release with git-cliff notes.
+Trunk-based with release branches. Trunk is `main`; `release/*` branches are cut from `main` for stabilization. Pushing a `vX.Y.Z` tag on `main` or a `release/*` branch publishes to Maven Central (via sbt-ci-release / dynver) and creates a GitHub Release with git-cliff notes. **Official publication runs on sbt 1.x**, the default pin.
 
 ### Minor/Major release (e.g. 1.2.0, 2.0.0)
 
@@ -103,6 +108,8 @@ Trunk-based with release branches. Trunk is `main`; `release/*` branches are cut
 - **Never delete a release tag** after Sonatype deployment starts — creates stuck deployments
 - **Never reuse a version number** — Sonatype Central rejects duplicates permanently
 - **Before tagging**: every PR merged since the previous tag must be assigned to the milestone; every issue in the milestone whose fix is on `main` must be closed
-- **Before tagging**: review outstanding MiMa binary-compatibility warnings (`sbt mimaFindBinaryIssues`) — each must be fixed or acknowledged via a justified `mimaBinaryIssueFilters` entry with the constitution-mandated version bump
-- **Before tagging**: run the dependency-hygiene report (`sbt undeclaredCompileDependencies unusedCompileDependencies`, report-only) and triage findings
+- **Before tagging**: confirm the full gate suite is green on **both** supported majors (`sbt <task>` and `sbt --sbt-version 2.0.6 <task>`)
+- **Before tagging**: review outstanding MiMa binary-compatibility warnings (`sbt mimaReportBinaryIssues || true` — `mimaFindBinaryIssues` is silent and looks clean even when it is not) — each must be fixed or acknowledged via a justified `mimaBinaryIssueFilters` entry with the constitution-mandated version bump
+- **Before tagging**: run the dependency-hygiene report and triage findings (report-only, **sbt 1 only** — see TESTING.md "Static analysis & gates" for why):
+  `sbt --batch --addPluginSbtFile=project/hygiene/plugins.sbt undeclaredCompileDependencies unusedCompileDependencies`
 - **After releasing**: bump `mimaPreviousArtifacts` in `build.sbt` to the just-published version

@@ -59,7 +59,7 @@ picatinny.diagnostics.enabled    = false
 ```
 
 ```bash
-sbt Gatling/test -Dpicatinny.startup.banner.enabled=false   # turn the banner off
+sbt -Dpicatinny.startup.banner.enabled=false 'Gatling/testOnly *'   # turn the banner off
 ```
 
 **2. How produced output renders — one `logback.xml`, set up once and left alone.**
