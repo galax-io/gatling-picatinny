@@ -40,6 +40,8 @@ galaxio template init gatling/scala-sbt \
   --set Package=org.galaxio.performance \
   --set PackagePath=org/galaxio/performance \
   --set GatlingPicatinnyVersion=0.0.0-ci-local \
+  --set SbtVersion="${SBT1_VERSION:-1.12.15}" \
+  --set SbtGatlingVersion="${SBT_GATLING_VERSION:-4.19.1}" \
   --set BaseUrl=http://localhost \
   --set BaseAuthUrl=http://localhost/auth \
   --set WsBaseUrl=ws://localhost/ws \
@@ -73,5 +75,14 @@ cp "$ROOT_DIR/examples/scala-sbt-example/src/test/resources/logback.xml" \
 
 (
   cd "$PROJECT_DIR"
-  sbt Gatling/test
+  # `Gatling/testOnly *`, NOT `Gatling/test`. On sbt 2 `test` is `testQuick`: with the project's
+  # target/ deleted it still prints "Passed: Total 0" / "No tests to run" / [success], because the
+  # pass record lives in the GLOBAL disk cache (~/.cache/sbt) and survives clean and rm -rf target.
+  # `testFull` is not an option either — it does not exist on sbt 1. Only `testOnly *` is
+  # convergent across both majors. Do not "simplify" this line in either direction.
+  sbt_cmd=(sbt)
+  if [ "${SBT_MAJOR:-1}" = "2" ]; then
+    sbt_cmd=(sbt --sbt-version "${SBT2_VERSION:-2.0.6}")
+  fi
+  "${sbt_cmd[@]}" 'Gatling/testOnly *'
 )
