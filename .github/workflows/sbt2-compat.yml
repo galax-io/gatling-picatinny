@@ -147,27 +147,49 @@ jobs:
 
       # ---------------------------------------------------------------------------------------
       # FR-014 / FR-015: the Scala/sbt overlay is the consumer-facing starting point and the e2e
-      # layer. Deliberately here rather than as a second leg of ci.yml's `template-tests`: that job
-      # stays sbt 1 only, so java-maven and kotlin-gradle keep exactly one leg each (FR-016) and no
-      # existing job or artifact name changes.
-      # Note the template is rendered from the EXTERNAL templates-gatling pack, whose own default is
-      # gatling-sbt 4.18.3 — a version with no _sbt2_3 artifact. SBT_GATLING_VERSION overrides it
-      # until the upstream default moves.
+      # layer, so it must work on whichever major a user has.
+      #
+      # This builds the CHECKED-IN overlay (examples/scala-sbt-example) rather than rendering the
+      # external templates-gatling pack, for three reasons:
+      #   1. Those files are what this repository actually owns and changes — and nothing in CI
+      #      builds them today. ci.yml's `template-tests` substitutes a template render, so the
+      #      overlay's own build.sbt/plugins.sbt/build.properties were previously unverified.
+      #   2. It keeps the upstream blocker off the critical path: templates-gatling v0.15.0 still
+      #      defaults to gatling-sbt 4.18.3, which publishes no _sbt2_3 artifact.
+      #   3. No galaxio CLI or Go toolchain needed here.
+      # The template render stays covered by ci.yml's `template-tests` on sbt 1 (FR-016 — java-maven
+      # and kotlin-gradle keep exactly one leg each, and no existing job is renamed).
       # ---------------------------------------------------------------------------------------
-      - name: Set up Go (galaxio CLI)
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
       - name: Example overlay e2e under sbt 2
         env:
-          SBT_MAJOR: '2'
-          SBT2_VERSION: ${{ env.SBT2_VERSION }}
-          SBT_GATLING_VERSION: '4.19.1'
-          TEMPLATES_GATLING_VERSION: v0.15.0
+          PICATINNY_VERSION: 0.0.0-overlay
         run: |
-          sbt $SBT_VERSION_FLAG --batch 'set ThisBuild / version := "0.0.0-ci-local"' publishLocal publishM2
-          bash scripts/test-scala-sbt-template.sh
+          set -euo pipefail
+          # Publish under sbt 2 specifically, so the overlay consumes an sbt-2-built artifact rather
+          # than whichever one the equivalence step happened to leave in the local repo last.
+          sbt $SBT_VERSION_FLAG --batch 'set ThisBuild / version := "0.0.0-overlay"' publishLocal
+          cd examples/scala-sbt-example
+          # `Gatling/testOnly *`, never `Gatling/test`: on sbt 2 `test` is `testQuick` and prints
+          # "No tests to run" / [success] even with target/ deleted, because the pass record lives
+          # in the global disk cache. `testFull` is not convergent either — it does not exist on
+          # sbt 1. Only `testOnly *` works on both.
+          sbt $SBT_VERSION_FLAG --sbt-cache "${RUNNER_TEMP}/sbt2-cache" --batch \
+            -Dsbt.color=false -Dsbt.supershell=false 'Gatling/testOnly *' 2>&1 | tee /tmp/overlay.log
+
+          # Anti-vacuity, applied to the overlay too: three simulations must have run AND issued a
+          # non-zero number of requests. A Gatling run with zero requests passes its assertions
+          # vacuously.
+          sims=$(grep -c 'Simulation .* successful' /tmp/overlay.log || true)
+          reqs=$(grep -oE 'request count *\|? *[0-9]+' /tmp/overlay.log | grep -oE '[0-9]+$' | awk '{s+=$1} END {print s+0}')
+          echo "simulations=${sims} total_requests=${reqs}"
+          if [ "${sims}" -lt 3 ]; then
+            echo "::error title=Overlay did not run::expected 3 successful simulations, saw ${sims}."
+            exit 1
+          fi
+          if [ "${reqs}" -lt 1 ]; then
+            echo "::error title=Vacuous overlay run::simulations reported ${reqs} requests; assertions passed against nothing."
+            exit 1
+          fi
 
       - name: Report a scheduled failure
         if: failure() && github.event_name == 'schedule'
