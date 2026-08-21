@@ -169,10 +169,17 @@ symptoms follow, and the second is the dangerous one:
 | directory gone entirely | sbt fails with `NoSuchFileException` / `file referenced by the build does not exist` | sbt itself, loudly |
 | individual files dangling | `packageBin` skips them and `publishLocal` reports **`[success]` with classes missing** — reproduced at 617 → 616 jar entries | **nothing, by default** |
 
-`build.sbt` therefore guards `Compile/Test products` with `assertMaterialised`, which fails the
-build on a dangling class-directory entry rather than letting a truncated artifact through.
-**`clean` does not clear the poisoned state** — only a fresh `--sbt-cache` does, so any guidance of
-the form "just run clean" is wrong.
+**`clean` does not clear the poisoned state** — only a fresh `--sbt-cache` (and, if the dangling
+symlinks are already on disk, removing the output tree) does, so any guidance of the form "just run
+clean" is wrong. The CI job that publishes under sbt 2 therefore uses a per-run `--sbt-cache`, and
+the artifact-equivalence step compares jar entry sets rather than POMs alone, since a truncated jar
+still has a perfectly correct POM.
+
+An earlier revision of this section described an `assertMaterialised` guard on `Compile/Test
+products`. That guard was removed: it only detected a *dangling symlink*, not a class file the CAS
+never materialised at all, so it did not cover the case it was written for — and the `products` pin
+it lived in is itself gone now that `templates/Templates.scala` resolves classpath resources
+correctly.
 
 Official publication runs on sbt 1 (AGENTS.md Release Process), which has no action cache and cannot
 hit this at all. That is now a load-bearing reason for the pin, not merely a conservative default:

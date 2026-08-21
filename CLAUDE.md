@@ -1,5 +1,5 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-Active plan: [specs/008-coverage-test-infra/plan.md](specs/008-coverage-test-infra/plan.md)
+Active plan: [specs/012-cross-build-sbt/plan.md](specs/012-cross-build-sbt/plan.md)
 <!-- SPECKIT END -->

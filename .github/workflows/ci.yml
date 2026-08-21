@@ -98,14 +98,18 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           check_name: "Unit test results (Java ${{ matrix.java-version }})"
-          junit_files: "**/target/test-reports/*.xml"
+          files: "**/test-reports/*.xml"
+          # Convergent glob: sbt 2 writes under target/out/jvm/<scala>/<project>/test-reports/,
+          # which a literal target/test-reports segment does not match. Fail on an empty match
+          # rather than publishing a green 0-test check.
+          action_fail_on_inconclusive: true
       - name: Upload unit test report XML (Java ${{ matrix.java-version }})
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports-unit-java${{ matrix.java-version }}
-          path: "**/target/test-reports/*.xml"
-          if-no-files-found: warn
+          path: "**/test-reports/*.xml"
+          if-no-files-found: error
           retention-days: 7
 
   publish-local:
@@ -291,14 +295,18 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           check_name: "Test results (unit + integration)"
-          junit_files: "**/target/test-reports/*.xml"
+          files: "**/test-reports/*.xml"
+          # Convergent glob: sbt 2 writes under target/out/jvm/<scala>/<project>/test-reports/,
+          # which a literal target/test-reports segment does not match. Fail on an empty match
+          # rather than publishing a green 0-test check.
+          action_fail_on_inconclusive: true
       - name: Upload test report XML (coverage gate)
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports-coverage
-          path: "**/target/test-reports/*.xml"
-          if-no-files-found: warn
+          path: "**/test-reports/*.xml"
+          if-no-files-found: error
           retention-days: 7
       - name: Upload coverage reports to Codecov
         if: always()
@@ -318,12 +326,16 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           check_name: "Integration test results"
-          junit_files: "**/target/test-reports/*.xml"
+          files: "**/test-reports/*.xml"
+          # Convergent glob: sbt 2 writes under target/out/jvm/<scala>/<project>/test-reports/,
+          # which a literal target/test-reports segment does not match. Fail on an empty match
+          # rather than publishing a green 0-test check.
+          action_fail_on_inconclusive: true
       - name: Upload integration test report XML
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports-integration
-          path: "**/target/test-reports/*.xml"
-          if-no-files-found: warn
+          path: "**/test-reports/*.xml"
+          if-no-files-found: error
           retention-days: 7

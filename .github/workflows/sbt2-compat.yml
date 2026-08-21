@@ -19,11 +19,12 @@ on:
     # Only the changes that can plausibly break sbt 2. Everything else stays sbt 1 only and costs
     # exactly what it costs today.
     paths:
-      - 'project/build.properties'
-      - 'project/plugins.sbt'
-      - 'project/Dependencies.scala'
-      - 'project/hygiene/**'
+      - 'project/**'
       - '*.sbt'
+      # The library itself: templates/Templates.scala resolves classpath resources, which is exactly
+      # the behaviour that differs between majors, so src/** must gate too.
+      - 'src/**'
+      - 'integration/**'
       - 'examples/scala-sbt-example/**'
       - '.github/actions/sbt-setup/**'
       - '.github/workflows/sbt2-compat.yml'
@@ -71,7 +72,12 @@ jobs:
       - name: Assert the run is really on sbt 2
         run: |
           set -euo pipefail
-          actual=$(sbt $SBT_VERSION_FLAG --batch "show sbtVersion" 2>&1 | tail -5 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          # Anchor on sbt's own value line ("[info] \t<version>"), never "the last version-shaped
+          # token in the tail": a jar name like scala-library-2.13.18.jar matches 2.* and would
+          # green-light an sbt 1 run. `|| true` so a no-match reaches the explicit check below
+          # instead of dying under `set -e` with no diagnostic.
+          actual=$(sbt $SBT_VERSION_FLAG --batch "show sbtVersion" 2>&1 \
+            | sed -n 's/^\[info\][[:space:]]*\([0-9][0-9.]*\)$/\1/p' | tail -1 || true)
           echo "resolved sbt version: ${actual}"
           case "$actual" in
             2.*) echo "OK — running sbt ${actual}" ;;
@@ -89,39 +95,66 @@ jobs:
       # ---------------------------------------------------------------------------------------
       - name: Full gate suite (unit + integration + coverage + MiMa)
         run: |
-          sbt $SBT_VERSION_FLAG --sbt-cache "${RUNNER_TEMP}/sbt2-cache" \
+          # --batch on EVERY sbt call in this job: without it a server survives the step, and the
+          # deliberately flagless "sbt 1" half of the artifact-equivalence check below would be
+          # served by it, silently comparing sbt 2 against itself.
+          sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" \
             clean coverage "Test/testOnly" "integration/testOnly" \
-            coverageOff coverageReport coverageAggregate \
-            mimaReportBinaryIssues
+            coverageOff coverageReport coverageAggregate
+
+      # MiMa is ADVISORY by contract (TESTING.md, #274): it never blocks a merge, and
+      # `mimaReportBinaryIssues` exits non-zero on findings. ci.yml runs it under
+      # continue-on-error; this job must not be stricter, or the next intentional binary break
+      # turns the cross-build gate red and auto-files a false "sbt 2 is broken" issue.
+      - name: Binary compatibility (advisory)
+        continue-on-error: true
+        run: sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" mimaReportBinaryIssues || true
 
       # ---------------------------------------------------------------------------------------
       # Anti-vacuity guard #2: a run that executed zero tests must FAIL, not pass. This is the
       # single most likely way this workflow ships broken.
       # ---------------------------------------------------------------------------------------
-      - name: Assert a non-zero test count
+      # Anti-vacuity guard #2. Two things the first version got wrong:
+      #   - every substitution needs `|| true`. Under `set -euo pipefail` a no-match `grep` kills the
+      #     step at the assignment, so the ::error annotations below — the entire point of the guard
+      #     — never printed; the operator just saw "Process completed with exit code 1".
+      #   - counting ALL reports summed root's ~824 unit tests with integration's 44, so an
+      #     integration leg that discovered ZERO tests was masked. Assert per project.
+      - name: Assert a non-zero test count, per project
         run: |
           set -euo pipefail
-          total=$(find . -path '*/test-reports/*.xml' -print0 \
-            | xargs -0 grep -ho 'tests="[0-9]*"' 2>/dev/null \
-            | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')
-          echo "tests executed: ${total}"
-          if [ "${total}" -lt 1 ]; then
-            echo "::error title=Vacuous run::the sbt 2 gate reported ${total} tests. On sbt 2 'test' is 'testQuick' and passes having run nothing — this job proves nothing and must fail."
-            exit 1
+          count_for() {
+            find . -path "$1" -name '*.xml' -print0 2>/dev/null \
+              | xargs -0 --no-run-if-empty grep -ho 'tests="[0-9]*"' 2>/dev/null \
+              | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}' || true
+          }
+          # sbt 2 lays reports out under target/out/jvm/<scala>/<project>/test-reports/
+          root=$(count_for '*/gatling-picatinny/test-reports/*')
+          integ=$(count_for '*/gatling-picatinny-integration/test-reports/*')
+          echo "tests executed: root=${root:-0} integration=${integ:-0}"
+          fail=0
+          if [ "${root:-0}" -lt 1 ]; then
+            echo "::error title=Vacuous run (root)::the root suite reported ${root:-0} tests. On sbt 2 'test' is 'testQuick' and passes having run nothing."
+            fail=1
           fi
+          if [ "${integ:-0}" -lt 1 ]; then
+            echo "::error title=Vacuous run (integration)::the integration suite reported ${integ:-0} tests, so the Testcontainers layer proved nothing. Root's count cannot cover for it."
+            fail=1
+          fi
+          exit "$fail"
 
       - name: Publish test results (sbt 2)
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
         with:
           check_name: "Test results (sbt 2)"
           files: "**/test-reports/*.xml"
           action_fail_on_inconclusive: true # a glob that matches nothing must FAIL, not warn
-          comment_mode: off
+          comment_mode: 'off'
 
       - name: Upload test report XML (sbt 2)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports-sbt2
           path: "**/test-reports/*.xml"
@@ -135,7 +168,7 @@ jobs:
       - name: Artifact equivalence (sbt 2 POM vs sbt 1 POM)
         run: |
           set -euo pipefail
-          sbt $SBT_VERSION_FLAG --batch 'set ThisBuild / version := "0.0.0-xbuild"' publishLocal
+          sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" 'set ThisBuild / version := "0.0.0-xbuild"' publishLocal
           find "$HOME/.ivy2/local/org.galaxio" -name '*.pom' -exec cp {} /tmp/sbt2.pom \;
           sbt --batch 'set ThisBuild / version := "0.0.0-xbuild"' publishLocal
           find "$HOME/.ivy2/local/org.galaxio" -name '*.pom' -exec cp {} /tmp/sbt1.pom \;
@@ -185,7 +218,7 @@ jobs:
           set -euo pipefail
           # Publish under sbt 2 specifically, so the overlay consumes an sbt-2-built artifact rather
           # than whichever one the equivalence step happened to leave in the local repo last.
-          sbt $SBT_VERSION_FLAG --batch 'set ThisBuild / version := "0.0.0-overlay"' publishLocal
+          sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" 'set ThisBuild / version := "0.0.0-overlay"' publishLocal
           cd examples/scala-sbt-example
           # `Gatling/testOnly *`, never `Gatling/test`: on sbt 2 `test` is `testQuick` and prints
           # "No tests to run" / [success] even with target/ deleted, because the pass record lives
@@ -197,21 +230,23 @@ jobs:
           # Anti-vacuity, applied to the overlay too: three simulations must have run AND issued a
           # non-zero number of requests. A Gatling run with zero requests passes its assertions
           # vacuously.
+          # `|| true` on BOTH: without it a Gatling output-format change kills the step at the
+          # assignment and the ::error annotations below never print.
           sims=$(grep -c 'Simulation .* successful' /tmp/overlay.log || true)
-          reqs=$(grep -oE 'request count *\|? *[0-9]+' /tmp/overlay.log | grep -oE '[0-9]+$' | awk '{s+=$1} END {print s+0}')
+          reqs=$(grep -oE 'request count *\|? *[0-9]+' /tmp/overlay.log | grep -oE '[0-9]+$' | awk '{s+=$1} END {print s+0}' || true)
           echo "simulations=${sims} total_requests=${reqs}"
-          if [ "${sims}" -lt 3 ]; then
+          if [ "${sims:-0}" -lt 3 ]; then
             echo "::error title=Overlay did not run::expected 3 successful simulations, saw ${sims}."
             exit 1
           fi
-          if [ "${reqs}" -lt 1 ]; then
+          if [ "${reqs:-0}" -lt 1 ]; then
             echo "::error title=Vacuous overlay run::simulations reported ${reqs} requests; assertions passed against nothing."
             exit 1
           fi
 
       - name: Report a scheduled failure
         if: failure() && github.event_name == 'schedule'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             // A red run on a schedule nobody watches is not a signal (contract M-3).

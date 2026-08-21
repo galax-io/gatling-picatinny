@@ -27,6 +27,8 @@ import scala.jdk.CollectionConverters._
   */
 trait Templates {
 
+  private val TemplatesDir = "templates/"
+
   /** Map of template name (filename without extension) to Gatling EL file body. Lazily initialized from the `templates`
     * resource directory. Fails fast with an `IllegalStateException` if that directory is absent from the classpath; a
     * present-but-empty directory yields an empty map.
@@ -40,19 +42,41 @@ trait Templates {
             "is present on the runtime classpath.",
         )
       case Some(resource) =>
-        Files
-          .list(Paths.get(resource.toURI))
-          .iterator()
-          .asScala
-          .map(_.toFile)
-          .filter(_.isFile)
-          .map { f =>
-            val name   = f.getName
-            val dotIdx = name.lastIndexOf('.')
-            val key    = if (dotIdx > 0) name.substring(0, dotIdx) else name
-            (key, ElFileBody(f.getCanonicalPath))
-          }
-          .toMap
+        // Resolve names WITHOUT touching the filesystem path: the `templates` directory is a
+        // classpath resource, and for a packaged consumer it lives inside a jar, where
+        // `Paths.get(resource.toURI)` throws FileSystemNotFoundException. Handle both layouts.
+        val names: List[String] = resource.openConnection() match {
+          case jarConnection: java.net.JarURLConnection =>
+            jarConnection.setUseCaches(true)
+            jarConnection.getJarFile
+              .entries()
+              .asScala
+              .map(_.getName)
+              .collect {
+                case entry if entry.startsWith(TemplatesDir) && !entry.endsWith("/") =>
+                  entry.substring(TemplatesDir.length)
+              }
+              .filterNot(_.contains('/'))
+              .toList
+          case _                                        =>
+            Files
+              .list(Paths.get(resource.toURI))
+              .iterator()
+              .asScala
+              .filter(Files.isRegularFile(_))
+              .map(_.getFileName.toString)
+              .toList
+        }
+        names.map { name =>
+          val dotIdx = name.lastIndexOf('.')
+          val key    = if (dotIdx > 0) name.substring(0, dotIdx) else name
+          // Classpath-RELATIVE, never an absolute path: Gatling rejects an absolute path that
+          // resolves inside its configured resources directory ("It should not be an absolute path
+          // pointing to a directory that belongs to your classpath") — which is what a consumer's
+          // build looks like whenever resource directories sit on the classpath instead of being
+          // copied into the class directory, i.e. sbt 2's default.
+          (key, ElFileBody(TemplatesDir + name))
+        }.toMap
     }
 
   private def resolveTemplate(templateName: String): Body with Expression[String] =

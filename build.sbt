@@ -46,55 +46,6 @@ lazy val commonSettings = Seq(
   scalacOptions     := strictScalacOptions,
 )
 
-// sbt 2.0.6's action cache can serve a `compile` cache HIT whose packed class-directory blob is
-// missing or truncated in `<sbt-cache>/v2/cas/`. `DiskActionCacheStore.syncBlobs` skips an
-// unavailable blob SILENTLY, the cached value is returned anyway, and `classDirectory` is never
-// materialised. `packageBin` then walks an empty directory and `publishLocal` reports [success]
-// having emitted a manifest-only jar — reproduced at 617 -> 616 entries with a class silently
-// missing, and in the worst case a 336-byte jar. `clean` does NOT recover it; only a fresh
-// `--sbt-cache` does.
-//
-// Reproduced BOTH with and without the `products` pin below, so this is an sbt 2 defect, not one
-// the pin introduces. The guard lives here because `products` is the single point every packaging
-// and classpath task funnels through on both majors. Inert on sbt 1 (no action cache) and on any
-// healthy sbt 2 run; one short-circuiting directory walk.
-//
-// Turning a silent truncation into a loud failure matters more here than usual: Sonatype Central
-// permanently rejects a reused version, so a truncated jar that reaches Maven Central under version
-// X can never be fixed by republishing X (constitution V).
-def assertMaterialised(dir: File, scope: String): Unit = {
-  // Two distinct symptoms of one corrupt-cache state, and only the second is dangerous:
-  //   (a) the whole class directory is missing — sbt already fails loudly by itself;
-  //   (b) individual class files survive as symlinks into the CAS whose targets are gone. sbt does
-  //       NOT notice: `packageBin` walks the directory, `Path.allSubpaths(...).filter(_._1.isFile())`
-  //       silently skips the dangling entries, and `publishLocal` reports [success]. Reproduced at
-  //       617 -> 616 jar entries with a class quietly absent from the published artifact.
-  // So checking "has any .class" is not enough — (b) has 616 perfectly good ones. The reliable
-  // signal is a dangling entry: Files.walk does not follow links, and Files.exists does, so a
-  // symlink whose CAS target is gone reports false.
-  val problem: Option[String] =
-    if (!dir.isDirectory) Some(s"directory does not exist: $dir")
-    else {
-      val stream = java.nio.file.Files.walk(dir.toPath)
-      try {
-        val dangling = stream
-          .filter(p => !java.nio.file.Files.exists(p))
-          .findFirst()
-        if (dangling.isPresent) Some(s"dangling class-directory entry: ${dangling.get}")
-        else None
-      } finally stream.close()
-    }
-  problem.foreach { what =>
-    sys.error(
-      s"$scope/classDirectory is not materialised — $what\n" +
-        "On sbt 2 this means the action cache served a compile hit whose class-directory blob is " +
-        "missing or corrupt in <sbt-cache>/v2/cas. Packaging would SILENTLY drop the affected " +
-        "classes and still report success. Re-run with a fresh --sbt-cache directory; `clean` does " +
-        "not clear this state.",
-    )
-  }
-}
-
 lazy val root = (project in file("."))
   .enablePlugins(GitVersioning, JmhPlugin)
   // Aggregation is what keeps scalafmtAll / scalafixAll / Test-compile / clean reaching the
@@ -128,23 +79,6 @@ lazy val root = (project in file("."))
     Test / test / aggregate                := false,
     Test / testOnly / aggregate            := false,
     Test / testQuick / aggregate           := false,
-    // Pin sbt 1's product shape on both majors — see the exportJars/products note at the bottom
-    // of this file for why this reaches runtime behaviour rather than being a build detail.
-    // One `val _` per block, not two: Scala 2.12 (sbt 1's build compiler) rejects a second
-    // `val _` in the same scope with "_ is already defined as value _", while Scala 3 (sbt 2)
-    // accepts it. The tuple keeps a single binding and compiles on both.
-    Compile / products                     := {
-      val _   = ((Compile / compile).value, (Compile / copyResources).value)
-      val dir = (Compile / classDirectory).value
-      assertMaterialised(dir, "Compile")
-      Seq(dir)
-    },
-    Test / products                        := {
-      val _   = ((Test / compile).value, (Test / copyResources).value)
-      val dir = (Test / classDirectory).value
-      assertMaterialised(dir, "Test")
-      Seq(dir)
-    },
     // Coverage floor — data-driven ratchet (policy: TESTING.md "Coverage ratchet").
     // Measured unit+integration with benchmarks excluded, 2026-08-20: 81.40-81.44% stmt /
     // 75.33-75.49% branch. Within any single run the two sbt majors agree EXACTLY; across runs the
@@ -177,6 +111,18 @@ lazy val root = (project in file("."))
     mimaBinaryIssueFilters ++= Seq(
       "org.galaxio.gatling.feeders.SeparatedValuesFeeder.apply",
     ).map(ProblemFilters.exclude[DirectMissingMethodProblem](_)),
+    // ...and out of the published artifact. Benchmarks live on the production classpath so `Jmh/run`
+    // can see them, but they are not API: shipping them also drags jmh-core and the jmh-generator
+    // artifacts into the POM at compile scope, i.e. transitively onto every consumer. Same shared
+    // benchmark definition every other gate uses (#210).
+    Compile / packageBin / mappings        := (Compile / packageBin / mappings).value.filterNot { case (_, path) =>
+      path.matches(".*" + benchmarkFilePattern + "\\.class") || path.startsWith("org/galaxio/gatling/jmh/")
+    },
+    // JmhPlugin adds jmh-core / jmh-generator-* unscoped, so they land as `compile` dependencies in
+    // an Apache-2.0 POM. They are build-time only — never needed by a consumer.
+    libraryDependencies                    := libraryDependencies.value.map { m =>
+      if (m.organization == "org.openjdk.jmh") m % Provided else m
+    },
     // Benchmark sources are invisible to the lint gate too — same shared definition as coverage (FR-022).
     Compile / scalafix / unmanagedSources  := (Compile / scalafix / unmanagedSources).value
       .filterNot(_.getName.matches(benchmarkFilePattern)),
@@ -203,32 +149,19 @@ lazy val integration = (project in file("integration"))
     mimaFailOnNoPrevious     := false,
     // Testcontainers specs (Redis, Vault, Postgres) must not race for ports and containers.
     Test / parallelExecution := false,
-    // `Provided` scope does NOT propagate across `dependsOn`, so root's host-runtime bundles must
-    // be re-declared here or the relocated specs fail to compile against io.gatling / com.redis
-    // types. `publish / skip` keeps them out of any POM regardless.
-    libraryDependencies ++= gatlingCore,
-    libraryDependencies ++= gatlingShared,
-    libraryDependencies ++= fastUUID,
+    // Root's `Provided` bundles are deliberately NOT re-declared here: `test->test` already puts
+    // them on this project's Test classpath (verified — all four specs compile without them on both
+    // majors). Re-declaring them made the dependency-hygiene report emit 8 permanently unfixable
+    // "declared but not needed" findings on this project.
     libraryDependencies ++= integrationTesting,
   )
 
-// Two build-tool defaults changed in sbt 2 and both reach the library's RUNTIME behaviour, so both
-// are pinned to sbt 1's shape on every major (spec 012, D-16).
-//
-// 1. `exportJars` defaults to true in sbt 2, putting a jar rather than a class directory on the
-//    Test classpath.
-// 2. sbt 2 does not copy unmanaged resources into `classDirectory`; it puts `src/{main,test}/resources`
-//    directly on the classpath. Verified: sbt 1 `Test/products` = [test-classes]; sbt 2 =
-//    [test-classes, src/test/resources], and sbt 2's test-classes has no `templates/` directory.
-//
-// Why this is not cosmetic: `templates/Templates.scala` builds its registry from
-// `getResource("templates")` and hands Gatling `ElFileBody(f.getCanonicalPath)` — an ABSOLUTE path.
-// Gatling rejects an absolute path that resolves inside its configured resources directory:
-//   "Your resource's path .../src/test/resources/templates/test_json.json is incorrect. It should
-//    not be an absolute path pointing to a directory that belongs to your classpath."
-// Under sbt 1 the path is the copied `test-classes/templates/...` and Gatling accepts it. Without
-// the `products` pin above, 2 TemplatesSpec tests fail under sbt 2 — and the natural misdiagnosis
-// is to blame the `integration` subproject migration and narrow what the sbt 2 gate runs.
+// sbt 2 defaults `exportJars` to true, putting the packaged jar rather than the class directory on
+// the Test and inter-project classpaths. Several specs resolve real files through the classpath
+// (JWT key loading), which cannot work from inside a jar. Pin sbt 1's shape on both majors.
+// NOTE: the `Compile/Test products` pin that used to live here is gone — it existed only to hide an
+// absolute-path bug in templates/Templates.scala, which is now fixed at source (classpath-relative
+// ElFileBody + jar-safe discovery), so the build no longer has to reshape the classpath for it.
 ThisBuild / exportJars := false
 
 ThisBuild / com.github.sbt.git.SbtGit.GitKeys.useConsoleForROGit := true

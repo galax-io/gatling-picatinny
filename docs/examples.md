@@ -26,7 +26,7 @@ libraryDependencies += "org.galaxio" %% "gatling-picatinny" % "<latest>"
 
 ## Testing
 
-To test your changes use `sbt test`.
+To test your changes use `sbt "Test/testOnly"`. Not `sbt test`: on sbt 2 `test` is `testQuick` and reports success having run zero tests.
 
 ## Running the examples
 
