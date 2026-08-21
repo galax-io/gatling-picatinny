@@ -76,8 +76,15 @@ jobs:
           # token in the tail": a jar name like scala-library-2.13.18.jar matches 2.* and would
           # green-light an sbt 1 run. `|| true` so a no-match reaches the explicit check below
           # instead of dying under `set -e` with no diagnostic.
-          actual=$(sbt $SBT_VERSION_FLAG --batch "show sbtVersion" 2>&1 \
-            | sed -n 's/^\[info\][[:space:]]*\([0-9][0-9.]*\)$/\1/p' | tail -1 || true)
+          # -Dsbt.color=false explicitly: the workflow-level SBT_OPTS sets sbt.color=true, so
+          # without this every line arrives wrapped in ANSI escapes and the anchor below matches
+          # nothing. Strip any residual escapes anyway, so a future SBT_OPTS edit cannot silently
+          # turn this guard into a permanent false negative.
+          actual=$(sbt $SBT_VERSION_FLAG --batch -Dsbt.color=false -Dsbt.supershell=false \
+              "show sbtVersion" 2>&1 \
+            | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
+            | sed -n 's/^\[info\][[:space:]]*\([0-9][0-9.]*\)[[:space:]]*$/\1/p' \
+            | tail -1 || true)
           echo "resolved sbt version: ${actual}"
           case "$actual" in
             2.*) echo "OK — running sbt ${actual}" ;;
