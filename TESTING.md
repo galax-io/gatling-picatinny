@@ -157,6 +157,28 @@ This is the **only** permitted single-major capability. Any new build plugin mus
 availability on both majors as part of the change that proposes it; a second undocumented gap is a
 defect, not a precedent.
 
+**sbt 2 action-cache corruption — always publish from a fresh cache.** sbt 2.0.6 stores the
+compiled class directory as a packed blob in `<sbt-cache>/v2/cas/`, and restores individual class
+files as symlinks into it. If a blob is lost or truncated — an interrupted sbt mid-write, two sbt 2
+processes sharing one `--sbt-cache`, or manual pruning of `~/.cache/sbt` / `~/Library/Caches/sbt` —
+`DiskActionCacheStore.syncBlobs` skips it **silently** and returns the cached value anyway. Two
+symptoms follow, and the second is the dangerous one:
+
+| | symptom | caught by |
+|---|---|---|
+| directory gone entirely | sbt fails with `NoSuchFileException` / `file referenced by the build does not exist` | sbt itself, loudly |
+| individual files dangling | `packageBin` skips them and `publishLocal` reports **`[success]` with classes missing** — reproduced at 617 → 616 jar entries | **nothing, by default** |
+
+`build.sbt` therefore guards `Compile/Test products` with `assertMaterialised`, which fails the
+build on a dangling class-directory entry rather than letting a truncated artifact through.
+**`clean` does not clear the poisoned state** — only a fresh `--sbt-cache` does, so any guidance of
+the form "just run clean" is wrong.
+
+Official publication runs on sbt 1 (AGENTS.md Release Process), which has no action cache and cannot
+hit this at all. That is now a load-bearing reason for the pin, not merely a conservative default:
+Sonatype Central permanently rejects a reused version, so a silently truncated jar published under
+version X could never be fixed by republishing X.
+
 **On `test` vs `testOnly`**: on sbt 2, `test` IS `testQuick` — it reports `[success]` having run
 zero tests, off a global disk cache that survives `clean` and `rm -rf target`. Every gate command in
 this document uses `testOnly` for that reason. Do not "simplify" one back to `test`.

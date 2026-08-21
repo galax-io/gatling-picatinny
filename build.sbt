@@ -46,6 +46,55 @@ lazy val commonSettings = Seq(
   scalacOptions     := strictScalacOptions,
 )
 
+// sbt 2.0.6's action cache can serve a `compile` cache HIT whose packed class-directory blob is
+// missing or truncated in `<sbt-cache>/v2/cas/`. `DiskActionCacheStore.syncBlobs` skips an
+// unavailable blob SILENTLY, the cached value is returned anyway, and `classDirectory` is never
+// materialised. `packageBin` then walks an empty directory and `publishLocal` reports [success]
+// having emitted a manifest-only jar — reproduced at 617 -> 616 entries with a class silently
+// missing, and in the worst case a 336-byte jar. `clean` does NOT recover it; only a fresh
+// `--sbt-cache` does.
+//
+// Reproduced BOTH with and without the `products` pin below, so this is an sbt 2 defect, not one
+// the pin introduces. The guard lives here because `products` is the single point every packaging
+// and classpath task funnels through on both majors. Inert on sbt 1 (no action cache) and on any
+// healthy sbt 2 run; one short-circuiting directory walk.
+//
+// Turning a silent truncation into a loud failure matters more here than usual: Sonatype Central
+// permanently rejects a reused version, so a truncated jar that reaches Maven Central under version
+// X can never be fixed by republishing X (constitution V).
+def assertMaterialised(dir: File, scope: String): Unit = {
+  // Two distinct symptoms of one corrupt-cache state, and only the second is dangerous:
+  //   (a) the whole class directory is missing — sbt already fails loudly by itself;
+  //   (b) individual class files survive as symlinks into the CAS whose targets are gone. sbt does
+  //       NOT notice: `packageBin` walks the directory, `Path.allSubpaths(...).filter(_._1.isFile())`
+  //       silently skips the dangling entries, and `publishLocal` reports [success]. Reproduced at
+  //       617 -> 616 jar entries with a class quietly absent from the published artifact.
+  // So checking "has any .class" is not enough — (b) has 616 perfectly good ones. The reliable
+  // signal is a dangling entry: Files.walk does not follow links, and Files.exists does, so a
+  // symlink whose CAS target is gone reports false.
+  val problem: Option[String] =
+    if (!dir.isDirectory) Some(s"directory does not exist: $dir")
+    else {
+      val stream = java.nio.file.Files.walk(dir.toPath)
+      try {
+        val dangling = stream
+          .filter(p => !java.nio.file.Files.exists(p))
+          .findFirst()
+        if (dangling.isPresent) Some(s"dangling class-directory entry: ${dangling.get}")
+        else None
+      } finally stream.close()
+    }
+  problem.foreach { what =>
+    sys.error(
+      s"$scope/classDirectory is not materialised — $what\n" +
+        "On sbt 2 this means the action cache served a compile hit whose class-directory blob is " +
+        "missing or corrupt in <sbt-cache>/v2/cas. Packaging would SILENTLY drop the affected " +
+        "classes and still report success. Re-run with a fresh --sbt-cache directory; `clean` does " +
+        "not clear this state.",
+    )
+  }
+}
+
 lazy val root = (project in file("."))
   .enablePlugins(GitVersioning, JmhPlugin)
   // Aggregation is what keeps scalafmtAll / scalafixAll / Test-compile / clean reaching the
@@ -85,12 +134,16 @@ lazy val root = (project in file("."))
     // `val _` in the same scope with "_ is already defined as value _", while Scala 3 (sbt 2)
     // accepts it. The tuple keeps a single binding and compiles on both.
     Compile / products                     := {
-      val _ = ((Compile / compile).value, (Compile / copyResources).value)
-      Seq((Compile / classDirectory).value)
+      val _   = ((Compile / compile).value, (Compile / copyResources).value)
+      val dir = (Compile / classDirectory).value
+      assertMaterialised(dir, "Compile")
+      Seq(dir)
     },
     Test / products                        := {
-      val _ = ((Test / compile).value, (Test / copyResources).value)
-      Seq((Test / classDirectory).value)
+      val _   = ((Test / compile).value, (Test / copyResources).value)
+      val dir = (Test / classDirectory).value
+      assertMaterialised(dir, "Test")
+      Seq(dir)
     },
     // Coverage floor — data-driven ratchet (policy: TESTING.md "Coverage ratchet").
     // Measured unit+integration with benchmarks excluded, 2026-08-20: 81.40-81.44% stmt /

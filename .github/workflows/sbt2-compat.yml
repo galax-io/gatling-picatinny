@@ -145,6 +145,23 @@ jobs:
           fi
           grep -c '<scope>provided</scope>' /tmp/sbt2.pom
 
+          # A POM comparison alone is NOT sufficient. sbt 2's action cache can serve a compile hit
+          # whose class-directory blob is gone, and packaging then silently drops classes while the
+          # POM stays perfectly correct — so two manifest-only jars would compare "equal" and pass.
+          # Compare the JAR CONTENTS too, and require a plausible entry count.
+          j1=$(find . -name 'gatling-picatinny_2.13-0.0.0-xbuild.jar' -path '*/target/*' ! -path '*/out/*' | head -1)
+          j2=$(find . -name 'gatling-picatinny_2.13-0.0.0-xbuild.jar' -path '*/out/*' | head -1)
+          n1=$(unzip -Z1 "$j1" | wc -l); n2=$(unzip -Z1 "$j2" | wc -l)
+          echo "jar entries: sbt1=${n1} sbt2=${n2}"
+          if [ "${n1}" -lt 100 ] || [ "${n2}" -lt 100 ]; then
+            echo "::error title=Truncated artifact::a jar has ${n1}/${n2} entries. sbt 2's action cache probably served a compile hit whose class directory was never materialised."
+            exit 1
+          fi
+          if ! /usr/bin/diff <(unzip -Z1 "$j1" | sort) <(unzip -Z1 "$j2" | sort); then
+            echo "::error title=Artifact drift::jar entry sets differ between sbt 1 and sbt 2 (FR-008)."
+            exit 1
+          fi
+
       # ---------------------------------------------------------------------------------------
       # FR-014 / FR-015: the Scala/sbt overlay is the consumer-facing starting point and the e2e
       # layer, so it must work on whichever major a user has.
