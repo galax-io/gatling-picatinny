@@ -171,8 +171,9 @@ jobs:
       #   1. Those files are what this repository actually owns and changes — and nothing in CI
       #      builds them today. ci.yml's `template-tests` substitutes a template render, so the
       #      overlay's own build.sbt/plugins.sbt/build.properties were previously unverified.
-      #   2. It keeps the upstream blocker off the critical path: templates-gatling v0.15.0 still
-      #      defaults to gatling-sbt 4.18.3, which publishes no _sbt2_3 artifact.
+      #   2. It does not depend on the external template pack at all. (That blocker is now also
+      #      resolved upstream: v0.15.0 defaulted to gatling-sbt 4.18.3, which publishes no
+      #      _sbt2_3 artifact; v0.16.0 defaults to 4.19.1, and ci.yml is pinned there.)
       #   3. No galaxio CLI or Go toolchain needed here.
       # The template render stays covered by ci.yml's `template-tests` on sbt 1 (FR-016 — java-maven
       # and kotlin-gradle keep exactly one leg each, and no existing job is renamed).

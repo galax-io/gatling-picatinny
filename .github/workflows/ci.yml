@@ -22,7 +22,11 @@ env:
   JVM_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
   FORCE_COLOR: "1"
   TERM: xterm-256color
-  TEMPLATES_GATLING_VERSION: v0.15.0
+  # v0.16.0 is the first tag whose scala-sbt template defaults are sbt-2 compatible:
+  # SbtGatlingVersion 4.18.3 -> 4.19.1 (4.18.3 publishes no _sbt2_3 artifact) and
+  # SbtVersion 1.12.13 -> 1.12.15, matching project/build.properties. The `--set` overrides in
+  # scripts/test-scala-sbt-template.sh are kept as belt-and-braces against a future default drift.
+  TEMPLATES_GATLING_VERSION: v0.16.0
 
 jobs:
   format:

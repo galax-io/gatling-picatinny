@@ -152,3 +152,25 @@ Two POM changes, both intended:
    licence change. `postgresql` was already `it`-only and was never in the POM.
 
 No other dependency, scope, or coordinate changed.
+
+
+---
+
+## Anti-vacuity demonstration (T059 / SC-007 / contract M-4), 2026-08-21
+
+A gate never observed failing has not been shown to work. Demonstrated on a throwaway branch
+(`chore/verify-sbt2-gate-fails`, deleted afterwards) so PR #320's own check history stays clean.
+
+**The break**: removed the `Compile/Test products` pin. That is a genuine sbt-2-only defect — sbt 1
+copies resources into `classDirectory` regardless, sbt 2 does not, so `TemplatesSpec` hands Gatling
+an absolute path inside its configured resources directory.
+
+**Result** — run [32450643390](https://github.com/galax-io/gatling-picatinny/actions/runs/32450643390):
+
+| | outcome |
+|---|---|
+| sbt 2 (CI) | **FAILED** — 723 passed / **2 failed**, `TemplatesSpec`, `... is incorrect`. Job `sbt 2 compatibility (build change)`; failing step `Full gate suite (unit + integration + coverage + MiMa)` |
+| sbt 1 (local, same commit) | **PASSED** — 725 succeeded / 0 failed, 824/824 |
+
+Both halves of FR-011 hold: the failure is detected, and it is attributed to the right major without
+opening logs. The `Test results (sbt 2)` check also went red, confirming the report path is wired.
