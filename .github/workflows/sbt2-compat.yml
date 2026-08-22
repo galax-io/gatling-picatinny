@@ -1,0 +1,278 @@
+name: sbt 2 compatibility
+
+# The project is cross-built on sbt 1 and sbt 2 (spec 012). sbt 1.12.15 is the default pin
+# (project/build.properties) and the major that publishes; sbt 2.0.6 is carried as a verified
+# secondary major so that a future migration is a one-line change rather than a leap.
+#
+# Deliberately NOT a per-PR matrix over the existing jobs. Dual-major support is insurance against
+# a future forced migration, not a capability anything currently consumes: nobody is blocked today
+# (the sbt launcher obeys build.properties) and the published artifact is identical either way.
+# A daily run catches configuration decay; the pull_request path filter catches the change class
+# that actually causes it. Promotion to a full matrix is a workflow-only change (contract M-6).
+
+on:
+  schedule:
+    # 04:17 UTC daily — off the hour to avoid GitHub's scheduling pile-up.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+  pull_request:
+    # Only the changes that can plausibly break sbt 2. Everything else stays sbt 1 only and costs
+    # exactly what it costs today.
+    paths:
+      - 'project/**'
+      - '*.sbt'
+      # The library itself: templates/Templates.scala resolves classpath resources, which is exactly
+      # the behaviour that differs between majors, so src/** must gate too.
+      - 'src/**'
+      - 'integration/**'
+      - 'examples/scala-sbt-example/**'
+      - '.github/actions/sbt-setup/**'
+      - '.github/workflows/sbt2-compat.yml'
+      - 'scripts/test-scala-sbt-template.sh'
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  issues: write # scheduled-failure tracking issue
+
+concurrency:
+  group: sbt2-compat-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # NOTE: this MUST NOT contain -Dsbt.version=. At the launcher level SBT_OPTS strictly outranks
+  # the --sbt-version flag, so an entry here would silently pin the major and make this whole
+  # workflow run sbt 1 while reporting success. The major is carried by SBT_VERSION_FLAG, which
+  # the sbt-setup action exports.
+  SBT_OPTS: -Dsbt.color=true -Dsbt.log.noformat=false -Dsbt.supershell=false
+  JAVA_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
+  JVM_OPTS: -Xms2G -Xmx2G -Xss4M -XX:+UseG1GC
+  SBT2_VERSION: '2.0.6'
+
+jobs:
+  sbt2:
+    name: sbt 2 compatibility (${{ github.event_name == 'schedule' && 'scheduled' || 'build change' }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/sbt-setup
+        with:
+          java-version: '21'
+          sbt-version: ${{ env.SBT2_VERSION }}
+
+      # ---------------------------------------------------------------------------------------
+      # Anti-vacuity guard #1: prove the major actually took effect.
+      # `--numeric-version` and `--version` IGNORE the launcher flag and report the
+      # build.properties value, so they are useless here. `show` works on both majors;
+      # `print` is sbt-2-only.
+      # ---------------------------------------------------------------------------------------
+      - name: Assert the run is really on sbt 2
+        run: |
+          set -euo pipefail
+          # Anchor on sbt's own value line ("[info] \t<version>"), never "the last version-shaped
+          # token in the tail": a jar name like scala-library-2.13.18.jar matches 2.* and would
+          # green-light an sbt 1 run. `|| true` so a no-match reaches the explicit check below
+          # instead of dying under `set -e` with no diagnostic.
+          # -Dsbt.color=false explicitly: the workflow-level SBT_OPTS sets sbt.color=true, so
+          # without this every line arrives wrapped in ANSI escapes and the anchor below matches
+          # nothing. Strip any residual escapes anyway, so a future SBT_OPTS edit cannot silently
+          # turn this guard into a permanent false negative.
+          actual=$(sbt $SBT_VERSION_FLAG --batch -Dsbt.color=false -Dsbt.supershell=false \
+              "show sbtVersion" 2>&1 \
+            | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
+            | sed -n 's/^\[info\][[:space:]]*\([0-9][0-9.]*\)[[:space:]]*$/\1/p' \
+            | tail -1 || true)
+          echo "resolved sbt version: ${actual}"
+          case "$actual" in
+            2.*) echo "OK — running sbt ${actual}" ;;
+            *)   echo "::error title=Wrong sbt major::expected 2.x, got ${actual}. The launcher flag did not take effect (check SBT_OPTS for -Dsbt.version=)." ; exit 1 ;;
+          esac
+
+      - name: Format + lint
+        run: sbt $SBT_VERSION_FLAG scalafmtCheckAll scalafmtSbtCheck "scalafixAll --check"
+
+      # ---------------------------------------------------------------------------------------
+      # `testOnly`, never `test`: on sbt 2 `test` IS `testQuick` and returns [success] having run
+      # zero tests, off a global disk cache that survives `clean` and `rm -rf target`.
+      # A dedicated --sbt-cache also keeps scoverage's scoverage-data/ side-effect directory out
+      # of a restored action cache, which otherwise dies with FileNotFoundException.
+      # ---------------------------------------------------------------------------------------
+      - name: Full gate suite (unit + integration + coverage + MiMa)
+        run: |
+          # --batch on EVERY sbt call in this job: without it a server survives the step, and the
+          # deliberately flagless "sbt 1" half of the artifact-equivalence check below would be
+          # served by it, silently comparing sbt 2 against itself.
+          sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" \
+            clean coverage "Test/testOnly" "integration/testOnly" \
+            coverageOff coverageReport coverageAggregate
+
+      # MiMa is ADVISORY by contract (TESTING.md, #274): it never blocks a merge, and
+      # `mimaReportBinaryIssues` exits non-zero on findings. ci.yml runs it under
+      # continue-on-error; this job must not be stricter, or the next intentional binary break
+      # turns the cross-build gate red and auto-files a false "sbt 2 is broken" issue.
+      - name: Binary compatibility (advisory)
+        continue-on-error: true
+        run: sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" mimaReportBinaryIssues || true
+
+      # ---------------------------------------------------------------------------------------
+      # Anti-vacuity guard #2: a run that executed zero tests must FAIL, not pass. This is the
+      # single most likely way this workflow ships broken.
+      # ---------------------------------------------------------------------------------------
+      # Anti-vacuity guard #2. Two things the first version got wrong:
+      #   - every substitution needs `|| true`. Under `set -euo pipefail` a no-match `grep` kills the
+      #     step at the assignment, so the ::error annotations below — the entire point of the guard
+      #     — never printed; the operator just saw "Process completed with exit code 1".
+      #   - counting ALL reports summed root's ~824 unit tests with integration's 44, so an
+      #     integration leg that discovered ZERO tests was masked. Assert per project.
+      - name: Assert a non-zero test count, per project
+        run: |
+          set -euo pipefail
+          count_for() {
+            find . -path "$1" -name '*.xml' -print0 2>/dev/null \
+              | xargs -0 --no-run-if-empty grep -ho 'tests="[0-9]*"' 2>/dev/null \
+              | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}' || true
+          }
+          # sbt 2 lays reports out under target/out/jvm/<scala>/<project>/test-reports/
+          root=$(count_for '*/gatling-picatinny/test-reports/*')
+          integ=$(count_for '*/gatling-picatinny-integration/test-reports/*')
+          echo "tests executed: root=${root:-0} integration=${integ:-0}"
+          fail=0
+          if [ "${root:-0}" -lt 1 ]; then
+            echo "::error title=Vacuous run (root)::the root suite reported ${root:-0} tests. On sbt 2 'test' is 'testQuick' and passes having run nothing."
+            fail=1
+          fi
+          if [ "${integ:-0}" -lt 1 ]; then
+            echo "::error title=Vacuous run (integration)::the integration suite reported ${integ:-0} tests, so the Testcontainers layer proved nothing. Root's count cannot cover for it."
+            fail=1
+          fi
+          exit "$fail"
+
+      - name: Publish test results (sbt 2)
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          check_name: "Test results (sbt 2)"
+          files: "**/test-reports/*.xml"
+          action_fail_on_inconclusive: true # a glob that matches nothing must FAIL, not warn
+          comment_mode: 'off'
+
+      - name: Upload test report XML (sbt 2)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-sbt2
+          path: "**/test-reports/*.xml"
+          if-no-files-found: error # the other half of the silent-false-green
+          retention-days: 7
+
+      # ---------------------------------------------------------------------------------------
+      # FR-008 / SC-005: the artifact must not depend on which major built it.
+      # /usr/bin/diff explicitly — some shells proxy `diff` and return false "identical".
+      # ---------------------------------------------------------------------------------------
+      - name: Artifact equivalence (sbt 2 POM vs sbt 1 POM)
+        run: |
+          set -euo pipefail
+          sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" 'set ThisBuild / version := "0.0.0-xbuild"' publishLocal
+          find "$HOME/.ivy2/local/org.galaxio" -name '*.pom' -exec cp {} /tmp/sbt2.pom \;
+          sbt --batch 'set ThisBuild / version := "0.0.0-xbuild"' publishLocal
+          find "$HOME/.ivy2/local/org.galaxio" -name '*.pom' -exec cp {} /tmp/sbt1.pom \;
+          if ! /usr/bin/diff -u /tmp/sbt1.pom /tmp/sbt2.pom; then
+            echo "::error title=Artifact drift::the POM differs between sbt 1 and sbt 2 (FR-008)."
+            exit 1
+          fi
+          grep -c '<scope>provided</scope>' /tmp/sbt2.pom
+
+          # A POM comparison alone is NOT sufficient. sbt 2's action cache can serve a compile hit
+          # whose class-directory blob is gone, and packaging then silently drops classes while the
+          # POM stays perfectly correct — so two manifest-only jars would compare "equal" and pass.
+          # Compare the JAR CONTENTS too, and require a plausible entry count.
+          j1=$(find . -name 'gatling-picatinny_2.13-0.0.0-xbuild.jar' -path '*/target/*' ! -path '*/out/*' | head -1)
+          j2=$(find . -name 'gatling-picatinny_2.13-0.0.0-xbuild.jar' -path '*/out/*' | head -1)
+          n1=$(unzip -Z1 "$j1" | wc -l); n2=$(unzip -Z1 "$j2" | wc -l)
+          echo "jar entries: sbt1=${n1} sbt2=${n2}"
+          if [ "${n1}" -lt 100 ] || [ "${n2}" -lt 100 ]; then
+            echo "::error title=Truncated artifact::a jar has ${n1}/${n2} entries. sbt 2's action cache probably served a compile hit whose class directory was never materialised."
+            exit 1
+          fi
+          if ! /usr/bin/diff <(unzip -Z1 "$j1" | sort) <(unzip -Z1 "$j2" | sort); then
+            echo "::error title=Artifact drift::jar entry sets differ between sbt 1 and sbt 2 (FR-008)."
+            exit 1
+          fi
+
+      # ---------------------------------------------------------------------------------------
+      # FR-014 / FR-015: the Scala/sbt overlay is the consumer-facing starting point and the e2e
+      # layer, so it must work on whichever major a user has.
+      #
+      # This builds the CHECKED-IN overlay (examples/scala-sbt-example) rather than rendering the
+      # external templates-gatling pack, for three reasons:
+      #   1. Those files are what this repository actually owns and changes — and nothing in CI
+      #      builds them today. ci.yml's `template-tests` substitutes a template render, so the
+      #      overlay's own build.sbt/plugins.sbt/build.properties were previously unverified.
+      #   2. It does not depend on the external template pack at all. (That blocker is now also
+      #      resolved upstream: v0.15.0 defaulted to gatling-sbt 4.18.3, which publishes no
+      #      _sbt2_3 artifact; v0.16.0 defaults to 4.19.1, and ci.yml is pinned there.)
+      #   3. No galaxio CLI or Go toolchain needed here.
+      # The template render stays covered by ci.yml's `template-tests` on sbt 1 (FR-016 — java-maven
+      # and kotlin-gradle keep exactly one leg each, and no existing job is renamed).
+      # ---------------------------------------------------------------------------------------
+      - name: Example overlay e2e under sbt 2
+        env:
+          PICATINNY_VERSION: 0.0.0-overlay
+        run: |
+          set -euo pipefail
+          # Publish under sbt 2 specifically, so the overlay consumes an sbt-2-built artifact rather
+          # than whichever one the equivalence step happened to leave in the local repo last.
+          sbt $SBT_VERSION_FLAG --batch --sbt-cache "${RUNNER_TEMP}/sbt2-cache" 'set ThisBuild / version := "0.0.0-overlay"' publishLocal
+          cd examples/scala-sbt-example
+          # `Gatling/testOnly *`, never `Gatling/test`: on sbt 2 `test` is `testQuick` and prints
+          # "No tests to run" / [success] even with target/ deleted, because the pass record lives
+          # in the global disk cache. `testFull` is not convergent either — it does not exist on
+          # sbt 1. Only `testOnly *` works on both.
+          sbt $SBT_VERSION_FLAG --sbt-cache "${RUNNER_TEMP}/sbt2-cache" --batch \
+            -Dsbt.color=false -Dsbt.supershell=false 'Gatling/testOnly *' 2>&1 | tee /tmp/overlay.log
+
+          # Anti-vacuity, applied to the overlay too: three simulations must have run AND issued a
+          # non-zero number of requests. A Gatling run with zero requests passes its assertions
+          # vacuously.
+          # `|| true` on BOTH: without it a Gatling output-format change kills the step at the
+          # assignment and the ::error annotations below never print.
+          sims=$(grep -c 'Simulation .* successful' /tmp/overlay.log || true)
+          reqs=$(grep -oE 'request count *\|? *[0-9]+' /tmp/overlay.log | grep -oE '[0-9]+$' | awk '{s+=$1} END {print s+0}' || true)
+          echo "simulations=${sims} total_requests=${reqs}"
+          if [ "${sims:-0}" -lt 3 ]; then
+            echo "::error title=Overlay did not run::expected 3 successful simulations, saw ${sims}."
+            exit 1
+          fi
+          if [ "${reqs:-0}" -lt 1 ]; then
+            echo "::error title=Vacuous overlay run::simulations reported ${reqs} requests; assertions passed against nothing."
+            exit 1
+          fi
+
+      - name: Report a scheduled failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // A red run on a schedule nobody watches is not a signal (contract M-3).
+            const title = 'sbt 2 compatibility is broken on main';
+            const body = `The scheduled sbt 2 compatibility run failed.\n\n` +
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n` +
+              `sbt 1 is unaffected — this does not block releases. See specs/012-cross-build-sbt/.`;
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'sbt2-compat',
+            });
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['sbt2-compat'],
+              });
+            }

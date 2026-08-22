@@ -1,4 +1,5 @@
 /target/
+/integration/target/
 /.settings
 /.classpath
 /.idea

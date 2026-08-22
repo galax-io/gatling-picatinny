@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-sbt scalafmtAll scalafmtSbt compile test
+# `testOnly`, not `test`: on sbt 2 `test` is `testQuick` and returns success having run zero
+# tests, off a global cache that survives `clean`. Any contributor on an sbt 2 launcher would get
+# a silently vacuous pre-commit gate (spec 012, research D-15).
+sbt scalafmtAll scalafmtSbt compile "Test/testOnly"

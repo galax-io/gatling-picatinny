@@ -1,7 +1,5 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at specs/010-faker-syntax-perf/plan.md
+Active plan: [specs/012-cross-build-sbt/plan.md](specs/012-cross-build-sbt/plan.md)
 <!-- SPECKIT END -->

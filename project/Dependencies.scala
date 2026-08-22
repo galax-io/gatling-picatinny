@@ -72,19 +72,19 @@ object Dependencies {
   )
 
   lazy val scalaTest: Seq[ModuleID] = Seq(
-    "org.scalatest" %% "scalatest" % "3.2.20" % "test,it",
+    "org.scalatest" %% "scalatest" % "3.2.20" % Test,
   )
 
   lazy val scalaCheck: Seq[ModuleID] = Seq(
-    "org.scalacheck" %% "scalacheck" % "1.19.0" % "test,it",
+    "org.scalacheck" %% "scalacheck" % "1.19.0" % Test,
   )
 
   lazy val scalaTestPlus: Seq[ModuleID] = Seq(
-    "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % "test,it",
+    "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % Test,
   )
 
   lazy val scalaMock: Seq[ModuleID] = Seq(
-    "org.scalamock" %% "scalamock" % "7.5.5" % "test,it",
+    "org.scalamock" %% "scalamock" % "7.5.5" % Test,
   )
 
   lazy val generex: Seq[ModuleID] = Seq(
@@ -118,8 +118,8 @@ object Dependencies {
   // official @INN constraint (Russian INN, 10/12-digit FTS checksum). Used with ParameterMessageInterpolator
   // so no Jakarta EL implementation is needed.
   lazy val idValidationTest: Seq[ModuleID] = Seq(
-    "dev.personnummer"        % "personnummer"        % "3.5.0"       % "test,it",
-    "org.hibernate.validator" % "hibernate-validator" % "9.1.3.Final" % "test,it",
+    "dev.personnummer"        % "personnummer"        % "3.5.0"       % Test,
+    "org.hibernate.validator" % "hibernate-validator" % "9.1.3.Final" % Test,
   )
 
   lazy val circeDeps: Seq[ModuleID] = Seq(
@@ -130,22 +130,29 @@ object Dependencies {
   )
 
   lazy val testcontainers: Seq[ModuleID] = Seq(
-    "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.1" % "test,it",
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.44.1" % Test,
   )
 
   // Real PostgreSQL JDBC driver — integration-test only (drives JdbcStorageBackend against a real
-  // Postgres Testcontainers DB). Authorized 2026-06-21; MUST stay `it` scope, never published.
+  // Postgres Testcontainers DB). Authorized 2026-06-21. Lives on the `integration` subproject, which
+  // sets `publish / skip := true` — that is what keeps it out of the POM now that the `it`
+  // configuration is gone (spec 012).
   lazy val jdbcDrivers: Seq[ModuleID] = Seq(
-    "org.postgresql" % "postgresql" % "42.7.13" % "it",
+    "org.postgresql" % "postgresql" % "42.7.13" % Test,
   )
 
+  // Root project's test bundle. Testcontainers + the JDBC driver deliberately are NOT here: they
+  // belong to the `integration` subproject only, so the unit gate stays Docker-free.
   lazy val scalaTesting: Seq[ModuleID] =
-    scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus ++ testcontainers ++ jdbcDrivers
+    scalaCheck ++ scalaTest ++ scalaMock ++ scalaTestPlus
+
+  /** Container-backed dependencies, consumed only by the `integration` subproject. */
+  lazy val integrationTesting: Seq[ModuleID] = testcontainers ++ jdbcDrivers
 
   lazy val junit: Seq[ModuleID] = Seq(
-    "org.junit.jupiter"    % "junit-jupiter"     % "6.1.3"  % "test,it",
-    "com.github.sbt.junit" % "jupiter-interface" % "0.19.0" % "test,it",
-    "org.assertj"          % "assertj-core"      % "3.27.7" % "test,it",
+    "org.junit.jupiter"    % "junit-jupiter"     % "6.1.3"  % Test,
+    "com.github.sbt.junit" % "jupiter-interface" % "0.19.0" % Test,
+    "org.assertj"          % "assertj-core"      % "3.27.7" % Test,
   )
 
 }

@@ -1,11 +1,20 @@
 name: sbt setup
-description: Setup Java (Temurin), sbt, and dependency caches
+description: Setup Java (Temurin), sbt, and dependency caches — optionally pinned to a specific sbt major
 
 inputs:
   java-version:
     description: Temurin JDK version
     required: false
     default: '21'
+  sbt-version:
+    # EMPTY is deliberate, not an oversight. Empty means "use project/build.properties", i.e. the
+    # declared default major (sbt 1.x). Every existing caller passes only java-version and keeps
+    # working unchanged. A non-empty value selects the secondary major for this job.
+    description: >-
+      sbt version to run against. Leave empty to use the repository's pin in
+      project/build.properties. Set (e.g. '2.0.6') to run the job against the secondary major.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -17,10 +26,41 @@ runs:
         java-version: ${{ inputs.java-version }}
 
     - name: Setup sbt
+      # NOTE: this action's `sbt-runner-version` input selects the LAUNCHER, not the build's sbt
+      # version ("The actual version is controlled via project/build.properties"). Its default is
+      # already an sbt 2 launcher, and the launcher is version-agnostic — it fetches whichever sbt
+      # the build asks for. So it is not a mechanism for choosing the major; SBT_VERSION_FLAG is.
       uses: sbt/setup-sbt@v1
+
+    - name: Resolve sbt major
+      id: sbt
+      shell: bash
+      run: |
+        set -euo pipefail
+        requested='${{ inputs.sbt-version }}'
+        if [ -n "$requested" ]; then
+          version="$requested"
+          # Carried as a DEDICATED env var, never appended to SBT_OPTS. ci.yml sets SBT_OPTS at
+          # workflow level and again at step level in binary-compat, so an SBT_OPTS-borne selection
+          # is clobbered and the job silently runs the wrong major while reporting success.
+          # Independently, at the launcher level SBT_OPTS strictly outranks --sbt-version
+          # (JAVA_TOOL_OPTIONS > SBT_OPTS > CLI flag > JAVA_OPTS > build.properties).
+          echo "SBT_VERSION_FLAG=--sbt-version $version" >> "$GITHUB_ENV"
+        else
+          version=$(sed -n 's/^sbt\.version=//p' project/build.properties | tr -d '[:space:]')
+          echo "SBT_VERSION_FLAG=" >> "$GITHUB_ENV"
+        fi
+        major="${version%%.*}"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "major=$major"     >> "$GITHUB_OUTPUT"
+        echo "sbt major=$major (version $version)"
 
     - name: Cache Coursier
       uses: coursier/cache-action@v8
+      with:
+        # The two majors resolve different meta-build classpaths (_2.12_1.0 vs _sbt2_3), so the
+        # caches must not be shared.
+        extraKey: sbt${{ steps.sbt.outputs.major }}
 
     - name: Cache Ivy/SBT
       uses: actions/cache@v5
@@ -28,6 +68,10 @@ runs:
         path: |
           ~/.ivy2/cache
           ~/.sbt
+          ~/.config/sbt
+          ~/.cache/sbt
           ~/.cache/coursier
-        key: sbt-${{ runner.os }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
-        restore-keys: sbt-${{ runner.os }}-
+        # The major belongs in BOTH key and restore-keys. An unqualified restore-keys lets the sbt 2
+        # leg restore an sbt 1 cache, which is how a cross-build check quietly stops being one.
+        key: sbt-${{ runner.os }}-sbt${{ steps.sbt.outputs.major }}-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/**') }}
+        restore-keys: sbt-${{ runner.os }}-sbt${{ steps.sbt.outputs.major }}-

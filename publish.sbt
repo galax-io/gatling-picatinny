@@ -24,4 +24,7 @@ ThisBuild / developers := List(
 
 // Remove all additional repository other than Maven Central from POM
 ThisBuild / pomIncludeRepository := { _ => false }
-ThisBuild / licenses             := List("Apache 2" -> java.net.URI.create("http://www.apache.org/licenses/LICENSE-2.0.txt").toURL())
+// `License.Apache2` is the one form that compiles on BOTH sbt majors: sbt 1 types it as
+// (String, URL) and sbt 2 as sbt.librarymanagement.License, matching each major's `licenses` key.
+// It also emits the canonical SPDX id over https (spec 012, D-05).
+ThisBuild / licenses             := List(License.Apache2)
