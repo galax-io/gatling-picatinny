@@ -2,7 +2,7 @@
 // cross-built on sbt 1 and sbt 2 (spec 012) and `addSbtPlugin` resolves the suffix per running
 // major. `sbt-explicit-dependencies` is deliberately absent: it has no sbt 2 build, so it lives in
 // the opt-in `project/hygiene/` overlay instead (research D-06).
-addSbtPlugin("com.github.sbt"       % "sbt-ci-release"        % "1.12.0")
+addSbtPlugin("com.github.sbt"       % "sbt-ci-release"        % "1.12.1")
 // sbt-ci-release 1.12.0 dropped its transitive sbt-git dependency; GitVersioning below needs it declared directly.
 addSbtPlugin("com.github.sbt"       % "sbt-git"               % "2.1.0")
 addSbtPlugin("io.gatling"           % "gatling-sbt"           % "4.19.1")
