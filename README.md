@@ -312,3 +312,7 @@ sbt --sbt-version 2.0.6 "Test/testOnly"
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) for details.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
