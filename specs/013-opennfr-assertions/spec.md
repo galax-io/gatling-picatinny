@@ -147,19 +147,27 @@ deprecated API.
 
 ---
 
-## Parity: ten of eleven, and that is settled
+## Parity: ten of eleven, and where the eleventh is blocked
 
 `nfr.yml` builds eleven assertions. Ten translate. The eleventh — `myGroup: '1600'`, a group-only
-scope — is refused, and upstream settled in `v0.6.0` that it always will be: Gatling has three scopes
-and **none denotes the requests a path encloses**; a group path resolves to the *group*, whose
-statistics are its own. Checked clause by clause against the Gatling bytecode.
+scope — is refused. Upstream's Selection table records it as a `cannot` at `v0.6.0`, and this renderer
+follows that row.
 
-**It is less a capability lost than a mislabelling declined.** What Gatling computes for
-`details("myGroup").responseTime.percentile(95)` is the group's **cumulated** response time — the
-summed duration of one pass through the block — not the 95th percentile of the requests inside it.
-The deprecated format lets that be written under a name that is not true of what is measured; OpenNFR
-refuses because it will not name the quantity falsely. **FR-017** must carry this, because a user
-told only "your file no longer translates" deserves the reason.
+**The blocker is the format's metric axis, not Gatling's model.** Read from the Gatling bytecode:
+`AssertionValidator.resolvePath` sends a `StatsPath.Group` to
+`groupCumulatedResponseTimeGeneralStats`, so Gatling asserts on a group path perfectly well — it
+answers with the group's **cumulated** response time, the sum of the durations of the requests one
+traversal encloses. What is missing is a *name*: OpenNFR admits one metric,
+`http.client.request.duration`, and a sum over several requests is not an HTTP request's duration, so
+**no metric name in the format is true of the quantity Gatling would return**. Upstream's own row says
+as much — *"which no name in § Names is true of"*.
+
+That gap is filed at `opennfr#89` and tracked here at `#328`; the same gap leaves Kafka, JDBC and
+bracketed `startTransaction` spans unnameable. **This document states the cause, not the outcome:**
+how upstream answers is not settled, so nothing here promises what happens when it does.
+
+**FR-017** must carry this, because a user told only "your file no longer translates" deserves the
+reason — and deserves to be told that the deprecated path still covers the case today.
 
 The obvious workaround — `{loadtest.request.name: myGroup}`, which renders the identical Gatling call
 — is forbidden by **FR-007**: it is a document that says *request* about a group.

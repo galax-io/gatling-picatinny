@@ -43,6 +43,14 @@ class MigrationTableSpec extends AnyWordSpec with Matchers {
     */
   private val tableRows: List[String] = doc.linesIterator.filter(_.startsWith("|")).toList
 
+  /** The section that refuses the group-only scope, so a guard over it cannot be satisfied by prose elsewhere on the page. */
+  private val groupOnlySection: String =
+    doc.linesIterator
+      .dropWhile(!_.startsWith("### A scope naming only a group"))
+      .drop(1)
+      .takeWhile(!_.startsWith("### "))
+      .mkString("\n")
+
   "the migration table" should {
 
     "name every metric key the deprecated builder recognises" in {
@@ -61,7 +69,16 @@ class MigrationTableSpec extends AnyWordSpec with Matchers {
 
     "say why the group-only scope has no equivalent, not merely that it has none" in {
       docLower should include("cumulated")
-      docLower should include("none denotes")
+      // The cause, named where a reader will look: a missing metric name, not a missing scope. Attributing it to Gatling's
+      // model sent readers looking for a limit that is not there (#326).
+      docLower should include("no metric name in the format is true of")
+      docLower should include("opennfr#89")
+    }
+
+    "point at the deprecated path from the section that refuses the case, not merely somewhere" in {
+      // Scoped to the section: `assertionFromYaml` is named in the page's opening paragraph anyway, so a page-wide
+      // `contains` would pass without the reader ever being told where to go.
+      groupOnlySection should include("assertionFromYaml")
     }
 
     "warn against the workaround that renders but lies" in {
