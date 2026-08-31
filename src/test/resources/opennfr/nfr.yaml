@@ -1,0 +1,48 @@
+# The OpenNFR translation of src/test/resources/nfr.yml.
+#
+# One requirement per distinct selection, per specs/013-opennfr-assertions/contracts/parity.md.
+# `op: lt` throughout: the deprecated builder's operator is implicit and is always `lt`, so a
+# translation using `lte` would be a different requirement and the parity test must fail on it.
+# The Russian metric keys survive as `displayName`, which the format allows in any script.
+#
+# Ten of the eleven assertions. The eleventh — `myGroup: '1600'`, a group-only scope — has no
+# OpenNFR spelling: no Gatling scope denotes the requests a path encloses. See parity.md § 4.
+
+apiVersion: opennfr.io/v1
+kind: RequirementSet
+metadata:
+  name: picatinny-parity
+  displayName: Перевод nfr.yml
+
+spec:
+  requirements:
+    - name: whole-run
+      displayName: Весь прогон
+      selector: {}
+      criteria:
+        - {displayName: 99 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 1500, unit: ms}
+        - {displayName: 95 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 1200, unit: ms}
+        - {displayName: Максимальное время выполнения,    metric: http.client.request.duration, aggregation: max, op: lt, threshold: 2000, unit: ms}
+        - {displayName: Процент ошибок, bad: {error.type: "*"}, aggregation: rate, op: lt, threshold: 5, unit: "%"}
+
+    - name: get-test-id
+      selector:
+        loadtest.group.name: [myGroup]
+        loadtest.request.name: GET /test/id
+      criteria:
+        - {displayName: 99 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 1500, unit: ms}
+        - {displayName: 95 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 1200, unit: ms}
+
+    - name: get-test-email
+      selector:
+        loadtest.request.name: GET /test/email
+      criteria:
+        - {displayName: 99 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 400, unit: ms}
+        - {displayName: 95 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 320, unit: ms}
+
+    - name: get-test-uuid
+      selector:
+        loadtest.request.name: GET /test/uuid
+      criteria:
+        - {displayName: Максимальное время выполнения, metric: http.client.request.duration, aggregation: max, op: lt, threshold: 1000, unit: ms}
+        - {displayName: Процент ошибок, bad: {error.type: "*"}, aggregation: rate, op: lt, threshold: 1, unit: "%"}

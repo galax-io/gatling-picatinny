@@ -73,6 +73,15 @@ cp -R "$ROOT_DIR/examples/scala-sbt-example/src/test/scala/org/galaxio/performan
 cp "$ROOT_DIR/examples/scala-sbt-example/src/test/resources/logback.xml" \
   "$PROJECT_DIR/src/test/resources/logback.xml"
 
+# Test resources the overlay simulations read by relative path. Only the simulations under
+# src/test/scala are copied wholesale, so every resource one of them opens has to be named here or
+# the rendered project fails at run time with "No such file or directory" — which is exactly how
+# OpenNfrAssertionsE2E first broke this job.
+for resource in opennfr-e2e.yaml; do
+  cp "$ROOT_DIR/examples/scala-sbt-example/src/test/resources/$resource" \
+    "$PROJECT_DIR/src/test/resources/$resource"
+done
+
 (
   cd "$PROJECT_DIR"
   # `Gatling/testOnly *`, NOT `Gatling/test`. On sbt 2 `test` is `testQuick`: with the project's

@@ -1,0 +1,12 @@
+# The eleventh assertion of nfr.yml, which OpenNFR refuses by decision: no Gatling scope denotes
+# the requests a path encloses. Kept as a fixture so the refusal is exercised from both surfaces.
+apiVersion: opennfr.io/v1
+kind: RequirementSet
+metadata: {name: group-only}
+spec:
+  requirements:
+    - name: mygroup-itself
+      selector:
+        loadtest.group.name: [myGroup]
+      criteria:
+        - {metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 1600, unit: ms}
