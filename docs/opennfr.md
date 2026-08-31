@@ -85,20 +85,28 @@ spec:
 
 ### A scope naming only a group
 
-`myGroup: '1600'` has **no OpenNFR spelling, and will not get one.** Upstream settled this: Gatling
-has three assertion scopes and none denotes *the requests a path encloses*. A group path resolves to
-the **group**, whose statistics are its own.
+`myGroup: '1600'` has **no OpenNFR spelling today** — and the reason is worth being exact about,
+because it is not the one you would guess.
 
-**This is worth understanding rather than working around.** What Gatling computes for
-`details("myGroup").responseTime.percentile(95)` is the group's **cumulated** response time — the
-summed duration of one virtual user's pass through the whole block — **not** the 95th percentile of
-the requests inside it. If you wrote that assertion expecting the latter, it has never measured what
-you meant. NFR-YAML let it be written under a name (`responseTime`) that is not true of the number
-computed; OpenNFR refuses rather than name the quantity falsely.
+**Gatling asserts on a group perfectly well.** `details("myGroup")` resolves to the group and answers
+with its **cumulated** response time: the sum of the durations of the requests one pass through the
+block encloses. What is missing is a *name*. OpenNFR admits exactly one metric,
+`http.client.request.duration`, and a sum over several requests is not an HTTP request's duration —
+so **no metric name in the format is true of the quantity Gatling would return**. The document cannot
+say what it would have to say, and this renderer refuses rather than name the quantity falsely.
 
-If what you want is the block's cumulated time, no name in the format is true of it yet. If what you
-want is the requests inside the group, assert them individually, or use `{loadtest.request.name: "*"}`
-to state the bar once for every recorded request.
+That is a gap in the format's metric axis, not a limit of the target. It is being decided upstream at
+[`opennfr#89`](https://github.com/galax-io/opennfr/issues/89) — the same gap that leaves Kafka, JDBC
+and bracketed spans unnameable — so this page will change when that does.
+
+**Meanwhile the deprecated path still covers this one case.** `assertionFromYaml` is untouched and
+keeps working; keep it for the file that needs it. Be clear about what its number means, though: if
+you wrote `myGroup: '1600'` expecting the 95th percentile of the requests inside the group, it has
+never measured that. NFR-YAML let the assertion be written under a name (`responseTime`) that is not
+true of the number computed.
+
+If what you want is the requests inside the group, assert them individually, or use
+`{loadtest.request.name: "*"}` to state the bar once for every recorded request.
 
 **Do not write `{loadtest.request.name: myGroup}`.** It renders the identical Gatling call, because a
 one-part path is one-part whatever produced it — and it is a document that says *request* about a
