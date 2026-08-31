@@ -65,19 +65,26 @@ its target is fractional and must stay fractional.
 the deprecated builder **ignores both**, so neither is a parity obligation. Throughput gains a home in
 OpenNFR as a guard; APDEX has none in either format.
 
-## 4. The eleventh, and why it never joins
+## 4. The eleventh, and what blocks it
 
-`myGroup: '1600'` is a group-only scope. Upstream settled in `v0.6.0` that it is a permanent
-`cannot`: Gatling has three scopes and none denotes the requests a path encloses; a group path
-resolves to the *group*, whose statistics are its own.
+`myGroup: '1600'` is a group-only scope. Upstream's Selection table records it as a `cannot` at
+`v0.6.0`, and this renderer follows that row.
 
-**What the deprecated assertion actually measures is not what its author wrote.** Gatling computes
-the group's **cumulated** response time — the summed duration of one pass through the block — not the
-95th percentile of the requests inside it. The old format lets that be written under a name that is
-not true of the measurement; OpenNFR refuses rather than name it falsely.
+**The blocker is a missing metric name, not a missing scope.** Gatling asserts on a group path:
+`AssertionValidator.resolvePath` sends a `StatsPath.Group` to
+`groupCumulatedResponseTimeGeneralStats` (read from bytecode at `3.13.5`). What it returns is the
+group's **cumulated** response time — the sum of the durations of the requests one traversal encloses
+— and OpenNFR admits one metric, `http.client.request.duration`, which is not true of a sum over
+several requests. Upstream's row says exactly this: *"which no name in § Names is true of"*.
 
-So this row is **a mislabelling declined, not a capability lost**, and FR-017 must say so — a user
-told only "your file no longer translates" is owed the reason.
+**What the deprecated assertion measures is not what its author wrote**, either. `myGroup: '1600'`
+under the key `95 перцентиль времени выполнения` names a percentile of response time and gets a
+percentile of cumulated time. The old format lets that be written; OpenNFR refuses rather than name
+the quantity falsely — which is why the deprecated path keeps this row and OpenNFR does not.
+
+FR-017 must say so: a user told only "your file no longer translates" is owed the reason, and is owed
+being told the deprecated path still covers it. The gap itself is filed at `opennfr#89`, tracked here
+at `#328`. **This file states the cause, not the outcome** — how upstream answers is not settled.
 
 **The workaround is forbidden.** `{loadtest.request.name: myGroup}` renders the identical Gatling
 call, because a one-part path is one-part whatever produced it. It is a document that says *request*

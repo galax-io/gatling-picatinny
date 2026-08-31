@@ -21,7 +21,7 @@ reason given — an allowlist, never accept-by-default (FR-009).
 | `{loadtest.request.name: "*"}` | the per-request scope | **can** — one statement per recorded request position |
 | `{loadtest.group.name: [G₁…Gₙ], loadtest.request.name: "*"}` | — | **cannot** — no scope both quantifies and carries a path |
 | `{loadtest.group.name: [… "*" …], loadtest.request.name: X}` | — | **cannot** — a group at that position with any name, and no scope carries a wildcard path part |
-| `{loadtest.group.name: [G₁…Gₙ]}`, no request name | — | **cannot** — no scope denotes the requests a path encloses; a group path resolves to the group, whose statistics are its own |
+| `{loadtest.group.name: [G₁…Gₙ]}`, no request name | — | **cannot** — no scope denotes the requests a path encloses; a group path resolves to the group, whose statistics are its own. **Local note**: what this row refuses is naming the group's *cumulated* response time, not addressing the group — `AssertionValidator.resolvePath` sends a `StatsPath.Group` to `groupCumulatedResponseTimeGeneralStats` (bytecode, `3.13.5`, 2026-08-31), so the scope is reachable and the *metric name* is what is missing. Upstream's own full row says so: *"which no name in § Names is true of"*. Filed as `opennfr#89`, tracked here at `#328` |
 | `loadtest.group.name` as a string, or `[]` | — | **cannot** — a hierarchy has one spelling; "no enclosing group" is said by omitting the key |
 | any path value that is not a string | — | **cannot** — a path part is a string; `200` and `"200"` are different documents |
 | any other attribute | — | **cannot** — Gatling addresses assertions by recorded group and request names only |
