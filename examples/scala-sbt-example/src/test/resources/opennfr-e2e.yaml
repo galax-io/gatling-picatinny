@@ -1,0 +1,28 @@
+# The requirements the OpenNfrAssertionsE2E simulation is judged by.
+#
+# Thresholds are deliberately generous: this document exists to prove the assertions REACH the
+# Gatling runtime and are evaluated against a real run, not to measure the mock. The one tight
+# criterion is the request count — a run that issued nothing would pass every latency bar
+# vacuously, so the document asserts the run happened at all.
+
+apiVersion: opennfr.io/v1
+kind: RequirementSet
+metadata:
+  name: overlay-e2e
+  displayName: What the overlay run owes
+
+spec:
+  requirements:
+    - name: the-run-happened
+      selector: {}
+      criteria:
+        - {displayName: at least one request, aggregation: count, op: gte, threshold: 1, unit: "{request}"}
+        - {displayName: nothing failed, bad: {error.type: "*"}, aggregation: rate, op: lt, threshold: 5, unit: "%"}
+        - {displayName: 99th percentile, metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 10, unit: s}
+
+    - name: the-echo-endpoint
+      displayName: The echo endpoint, addressed by its recorded name
+      selector:
+        loadtest.request.name: opennfr echo
+      criteria:
+        - {displayName: slowest, metric: http.client.request.duration, aggregation: max, op: lt, threshold: 10, unit: s}
