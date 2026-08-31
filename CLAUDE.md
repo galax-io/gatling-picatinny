@@ -1,5 +1,5 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-Active plan: [specs/012-cross-build-sbt/plan.md](specs/012-cross-build-sbt/plan.md)
+Active plan: [specs/013-opennfr-assertions/plan.md](specs/013-opennfr-assertions/plan.md)
 <!-- SPECKIT END -->
