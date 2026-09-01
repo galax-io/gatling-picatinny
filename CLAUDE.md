@@ -1,5 +1,5 @@
 @AGENTS.md
 
 <!-- SPECKIT START -->
-Active plan: [specs/013-opennfr-assertions/plan.md](specs/013-opennfr-assertions/plan.md)
+Active plan: [specs/014-perf-templates-cookies/plan.md](specs/014-perf-templates-cookies/plan.md)
 <!-- SPECKIT END -->

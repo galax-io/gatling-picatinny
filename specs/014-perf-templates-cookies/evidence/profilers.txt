@@ -1,0 +1,30 @@
+# T011 — profiler availability after the harness fix
+# Recorded: 2026-09-01T16:35:30Z
+
+[info] Supported profilers:
+[info]           cl: Classloader profiling via standard MBeans 
+[info]         comp: JIT compiler profiling via standard MBeans 
+[info]           gc: GC profiling via standard MBeans 
+[info]          jfr: Java Flight Recorder profiler 
+[info]      mempool: Memory pool/footprint profiling via standard MBeans 
+[info]       pauses: Pauses profiler 
+[info]   safepoints: Safepoints profiler 
+[info]        stack: Simple and naive Java stack profiler 
+[info] Unsupported profilers:
+[info]        async: <none> 
+[info] Unable to load async-profiler. Ensure asyncProfiler library is on LD_LIBRARY_PATH (Linux), DYLD_LIBRARY_PATH (Mac OS), or -Djava.library.path. Alternatively, point to explicit library location with -prof async:libPath=<path>.
+[info]    dtraceasm: <none> 
+[info] [sudo: a password is required
+[info] ]
+[info]         perf: <none> 
+[info] [Cannot run program "perf": error=2, No such file or directory]
+[info]      perfasm: <none> 
+[info] [Cannot run program "perf": error=2, No such file or directory]
+[info]      perfc2c: <none> 
+[info] [Cannot run program "perf": error=2, No such file or directory]
+[info]     perfnorm: <none> 
+[info] [Cannot run program "perf": error=2, No such file or directory]
+[info]     xperfasm: <none> 
+[info] Unable to start the profiler. Try running JMH as Administrator, and ensure that previous profiling session is stopped. Use 'xperf -stop' to stop the active profiling session.: [Cannot run program "xperf": error=2, No such file or directory]
+[info] Wrote /Users/i.akhaltsev/IdeaProjects/personal/gatling-picatinny/.claude/worktrees/algorithm-selection-no-regression-645ec5/target/scala-2.13/gatling-picatinny_2.13-1.26.0+2-7b44616e+20260901-2035-SNAPSHOT.pom
+[info] Wrote /Users/i.akhaltsev/IdeaProjects/personal/gatling-picatinny/.claude/worktrees/algorithm-selection-no-regression-645ec5/integration/target/scala-2.13/gatling-picatinny-integration_2.13-1.26.0+2-7b44616e+20260901-2035-SNAPSHOT.pom
