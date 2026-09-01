@@ -2,6 +2,8 @@ package org.galaxio.gatling.storage
 
 import com.typesafe.scalalogging.StrictLogging
 
+import java.util.Locale
+
 final case class ParsedCookie(
     name: String,
     value: String,
@@ -26,7 +28,12 @@ object CookieParser extends StrictLogging {
     } yield {
       val attrs = parts.tail.map { attr =>
         val kv = attr.split("=", 2)
-        kv(0).trim.toLowerCase -> kv.lift(1).map(_.trim).getOrElse("")
+        // `Locale.ROOT`, never the platform default (#333). RFC 6265 attribute names are
+        // case-insensitive ASCII, so a server may send `DOMAIN=`. Under a Turkish/Azeri default
+        // locale an ASCII capital `I` lowers to a dotless `ı`, so `DOMAIN` missed the `domain`
+        // lookup below and the cookie silently took `defaultDomain` — wrong domain, no warning.
+        // `domain` is the only recognised name containing an `I`, so it was the only reachable case.
+        kv(0).trim.toLowerCase(Locale.ROOT) -> kv.lift(1).map(_.trim).getOrElse("")
       }.toMap
 
       ParsedCookie(
