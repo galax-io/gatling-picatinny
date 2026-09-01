@@ -8,7 +8,7 @@ Principal Engineer: Scala 2.13, Gatling DSL, Java/Kotlin facade design, HTTP/Red
 
 ## Stack
 
-Scala 2.13.18, **sbt 1.12.15 (default pin) / sbt 2.0.6 (verified secondary)**, Java 17 (compile target; CI runs on Temurin 17 and 21), Gatling 3.13.5 (`Provided`). PureConfig, Circe, json4s, Jackson, Scala Logging, Generex, JWT, fast-uuid. ScalaTest + JUnit (sbt-jupiter-interface), Testcontainers (Redis integration), JMH (benchmarks).
+Scala 2.13.18, sbt, Java 17 (compile target; CI runs on Temurin 21), Gatling 3.13.5 (`Provided`). PureConfig, Circe, json4s, Jackson, Scala Logging, Generex, JWT, fast-uuid. ScalaTest + JUnit (sbt-jupiter-interface), Testcontainers (Redis integration), JMH (benchmarks).
 
 ## Commands
 
@@ -55,7 +55,7 @@ Authoritative: **[TESTING.md](TESTING.md)** (constitution §III). Test-first; as
 5. Compile guard (`Test`).
 6. Facade delegation (`Test`, JUnit 5).
 
-Coverage floor 75/66 (stmt/branch; measured 81.40-81.44/75.33-75.49 on 2026-08-20, majors agree exactly within a run; data-driven ratchet — TESTING.md "Coverage ratchet"). Every `/speckit-plan` fills the code-free "Test Model" table (gate).
+Coverage floor 75/66 (stmt/branch; data-driven ratchet — TESTING.md "Coverage ratchet"). Every `/speckit-plan` fills the code-free "Test Model" table (gate).
 
 ## Boundaries
 
@@ -84,7 +84,7 @@ Every piece of work is tied to a milestone. No exceptions unless explicitly told
 
 ## Release Process (MANDATORY)
 
-Trunk-based with release branches. Trunk is `main`; `release/*` branches are cut from `main` for stabilization. Pushing a `vX.Y.Z` tag on `main` or a `release/*` branch publishes to Maven Central (via sbt-ci-release / dynver) and creates a GitHub Release with git-cliff notes. **Official publication runs on sbt 1.x**, the default pin.
+Trunk-based with release branches. Trunk is `main`; `release/*` branches are cut from `main` for stabilization. Pushing a `vX.Y.Z` tag on `main` or a `release/*` branch publishes to Maven Central (via sbt-ci-release / dynver) and creates a GitHub Release with git-cliff notes.
 
 ### Minor/Major release (e.g. 1.2.0, 2.0.0)
 
