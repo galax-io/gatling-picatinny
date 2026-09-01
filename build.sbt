@@ -7,8 +7,36 @@ def UtilsModule(id: String) = Project(id, file(id))
 // (coverage here; scalafix / -Werror source filters reuse it). JMH benchmarks sit on the
 // production classpath but only ever run via `sbt Jmh/run`, so counting them in any gate's
 // denominator distorts the signal (#210).
+lazy val benchmarkPackage        = "org.galaxio.gatling.jmh"
 lazy val benchmarkFilePattern    = ".*Benchmark.*"
-lazy val benchmarkPackagePattern = "org\\.galaxio\\.gatling\\.jmh\\..*"
+// Both spellings derive from `benchmarkPackage` so renaming it cannot leave one gate excluding the
+// benchmarks and another shipping them.
+lazy val benchmarkPackagePattern = benchmarkPackage.replace(".", "\\.") + "\\..*"
+lazy val benchmarkPackagePath    = benchmarkPackage.replace('.', '/')
+
+// One shared answer to "is this archive-relative path present ONLY because of the benchmarks?".
+// Consumed by BOTH `packageBin` and `packageSrc`: benchmarks are not API, so neither the compiled
+// classes nor the sources belong in a published artifact.
+// `Jmh / classDirectory` IS the Compile class directory, so `Jmh/compile` writes three shapes of
+// artefact straight into what `packageBin` reads, and only the first was ever filtered (#333):
+//   1. generated classes            — `*Benchmark*.class`, incl. `<pkg>/jmh_generated/*_jmhTest.class`
+//   2. generated METADATA resources — `META-INF/BenchmarkList`, `META-INF/CompilerHints`
+//   3. bare DIRECTORY mappings      — `<benchmarkPackagePath>` itself (no trailing slash, so a
+//      `startsWith(path + "/")` test alone misses it) and `<pkg>/jmh_generated`
+// Measured 2026-09-01: a clean jar holds 668 entries, one built after `Jmh/compile` holds 671 — the
+// two metadata files plus the `META-INF/` directory entry created for them.
+// The directory entry and the package CONTENTS are two conditions, deliberately not collapsed into
+// one slash-less prefix: `startsWith(benchmarkPackagePath)` alone would also swallow a future
+// sibling package such as `…gatling.jmhutils`, silently dropping production classes from the jar.
+// `jmh_generated` is JMH's hardcoded generated-package name, matched as a whole path segment; no
+// production package uses it.
+lazy val isBenchmarkArtifact: String => Boolean = path =>
+  path.matches(".*" + benchmarkFilePattern + "\\.(class|scala|java)") ||
+    path == benchmarkPackagePath ||
+    path.startsWith(benchmarkPackagePath + "/") ||
+    path.split("/").contains("jmh_generated") ||
+    path == "META-INF/BenchmarkList" ||
+    path == "META-INF/CompilerHints"
 
 // Strict diagnostics (#275): curated compiler lints escalated to errors on ALL scopes, always on
 // (local == CI, no drift). Tolerated diagnostics get a per-site @nowarn("cat=...") with a
@@ -116,7 +144,12 @@ lazy val root = (project in file("."))
     // artifacts into the POM at compile scope, i.e. transitively onto every consumer. Same shared
     // benchmark definition every other gate uses (#210).
     Compile / packageBin / mappings        := (Compile / packageBin / mappings).value.filterNot { case (_, path) =>
-      path.matches(".*" + benchmarkFilePattern + "\\.class") || path.startsWith("org/galaxio/gatling/jmh/")
+      isBenchmarkArtifact(path)
+    },
+    // ...and out of the SOURCES artifact too. `packageSrc` was never filtered, so every release so
+    // far shipped the benchmark sources; the same predicate answers for both archives.
+    Compile / packageSrc / mappings        := (Compile / packageSrc / mappings).value.filterNot { case (_, path) =>
+      isBenchmarkArtifact(path)
     },
     // JmhPlugin adds jmh-core / jmh-generator-* unscoped, so they land as `compile` dependencies in
     // an Apache-2.0 POM. They are build-time only — never needed by a consumer.
