@@ -57,5 +57,36 @@ class HttpBodyExtSpec extends AnyWordSpec with Matchers {
       )
       xml shouldBe "<userId>#{uid}</userId><fixed>value</fixed>"
     }
+
+    // --- #127, closed on evidence rather than by a code change ---------------------------------
+    //
+    // The issue asserts that the varargs entry points allocate a fresh `Seq[Field]` PER REQUEST.
+    // They do not. `jsonBody`/`xmlBody` return an `HttpRequestBuilder`, which is an `ActionBuilder`
+    // consumed ONCE when the scenario is defined; inside, `StringBody(String)` takes a strict String
+    // and `.el[String]` compiles eagerly. So the whole `Field* -> List -> String -> Expression` chain
+    // runs once per DSL declaration and is reused for every request — per-request cost is zero.
+    //
+    // The suggested fix is also not expressible: `makeJson(fs: Field*)` and a `makeJson(fs: Seq[Field])`
+    // overload erase to the same signature on Scala 2.13, so they cannot coexist. A differently-named
+    // entry point would be new public API, MiMa-relevant, for a path measurement says is not hot.
+    //
+    // What IS true, and is what these cases pin: the list form the body builders already expose
+    // produces byte-identical output to the varargs form, so a caller holding a pre-built list needs
+    // nothing new.
+
+    "produce identical JSON from the varargs and pre-built-list forms" in {
+      val fields = List("id" - 1, "name" - "test", "nested" - ("a" - 1, "b" - 2))
+      makeJson(fields) shouldBe makeJson(fields: _*)
+    }
+
+    "produce identical XML from the varargs and pre-built-list forms" in {
+      val fields = List("id" - 1, "name" - "test", "nested" - ("a" - 1, "b" - 2))
+      makeXml(fields) shouldBe makeXml(fields: _*)
+    }
+
+    "agree on the empty field list too — the boundary case" in {
+      makeJson(List.empty[Field]) shouldBe makeJson()
+      makeXml(List.empty[Field]) shouldBe makeXml()
+    }
   }
 }
