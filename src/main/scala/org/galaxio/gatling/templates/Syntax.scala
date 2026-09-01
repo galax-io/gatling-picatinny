@@ -137,42 +137,100 @@ object Syntax {
     def >[T](ts: T*): Field = array(ts)
   }
 
-  private def escapeJson(s: String): String = {
-    val sb = new StringBuilder(s.length)
-    var i  = 0
-    while (i < s.length) {
-      s.charAt(i) match {
-        case '"'          => sb.append("\\\"")
-        case '\\'         => sb.append("\\\\")
-        case '\n'         => sb.append("\\n")
-        case '\r'         => sb.append("\\r")
-        case '\t'         => sb.append("\\t")
-        case '\b'         => sb.append("\\b")
-        case '\f'         => sb.append("\\f")
-        case c if c < ' ' => sb.append(f"\\u${c.toInt}%04x")
-        case c            => sb.append(c)
-      }
-      i += 1
-    }
-    sb.toString
+  private val HexDigits = "0123456789abcdef"
+
+  /** Does this character need escaping in JSON?
+    *
+    * MUST agree, character for character, with the branch list in [[appendEscapedJson]] — this predicate is what lets the fast
+    * path skip a whole string without inspecting it, so a character the match escapes but this misses would be emitted RAW. It
+    * agrees today for a reason worth stating: `\n \r \t \b \f` all sit below `' '`, so the single `c < ' '` test covers them.
+    * Add a dedicated escape for any PRINTABLE character (`/` is the usual candidate) and you must add it here too.
+    */
+  private def jsonNeedsEscape(c: Char): Boolean = c == '"' || c == '\\' || c < ' '
+
+  /** Same contract as [[jsonNeedsEscape]], for the XML set — which is deliberately DIFFERENT: XML escapes five printable
+    * characters and leaves control characters alone.
+    */
+  private def xmlNeedsEscape(c: Char): Boolean =
+    c == '&' || c == '<' || c == '>' || c == '"' || c == '\''
+
+  /** Index of the first character needing a JSON escape, or `s.length` when there is none. */
+  private def jsonEscapeStart(s: String): Int = {
+    val n = s.length
+    var i = 0
+    while (i < n && !jsonNeedsEscape(s.charAt(i))) i += 1
+    i
   }
 
-  private def escapeXml(s: String): String = {
-    val sb = new StringBuilder(s.length)
-    var i  = 0
-    while (i < s.length) {
-      s.charAt(i) match {
-        case '&'  => sb.append("&amp;")
-        case '<'  => sb.append("&lt;")
-        case '>'  => sb.append("&gt;")
-        case '"'  => sb.append("&quot;")
-        case '\'' => sb.append("&apos;")
-        case c    => sb.append(c)
-      }
-      i += 1
-    }
-    sb.toString
+  /** Index of the first character needing an XML escape, or `s.length` when there is none. */
+  private def xmlEscapeStart(s: String): Int = {
+    val n = s.length
+    var i = 0
+    while (i < n && !xmlNeedsEscape(s.charAt(i))) i += 1
+    i
   }
+
+  /** Append `s` JSON-escaped directly into `sb`, starting the per-character work at `from`.
+    *
+    * Replaces a `String`-returning escaper that allocated a scratch buffer AND a throwaway string for every field NAME and
+    * every field VALUE — about twenty short-lived objects for an ordinary five-field payload, since names are escaped on every
+    * branch too. Two paths:
+    *   - nothing to escape (`from` past the end): one bulk copy, zero allocation. This is the dominant real case.
+    *   - otherwise: bulk-copy the clean prefix, then run the original branch list verbatim, in the original order, from `from`.
+    */
+  private def appendEscapedJson(sb: StringBuilder, s: String, from: Int): Unit = {
+    val n = s.length
+    if (from >= n) { sb.append(s); () }
+    else {
+      sb.underlying.append(s, 0, from)
+      var i = from
+      while (i < n) {
+        s.charAt(i) match {
+          case '"'          => sb.append("\\\"")
+          case '\\'         => sb.append("\\\\")
+          case '\n'         => sb.append("\\n")
+          case '\r'         => sb.append("\\r")
+          case '\t'         => sb.append("\\t")
+          case '\b'         => sb.append("\\b")
+          case '\f'         => sb.append("\\f")
+          // Every remaining escapable character is a C0 control, so the high byte is always `00`.
+          // Written digit by digit: the interpolated `f"..."` this replaces built a Formatter, a
+          // parsed format string and a String for EVERY control character.
+          case c if c < ' ' =>
+            sb.append("\\u00").append(HexDigits.charAt((c >> 4) & 0xf)).append(HexDigits.charAt(c & 0xf))
+          case c            => sb.append(c)
+        }
+        i += 1
+      }
+    }
+  }
+
+  private def appendEscapedJson(sb: StringBuilder, s: String): Unit =
+    appendEscapedJson(sb, s, jsonEscapeStart(s))
+
+  /** XML counterpart of [[appendEscapedJson]]. */
+  private def appendEscapedXml(sb: StringBuilder, s: String, from: Int): Unit = {
+    val n = s.length
+    if (from >= n) { sb.append(s); () }
+    else {
+      sb.underlying.append(s, 0, from)
+      var i = from
+      while (i < n) {
+        s.charAt(i) match {
+          case '&'  => sb.append("&amp;")
+          case '<'  => sb.append("&lt;")
+          case '>'  => sb.append("&gt;")
+          case '"'  => sb.append("&quot;")
+          case '\'' => sb.append("&apos;")
+          case c    => sb.append(c)
+        }
+        i += 1
+      }
+    }
+  }
+
+  private def appendEscapedXml(sb: StringBuilder, s: String): Unit =
+    appendEscapedXml(sb, s, xmlEscapeStart(s))
 
   /** Renders a [[RawValGen]] value into JSON: finite numbers and booleans are emitted raw; `null` and non-finite floating point
     * (`NaN`, `±Infinity` — which have no valid JSON numeric form) become the JSON `null` literal; anything stringy is quoted
@@ -183,7 +241,8 @@ object Syntax {
     case d: Double if !d.isFinite         => sb.append("null")
     case f: Float if !f.isFinite          => sb.append("null")
     case _: java.lang.Number | _: Boolean => sb.append(v.toString)
-    case other                            => sb.append('"').append(escapeJson(other.toString)).append('"')
+    case other                            =>
+      sb.append('"'); appendEscapedJson(sb, other.toString); sb.append('"')
   }
 
   /** Renders a [[RawValGen]] value into XML body text: finite numbers and booleans raw; `null` and non-finite floating point
@@ -194,7 +253,7 @@ object Syntax {
     case d: Double if !d.isFinite         => ()
     case f: Float if !f.isFinite          => ()
     case _: java.lang.Number | _: Boolean => sb.append(v.toString)
-    case other                            => sb.append(escapeXml(other.toString))
+    case other                            => appendEscapedXml(sb, other.toString)
   }
 
   /** Serializes a list of fields to a JSON object string.
@@ -219,19 +278,19 @@ object Syntax {
 
   private def appendJsonField(sb: StringBuilder, field: Field): Unit = field match {
     case Field(name, RawValString(s))       =>
-      sb.append('"').append(escapeJson(name)).append("\": \"").append(escapeJson(s)).append('"')
+      sb.append('"'); appendEscapedJson(sb, name); sb.append("\": \""); appendEscapedJson(sb, s); sb.append('"')
     case Field(name, RawValGen(s))          =>
-      sb.append('"').append(escapeJson(name)).append("\": "); appendRawJson(sb, s)
+      sb.append('"'); appendEscapedJson(sb, name); sb.append("\": "); appendRawJson(sb, s)
     case Field(name, InterpolateStrVal(in)) =>
-      sb.append('"').append(escapeJson(name)).append("\": \"#{").append(in).append("}\"")
+      sb.append('"'); appendEscapedJson(sb, name); sb.append("\": \"#{").append(in).append("}\"")
     case Field(name, InterpolateGenVal(in)) =>
-      sb.append('"').append(escapeJson(name)).append("\": #{").append(in).append('}')
+      sb.append('"'); appendEscapedJson(sb, name); sb.append("\": #{").append(in).append('}')
     case Field(name, ObjectVal(f))          =>
-      sb.append('"').append(escapeJson(name)).append("\": "); appendJsonObject(sb, f)
+      sb.append('"'); appendEscapedJson(sb, name); sb.append("\": "); appendJsonObject(sb, f)
     case Field(name, ArrayVal(vs))          =>
-      sb.append('"').append(escapeJson(name)).append("\": "); appendJsonArray(sb, vs)
+      sb.append('"'); appendEscapedJson(sb, name); sb.append("\": "); appendJsonArray(sb, vs)
     case Field(name, NullVal)               =>
-      sb.append('"').append(escapeJson(name)).append("\": null")
+      sb.append('"'); appendEscapedJson(sb, name); sb.append("\": null")
   }
 
   private def appendJsonObject(sb: StringBuilder, fields: List[Field]): Unit = {
@@ -257,7 +316,7 @@ object Syntax {
   }
 
   private def appendJsonValue(sb: StringBuilder, v: FieldVal): Unit = v match {
-    case RawValString(s)       => sb.append('"').append(escapeJson(s)).append('"')
+    case RawValString(s)       => sb.append('"'); appendEscapedJson(sb, s); sb.append('"')
     case RawValGen(s)          => appendRawJson(sb, s)
     case InterpolateStrVal(in) => sb.append("\"#{").append(in).append("}\"")
     case InterpolateGenVal(in) => sb.append("#{").append(in).append('}')
@@ -291,32 +350,46 @@ object Syntax {
     sb.toString
   }
 
+  /** The element name is emitted TWICE (open and close tag). The previous code escaped it into a `String` and reused that; here
+    * the scan INDEX is computed once and reused instead, so the second emission costs another append rather than another
+    * allocation.
+    */
   private def appendXmlField(sb: StringBuilder, field: Field): Unit = field match {
     case Field(name, RawValString(s))       =>
-      val n = escapeXml(name)
-      sb.append('<').append(n).append('>').append(escapeXml(s)).append("</").append(n).append('>')
+      val n = xmlEscapeStart(name)
+      sb.append('<'); appendEscapedXml(sb, name, n); sb.append('>')
+      appendEscapedXml(sb, s)
+      sb.append("</"); appendEscapedXml(sb, name, n); sb.append('>')
     case Field(name, RawValGen(s))          =>
-      val n = escapeXml(name)
-      sb.append('<').append(n).append('>'); appendRawXml(sb, s); sb.append("</").append(n).append('>')
+      val n = xmlEscapeStart(name)
+      sb.append('<'); appendEscapedXml(sb, name, n); sb.append('>')
+      appendRawXml(sb, s)
+      sb.append("</"); appendEscapedXml(sb, name, n); sb.append('>')
     case Field(name, InterpolateStrVal(in)) =>
-      val n = escapeXml(name)
-      sb.append('<').append(n).append(">#{").append(in).append("}</").append(n).append('>')
+      val n = xmlEscapeStart(name)
+      sb.append('<'); appendEscapedXml(sb, name, n); sb.append(">#{").append(in).append("}</")
+      appendEscapedXml(sb, name, n); sb.append('>')
     case Field(name, InterpolateGenVal(in)) =>
-      val n = escapeXml(name)
-      sb.append('<').append(n).append(">#{").append(in).append("}</").append(n).append('>')
+      val n = xmlEscapeStart(name)
+      sb.append('<'); appendEscapedXml(sb, name, n); sb.append(">#{").append(in).append("}</")
+      appendEscapedXml(sb, name, n); sb.append('>')
     case Field(name, ObjectVal(f))          =>
-      val n = escapeXml(name)
-      sb.append('<').append(n).append('>'); f.foreach(appendXmlField(sb, _)); sb.append("</").append(n).append('>')
+      val n = xmlEscapeStart(name)
+      sb.append('<'); appendEscapedXml(sb, name, n); sb.append('>')
+      f.foreach(appendXmlField(sb, _))
+      sb.append("</"); appendEscapedXml(sb, name, n); sb.append('>')
     case Field(name, ArrayVal(vs))          =>
-      val n = escapeXml(name)
-      sb.append('<').append(n).append('>'); appendXmlArray(sb, vs); sb.append("</").append(n).append('>')
+      val n = xmlEscapeStart(name)
+      sb.append('<'); appendEscapedXml(sb, name, n); sb.append('>')
+      appendXmlArray(sb, vs)
+      sb.append("</"); appendEscapedXml(sb, name, n); sb.append('>')
     case Field(name, NullVal)               =>
-      sb.append('<').append(escapeXml(name)).append("/>")
+      sb.append('<'); appendEscapedXml(sb, name); sb.append("/>")
   }
 
   private def appendXmlArray(sb: StringBuilder, vs: List[FieldVal]): Unit =
     vs.foreach {
-      case RawValString(s)       => sb.append("<item>").append(escapeXml(s)).append("</item>")
+      case RawValString(s)       => sb.append("<item>"); appendEscapedXml(sb, s); sb.append("</item>")
       case RawValGen(s)          => sb.append("<item>"); appendRawXml(sb, s); sb.append("</item>")
       case InterpolateStrVal(in) => sb.append("<item>#{").append(in).append("}</item>")
       case InterpolateGenVal(in) => sb.append("<item>#{").append(in).append("}</item>")
