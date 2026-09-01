@@ -150,8 +150,15 @@ with exactly one recorded exception.
 | Reason | `com.github.cb372:sbt-explicit-dependencies` publishes no `_sbt2_3` artifact at any version. Worse, `build.sbt` referenced its keys symbolically, so the build failed to **compile** under sbt 2 with `Not found: undeclaredCompileDependenciesFilter`. The plugin and its five filters therefore moved out of the always-loaded build into `project/hygiene/`, attached on demand with `--addPluginSbtFile` |
 | Revisit condition | `sbt-explicit-dependencies_sbt2_3` appears on Maven Central → fold the plugin and filters back into `build.sbt` and delete this entry |
 
-`Jmh/run` was flagged as a second possible gap (it is also a plugin-contributed config axis) but
-was verified working on both majors on 2026-08-20 — no exemption needed.
+`Jmh/run` was flagged as a second possible gap (it is also a plugin-contributed config axis) and was
+verified working on both majors on 2026-08-20 — but it **regressed two days later** and was broken
+from `1231a64` (2026-08-22, the sbt cross-build) until #333. The `Provided` rewrite that commit added
+for `org.openjdk.jmh` is invisible to `Jmh / dependencyClasspathAsJars`, which is what a *forked*
+`Jmh / run` actually reads, so the fork started without `jmh-core` and died with
+`ClassNotFoundException: org.openjdk.jmh.Main` before executing anything. Re-verified on both majors
+2026-09-01, with the one-line classpath fix now in `build.sbt`. Still no exemption needed — but note
+the failure mode: the benchmark *generator* phase succeeds and only the forked harness dies, so a
+green-looking build log is not evidence that benchmarks ran.
 
 This is the **only** permitted single-major capability. Any new build plugin must state its
 availability on both majors as part of the change that proposes it; a second undocumented gap is a

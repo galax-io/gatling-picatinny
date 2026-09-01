@@ -123,6 +123,20 @@ lazy val root = (project in file("."))
     libraryDependencies                    := libraryDependencies.value.map { m =>
       if (m.organization == "org.openjdk.jmh") m % Provided else m
     },
+    // ...but `Jmh / run` FORKS, and a forked run reads `Jmh / fullClasspathAsJars`, which is built
+    // from `Jmh / dependencyClasspathAsJars` — a key JmhPlugin never touches (it only appends the
+    // Compile classpath to the non-forked `Jmh / dependencyClasspath`). So the fork drops exactly
+    // the modules the rewrite above just demoted and dies with
+    // `ClassNotFoundException: org.openjdk.jmh.Main` (#333). This applies the plugin's own line to
+    // the key the fork actually reads. Scoped to `Jmh`: it feeds `Jmh / fullClasspathAsJars` and
+    // nothing else, so `makePom` is byte-identical with and without it — jmh stays `provided`,
+    // never `compile` (1.23.0-1.25.0 shipped it at compile scope; the rewrite above is what fixed
+    // that, and no remedy here may touch `libraryDependencies`).
+    // Sourced from the `AsJars` variant, not from `Compile / dependencyClasspath`: the two keys are
+    // separate precisely because only the former promises packaged jars to a forked process. Today
+    // every entry is a Coursier jar either way, but a future `dependsOn` would contribute a class
+    // DIRECTORY that the fork would receive as though it were a jar.
+    Jmh / dependencyClasspathAsJars ++= (Compile / dependencyClasspathAsJars).value,
     // Benchmark sources are invisible to the lint gate too — same shared definition as coverage (FR-022).
     Compile / scalafix / unmanagedSources  := (Compile / scalafix / unmanagedSources).value
       .filterNot(_.getName.matches(benchmarkFilePattern)),
