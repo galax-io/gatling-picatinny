@@ -1,6 +1,15 @@
 # Contract: the reach rows this renderer implements
 
 **Source**: upstream `README.md` § *What any tool can actually run*, at release `v0.6.0`.
+
+> **SUPERSEDED IN PART at upstream `v0.8.0` (feature 014, #328).** The METRIC and SELECTION axes below
+> are out of date: `http.client.request.duration` was retired and replaced by
+> `loadtest.request.duration` plus `loadtest.group.duration`, and the hierarchy-only Selection row
+> turned from **cannot** to **can**, paired with the group metric in BOTH directions. The current
+> transcription of those two axes is
+> [`specs/014-perf-templates-cookies/contracts/reach-v0.8.0.md`](../../014-perf-templates-cookies/contracts/reach-v0.8.0.md).
+> Every other row here still stands. Kept rather than rewritten because this file records what was
+> checked and dated at `v0.6.0`.
 **Transcription checked against that source 2026-08-30**, at upstream commit `1e394f1`: the four Selection
 **can** rows, the Metrics row, the aggregation rows and the two `cannot` rows this library follows under
 protest were each compared line by line (FR-010, T053). That section
@@ -30,7 +39,9 @@ reason given — an allowlist, never accept-by-default (FR-009).
 
 | `metric` | Renders as | |
 |---|---|---|
-| `http.client.request.duration` | the response-time statistic | **can** |
+| `loadtest.request.duration` | the response-time statistic | **can** — under every selection except a hierarchy with no request name (`v0.8.0`) |
+| `loadtest.group.duration` | the group's cumulated response-time statistic | **can** — and ONLY under a hierarchy with no request name (`v0.8.0`) |
+| `http.client.request.duration` | — | **cannot** — retired at `v0.8.0`, not aliased |
 | anything else, or a name for a span an author bracketed | — | **cannot** — no other rendering has been checked and dated |
 
 ## Aggregation

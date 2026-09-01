@@ -67,14 +67,19 @@ OpenNFR as a guard; APDEX has none in either format.
 
 ## 4. The eleventh, and what blocks it
 
-`myGroup: '1600'` is a group-only scope. Upstream's Selection table records it as a `cannot` at
-`v0.6.0`, and this renderer follows that row.
+`myGroup: '1600'` is a group-only scope. Upstream's Selection table recorded it as a `cannot` at
+`v0.6.0`, and this renderer followed that row.
+
+> **RESOLVED at upstream `v0.8.0` (feature 014, #328).** `loadtest.group.duration` was minted — the
+> name the refusal below was waiting on — so the row is now **can** and parity with the deprecated
+> builder is WHOLE: eleven of eleven, with nothing subtracted by name. The paragraph below records
+> why it was refused, which is still the right explanation of the gap that `v0.8.0` closed.
 
 **The blocker is a missing metric name, not a missing scope.** Gatling asserts on a group path:
 `AssertionValidator.resolvePath` sends a `StatsPath.Group` to
 `groupCumulatedResponseTimeGeneralStats` (read from bytecode at `3.13.5`). What it returns is the
 group's **cumulated** response time — the sum of the durations of the requests one traversal encloses
-— and OpenNFR admits one metric, `http.client.request.duration`, which is not true of a sum over
+— and OpenNFR admitted one metric, `http.client.request.duration`, which is not true of a sum over
 several requests. Upstream's row says exactly this: *"which no name in § Names is true of"*.
 
 **What the deprecated assertion measures is not what its author wrote**, either. `myGroup: '1600'`

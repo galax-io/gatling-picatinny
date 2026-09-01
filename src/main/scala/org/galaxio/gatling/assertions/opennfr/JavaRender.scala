@@ -28,6 +28,10 @@ private[assertions] object JavaRender {
       case Scope.Global         => global()
       case Scope.ForAll         => forAll()
       case Scope.Details(parts) => details(parts: _*)
+      // Same call as Details, for the same reason as the Scala surface: the Java DSL exposes one
+      // time metric too, and Gatling picks the group's cumulated statistic by resolving the path.
+      // The facade stays thin — it re-issues a decision `Reach` already made, it does not re-make it.
+      case Scope.Group(parts)   => details(parts: _*)
     }
 
     d.measure match {

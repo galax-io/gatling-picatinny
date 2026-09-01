@@ -3,7 +3,7 @@
 **Experimental.** This path reads an [OpenNFR](https://github.com/galax-io/opennfr) `RequirementSet` —
 a tool-agnostic format for load testing requirements — and produces Gatling assertions.
 
-It tracks upstream release **`v0.6.0`**. OpenNFR is pre-1.0 and its schema has changed materially
+It tracks upstream release **`v0.8.0`**. OpenNFR is pre-1.0 and its schema has changed materially
 between consecutive releases, so **this surface is outside the binary-compatibility guarantee** the
 rest of the library keeps. The deprecated NFR-YAML path (`assertionFromYaml`) is untouched, still
 works, and keeps its guarantees in full.
@@ -85,32 +85,50 @@ spec:
 
 ### A scope naming only a group
 
-`myGroup: '1600'` has **no OpenNFR spelling today** — and the reason is worth being exact about,
-because it is not the one you would guess.
+`myGroup: '1600'` **now has an OpenNFR spelling**, as of upstream `v0.8.0`:
 
-**Gatling asserts on a group perfectly well.** `details("myGroup")` resolves to the group and answers
-with its **cumulated** response time: the sum of the durations of the requests one pass through the
-block encloses. What is missing is a *name*. OpenNFR admits exactly one metric,
-`http.client.request.duration`, and a sum over several requests is not an HTTP request's duration —
-so **no metric name in the format is true of the quantity Gatling would return**. The document cannot
-say what it would have to say, and this renderer refuses rather than name the quantity falsely.
+```yaml
+    - name: mygroup-itself
+      selector:
+        loadtest.group.name: [myGroup]
+      criteria:
+        - {metric: loadtest.group.duration, aggregation: p95, op: lt, threshold: 1600, unit: ms}
+```
 
-That is a gap in the format's metric axis, not a limit of the target. It is being decided upstream at
-[`opennfr#89`](https://github.com/galax-io/opennfr/issues/89) — the same gap that leaves Kafka, JDBC
-and bracketed spans unnameable — so this page will change when that does.
+Until `v0.8.0` this was refused, and the reason was never a limit of the target: Gatling asserts on a
+group perfectly well. What was missing was a *name*. The format admitted one duration metric, and a
+sum over several requests is not an HTTP request's duration — so no metric name in the format was
+true of the quantity Gatling would return. [`opennfr#89`](https://github.com/galax-io/opennfr/issues/89)
+closed that gap by minting `loadtest.group.duration`, and this renderer follows.
 
-**Meanwhile the deprecated path still covers this one case.** `assertionFromYaml` is untouched and
-keeps working; keep it for the file that needs it. Be clear about what its number means, though: if
-you wrote `myGroup: '1600'` expecting the 95th percentile of the requests inside the group, it has
-never measured that. NFR-YAML let the assertion be written under a name (`responseTime`) that is not
-true of the number computed.
+**Know what the number is.** `loadtest.group.duration` renders to Gatling's **cumulated** response
+time: the **sum of the durations of the operations the group encloses**, not the elapsed time of one
+traversal. A run that pauses inside a group is not charged for the pause. If what you want is the
+requests inside the group, assert them individually, or use `{loadtest.request.name: "*"}` to state
+the bar once for every recorded request — the group number is not that.
 
-If what you want is the requests inside the group, assert them individually, or use
-`{loadtest.request.name: "*"}` to state the bar once for every recorded request.
+**Charts and assertions can disagree, by design.** `gatling.charting.useGroupDurationMetric`
+(default `false`) switches the *report* between the two group quantities and never reaches the
+assertion path — the wall-clock quantity is not exposed on the interface assertions read, so no
+configuration makes it assertable. With that flag set, a run shows wall clock in its charts while its
+assertions judged cumulated response time. Same run, same group, two numbers.
+
+**The pairing binds both ways.** `loadtest.group.duration` is admitted *only* under a selector naming
+a group hierarchy with no request name, and under that selector it is the *only* admissible metric —
+`loadtest.request.duration`, any other metric, and a predicate with no metric at all are all refused
+there.
+
+**`http.client.request.duration` is retired.** It was the format's duration metric until `v0.8.0` and
+is **not aliased**: it named the vantage, the protocol and the granularity in one string when a load
+generator fixes only the first, and it is published by other producers, so one string could carry two
+measurements. Documents carrying it are refused, with a message naming the replacement. Write
+`loadtest.request.duration` for the duration of one recorded operation.
 
 **Do not write `{loadtest.request.name: myGroup}`.** It renders the identical Gatling call, because a
 one-part path is one-part whatever produced it — and it is a document that says *request* about a
-group. It will pass, and it will be a lie in your requirements file.
+group. It will pass, and it will be a lie in your requirements file. Now that the group spelling
+exists there is no reason to reach for it: the two render to the same assertion, and only one of them
+says what you mean.
 
 ### A requirement this tool cannot check
 

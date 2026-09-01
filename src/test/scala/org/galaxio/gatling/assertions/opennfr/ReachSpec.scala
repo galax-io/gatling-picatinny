@@ -19,8 +19,9 @@ class ReachSpec extends AnyWordSpec with Matchers with EitherValues {
 
   private implicit val configuration: GatlingConfiguration = GatlingConfiguration.loadForTest()
 
-  private val Duration = "http.client.request.duration"
-  private val Ko       = Map("error.type" -> Json.fromString("*"))
+  private val Duration      = "loadtest.request.duration"
+  private val GroupDuration = "loadtest.group.duration"
+  private val Ko            = Map("error.type" -> Json.fromString("*"))
 
   private def s(v: String): Json                     = Json.fromString(v)
   private def list(vs: String*): Json                = Json.arr(vs.map(Json.fromString): _*)
@@ -135,9 +136,22 @@ class ReachSpec extends AnyWordSpec with Matchers with EitherValues {
 
   "Reach, refusing what Gatling cannot assert" should {
 
-    "refuse a hierarchy-only selector with the reason upstream decided" in {
+    // Upstream v0.8.0 turned this row from `cannot` to `can` by minting `loadtest.group.duration`
+    // (#328). The scope now renders — but ONLY with the group metric, which is the half a design
+    // that merely "adds the new row" would miss.
+    "render a hierarchy-only selector when paired with the group metric" in {
+      render(req("loadtest.group.name" -> list("G")), pred("p95", op = "lt", metric = Some(GroupDuration))).value shouldBe
+        details(AssertionPathParts(List("G"))).responseTime.percentile(95).lt(500)
+    }
+
+    "refuse a hierarchy-only selector paired with the REQUEST metric — the reciprocal direction" in {
       render(req("loadtest.group.name" -> list("G")), pred("p95")).left.value should
-        include("no Gatling scope denotes the requests a path encloses")
+        include("resolves to the group")
+    }
+
+    "refuse the group metric under any other selector" in {
+      render(req("loadtest.request.name" -> s("X")), pred("p95", metric = Some(GroupDuration))).left.value should
+        include("only under a selector naming a group hierarchy")
     }
 
     "refuse a `*` hierarchy element, which no scope carries as a path part" in {

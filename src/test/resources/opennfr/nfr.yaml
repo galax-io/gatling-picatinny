@@ -20,9 +20,9 @@ spec:
       displayName: Весь прогон
       selector: {}
       criteria:
-        - {displayName: 99 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 1500, unit: ms}
-        - {displayName: 95 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 1200, unit: ms}
-        - {displayName: Максимальное время выполнения,    metric: http.client.request.duration, aggregation: max, op: lt, threshold: 2000, unit: ms}
+        - {displayName: 99 перцентиль времени выполнения, metric: loadtest.request.duration, aggregation: p99, op: lt, threshold: 1500, unit: ms}
+        - {displayName: 95 перцентиль времени выполнения, metric: loadtest.request.duration, aggregation: p95, op: lt, threshold: 1200, unit: ms}
+        - {displayName: Максимальное время выполнения,    metric: loadtest.request.duration, aggregation: max, op: lt, threshold: 2000, unit: ms}
         - {displayName: Процент ошибок, bad: {error.type: "*"}, aggregation: rate, op: lt, threshold: 5, unit: "%"}
 
     - name: get-test-id
@@ -30,19 +30,28 @@ spec:
         loadtest.group.name: [myGroup]
         loadtest.request.name: GET /test/id
       criteria:
-        - {displayName: 99 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 1500, unit: ms}
-        - {displayName: 95 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 1200, unit: ms}
+        - {displayName: 99 перцентиль времени выполнения, metric: loadtest.request.duration, aggregation: p99, op: lt, threshold: 1500, unit: ms}
+        - {displayName: 95 перцентиль времени выполнения, metric: loadtest.request.duration, aggregation: p95, op: lt, threshold: 1200, unit: ms}
 
     - name: get-test-email
       selector:
         loadtest.request.name: GET /test/email
       criteria:
-        - {displayName: 99 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 400, unit: ms}
-        - {displayName: 95 перцентиль времени выполнения, metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 320, unit: ms}
+        - {displayName: 99 перцентиль времени выполнения, metric: loadtest.request.duration, aggregation: p99, op: lt, threshold: 400, unit: ms}
+        - {displayName: 95 перцентиль времени выполнения, metric: loadtest.request.duration, aggregation: p95, op: lt, threshold: 320, unit: ms}
 
     - name: get-test-uuid
       selector:
         loadtest.request.name: GET /test/uuid
       criteria:
-        - {displayName: Максимальное время выполнения, metric: http.client.request.duration, aggregation: max, op: lt, threshold: 1000, unit: ms}
+        - {displayName: Максимальное время выполнения, metric: loadtest.request.duration, aggregation: max, op: lt, threshold: 1000, unit: ms}
         - {displayName: Процент ошибок, bad: {error.type: "*"}, aggregation: rate, op: lt, threshold: 1, unit: "%"}
+
+    # The eleventh assertion of nfr.yml (`myGroup: '1600'` under the 95th-percentile key). Refused
+    # until upstream v0.8.0, which minted the metric name a group scope was waiting on — so parity
+    # with the deprecated builder is now whole rather than ten of eleven.
+    - name: mygroup-itself
+      selector:
+        loadtest.group.name: [myGroup]
+      criteria:
+        - {displayName: 95 перцентиль времени выполнения, metric: loadtest.group.duration, aggregation: p95, op: lt, threshold: 1600, unit: ms}

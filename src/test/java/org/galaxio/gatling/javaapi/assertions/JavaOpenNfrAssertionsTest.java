@@ -24,24 +24,31 @@ class JavaOpenNfrAssertionsTest {
     private static final String TRANSLATED = "src/test/resources/opennfr/nfr.yaml";
 
     @Test
-    @DisplayName("builds the ten assertions the translated fixture denotes")
-    void buildsTheSameTen() {
+    @DisplayName("builds the eleven assertions the translated fixture denotes")
+    void buildsTheSameEleven() {
+        // Ten until upstream v0.8.0 minted `loadtest.group.duration` (#328), which made the
+        // group-only requirement renderable and parity with the deprecated builder WHOLE.
         List<Assertion> assertions = OpenNfrAssertions.fromYaml(TRANSLATED);
-        assertEquals(10, assertions.size(), "the translation denotes ten assertions; see contracts/parity.md");
-        assertEquals(10, assertions.stream().distinct().count(), "no duplicates");
+        assertEquals(11, assertions.size(), "the translation denotes eleven assertions; see contracts/parity.md");
+        assertEquals(11, assertions.stream().distinct().count(), "no duplicates");
     }
 
     @Test
     @DisplayName("refuses an unrenderable document for the same reasons, proving no decision was re-made")
     void refusesForTheSameReasons() {
+        // `group-only.yaml` RENDERS since v0.8.0, so the refusal fixture is now the retired metric
+        // name — dropped outright upstream, never aliased.
         var e = assertThrows(
                 org.galaxio.gatling.assertions.opennfr.OpenNfrException.class,
-                () -> OpenNfrAssertions.fromYaml("src/test/resources/opennfr/group-only.yaml"));
+                () -> OpenNfrAssertions.fromYaml("src/test/resources/opennfr/retired-metric.yaml"));
 
         assertEquals(1, e.reasons().size(), "one predicate, one reason");
         assertTrue(
-                e.getMessage().contains("no Gatling scope denotes the requests a path encloses"),
+                e.getMessage().contains("retired in OpenNFR v0.8.0"),
                 "the reason is the one upstream decided, carried verbatim from the core: " + e.getMessage());
+        assertTrue(
+                e.getMessage().contains("loadtest.request.duration"),
+                "the refusal must name the replacement to write instead: " + e.getMessage());
     }
 
     @Test

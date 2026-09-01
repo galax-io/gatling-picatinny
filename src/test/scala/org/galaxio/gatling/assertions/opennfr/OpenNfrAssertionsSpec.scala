@@ -35,7 +35,7 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
        |  requirements:
        |$body""".stripMargin
 
-  private val ok = "{metric: http.client.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}"
+  private val ok = "{metric: loadtest.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}"
 
   "OpenNfrAssertions" should {
 
@@ -53,8 +53,8 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
                                    |      guards:
                                    |        - {aggregation: rate, op: gte, threshold: 200, unit: "{request}/s"}
                                    |      criteria:
-                                   |        - {metric: http.client.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
-                                   |        - {metric: http.client.request.duration, aggregation: max, op: lte, threshold: 900, unit: ms}
+                                   |        - {metric: loadtest.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
+                                   |        - {metric: loadtest.request.duration, aggregation: max, op: lte, threshold: 900, unit: ms}
                                    |""".stripMargin)).value
       built should have size 3
       built should contain(global.requestsPerSec.gte(200.0))
@@ -76,12 +76,12 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
       val reasons = build(document("""    - name: one
                                      |      selector: {}
                                      |      criteria:
-                                     |        - {metric: http.client.request.duration, aggregation: p95, op: neq, threshold: 500, unit: ms}
-                                     |        - {metric: http.client.request.duration, aggregation: sum, op: lte, threshold: 500, unit: ms}
+                                     |        - {metric: loadtest.request.duration, aggregation: p95, op: neq, threshold: 500, unit: ms}
+                                     |        - {metric: loadtest.request.duration, aggregation: sum, op: lte, threshold: 500, unit: ms}
                                      |    - name: two
                                      |      selector: {http.route: /api}
                                      |      criteria:
-                                     |        - {metric: http.client.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
+                                     |        - {metric: loadtest.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
                                      |""".stripMargin)).left.value
       reasons should have size 3
     }
@@ -90,7 +90,7 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
       val reasons = build(document("""    - name: checkout-latency
                                      |      selector: {}
                                      |      criteria:
-                                     |        - {name: ninety-ninth, metric: http.client.request.duration, aggregation: p99, op: neq, threshold: 500, unit: ms}
+                                     |        - {name: ninety-ninth, metric: loadtest.request.duration, aggregation: p99, op: neq, threshold: 500, unit: ms}
                                      |""".stripMargin)).left.value
       reasons.mkString should (include("checkout-latency") and include("ninety-ninth"))
     }
@@ -99,19 +99,19 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
       build(document("""    - name: r
                        |      selector: {}
                        |      criteria:
-                       |        - {metric: http.client.request.duration, aggregation: p99, op: neq, threshold: 500, unit: ms}
+                       |        - {metric: loadtest.request.duration, aggregation: p99, op: neq, threshold: 500, unit: ms}
                        |""".stripMargin)).left.value.mkString should include("p99")
     }
 
     "be total: one unrenderable predicate among nine good ones yields zero assertions, not nine" in {
       val nineGood = (1 to 9)
-        .map(i => s"        - {metric: http.client.request.duration, aggregation: p9$i, op: lte, threshold: 500, unit: ms}")
+        .map(i => s"        - {metric: loadtest.request.duration, aggregation: p9$i, op: lte, threshold: 500, unit: ms}")
         .mkString("\n")
       val result   = build(document(s"""    - name: r
                                        |      selector: {}
                                        |      criteria:
                                        |$nineGood
-                                       |        - {metric: http.client.request.duration, aggregation: p95, op: neq, threshold: 500, unit: ms}
+                                       |        - {metric: loadtest.request.duration, aggregation: p95, op: neq, threshold: 500, unit: ms}
                                        |""".stripMargin))
       result.isLeft shouldBe true
       result.left.value should have size 1
@@ -121,11 +121,11 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
       val reasons = build(document("""    - name: r
                                      |      selector: {}
                                      |      criteria:
-                                     |        - {metric: http.client.request.duration, aggregation: p95, op: lte, threshold: 500}
+                                     |        - {metric: loadtest.request.duration, aggregation: p95, op: lte, threshold: 500}
                                      |    - name: s
                                      |      selector: {}
                                      |      criteria:
-                                     |        - {metric: http.client.request.duration, aggregation: p95, op: lte, unit: ms}
+                                     |        - {metric: loadtest.request.duration, aggregation: p95, op: lte, unit: ms}
                                      |""".stripMargin)).left.value
 
       reasons should have size 2
@@ -140,7 +140,7 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
                                    |      guards:
                                    |        - {aggregation: rate, op: gte, threshold: 200, unit: "{request}/s"}
                                    |      criteria:
-                                   |        - {metric: http.client.request.duration, aggregation: p99, op: lt, threshold: 500, unit: ms}
+                                   |        - {metric: loadtest.request.duration, aggregation: p99, op: lt, threshold: 500, unit: ms}
                                    |""".stripMargin)).value
 
       // Pinned, not endorsed: the guard is quantified with the criteria, so it cannot be the thing that catches an empty run.
@@ -161,7 +161,7 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
       val path = write(document("""    - name: r
                                   |      selector: {}
                                   |      criteria:
-                                  |        - {metric: http.client.request.duration, aggregation: p95, op: neq, threshold: 500, unit: ms}
+                                  |        - {metric: loadtest.request.duration, aggregation: p95, op: neq, threshold: 500, unit: ms}
                                   |""".stripMargin))
       val e    = intercept[OpenNfrException](OpenNfrAssertions.assertionsFrom(path))
       e.reasons should have size 1

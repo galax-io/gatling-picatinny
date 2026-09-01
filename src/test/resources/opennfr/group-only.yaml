@@ -9,4 +9,4 @@ spec:
       selector:
         loadtest.group.name: [myGroup]
       criteria:
-        - {metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 1600, unit: ms}
+        - {metric: loadtest.group.duration, aggregation: p95, op: lt, threshold: 1600, unit: ms}
