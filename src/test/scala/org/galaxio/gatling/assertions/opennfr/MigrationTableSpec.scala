@@ -43,7 +43,7 @@ class MigrationTableSpec extends AnyWordSpec with Matchers {
     */
   private val tableRows: List[String] = doc.linesIterator.filter(_.startsWith("|")).toList
 
-  /** The section that refuses the group-only scope, so a guard over it cannot be satisfied by prose elsewhere on the page. */
+  /** The section covering the group-only scope, so a guard over it cannot be satisfied by prose elsewhere on the page. */
   private val groupOnlySection: String =
     doc.linesIterator
       .dropWhile(!_.startsWith("### A scope naming only a group"))
@@ -67,18 +67,28 @@ class MigrationTableSpec extends AnyWordSpec with Matchers {
       doc should include("a group with no request")
     }
 
-    "say why the group-only scope has no equivalent, not merely that it has none" in {
+    "say WHAT a group assertion measures, now that the case renders (#328)" in {
+      // Inverted at upstream v0.8.0: the case is no longer refused, so the guard that asserted it had
+      // no equivalent would now pass while the docs and the code disagreed. What a reader needs
+      // instead is the quantity — Gatling answers with the SUM of the enclosed operations, not the
+      // elapsed traversal, and nothing in Gatling's own output says so.
       docLower should include("cumulated")
-      // The cause, named where a reader will look: a missing metric name, not a missing scope. Attributing it to Gatling's
-      // model sent readers looking for a limit that is not there (#326).
-      docLower should include("no metric name in the format is true of")
+      docLower should include("sum of the durations of the operations the group encloses")
       docLower should include("opennfr#89")
+      groupOnlySection should include("loadtest.group.duration")
     }
 
-    "point at the deprecated path from the section that refuses the case, not merely somewhere" in {
-      // Scoped to the section: `assertionFromYaml` is named in the page's opening paragraph anyway, so a page-wide
-      // `contains` would pass without the reader ever being told where to go.
-      groupOnlySection should include("assertionFromYaml")
+    "warn that the charting flag makes charts and assertions disagree" in {
+      // The one setting that suggests an assertion could read wall clock. It reaches the report only,
+      // so a reader who does not know this will try to reconcile two numbers that cannot agree.
+      doc should include("gatling.charting.useGroupDurationMetric")
+      groupOnlySection.toLowerCase should include("never reaches the")
+    }
+
+    "state that the old metric name is retired and name its replacement" in {
+      doc should include("http.client.request.duration")
+      docLower should include("retired")
+      doc should include("loadtest.request.duration")
     }
 
     "warn against the workaround that renders but lies" in {

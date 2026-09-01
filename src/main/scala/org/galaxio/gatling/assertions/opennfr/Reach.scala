@@ -16,13 +16,32 @@ import io.gatling.core.config.GatlingConfiguration
   */
 private[opennfr] object Reach {
 
-  private val Hierarchy = "loadtest.group.name"
-  private val Request   = "loadtest.request.name"
-  private val Duration  = "http.client.request.duration"
-  private val Star      = "*"
+  private val Hierarchy       = "loadtest.group.name"
+  private val Request         = "loadtest.request.name"
+  private val RequestDuration = "loadtest.request.duration"
+  private val GroupDuration   = "loadtest.group.duration"
 
-  /** The response-time statistic every duration-unit decision below is about. */
+  /** Retired at upstream `v0.8.0` — NOT aliased. It named the vantage, the protocol and the granularity in one string when a
+    * load generator fixes only the first, and it is published by producers this format is not, so one string could carry two
+    * measurements. Kept only so the refusal can name it and point at its replacement.
+    */
+  private val RetiredDuration = "http.client.request.duration"
+  private val Star            = "*"
+
+  /** The response-time statistic `loadtest.request.duration` resolves to. */
   private val ResponseTime = "responseTime"
+
+  /** The statistic `loadtest.group.duration` resolves to: the SUM of the durations of the operations the group encloses, not
+    * the elapsed time of the traversal, so a run that pauses inside a group is not charged for the pause. Gatling computes the
+    * wall-clock quantity too, but it is absent from the interface assertions read, so no configuration makes it assertable.
+    */
+  private val GroupCumulatedResponseTime = "groupCumulatedResponseTime"
+
+  /** Both native duration statistics. Membership, not equality against `responseTime`: with a second statistic in play an
+    * equality test would make the duration-unit note one-sided, so a group predicate carrying `ns`/`us`/`min`/`h` would be
+    * refused WITHOUT the pointer to the register.
+    */
+  private val DurationNatives = Set(ResponseTime, GroupCumulatedResponseTime)
 
   /** The four duration units the published Units table excludes and `responseTime` in fact reaches. */
   private val ExcludedDurationUnits = Set("ns", "us", "min", "h")
@@ -59,7 +78,7 @@ private[opennfr] object Reach {
       upstream = "opennfr — reported from here, not yet filed",
       why = "The published row refuses both. Gatling computes them from the same buffer that produces the percentiles: every " +
         "request record contributes one response-time observation, so allRequests.count IS the count of observations of " +
-        "http.client.request.duration. The row looks over-refusing, and the published table is followed until upstream settles it.",
+        "loadtest.request.duration. The row looks over-refusing, and the published table is followed until upstream settles it.",
     ),
     LocalDecision(
       what = DurationUnitRow,
@@ -110,11 +129,10 @@ private[opennfr] object Reach {
       // The key set is non-empty and drawn from the two above, so an absent request name means the hierarchy is present:
       // there is no fourth combination to handle, and none is invented here.
       selector.get(Request) match {
-        case None =>
-          Left(
-            "a selector naming only a hierarchy denotes the requests whose hierarchy is exactly those groups, and no Gatling " +
-              "scope denotes the requests a path encloses: a group path resolves to the group, whose statistics are its own",
-          )
+        // A hierarchy with no request name resolves to the GROUP. Upstream `v0.8.0` minted the
+        // metric name the old refusal was waiting on, so this row is `can` — but ONLY paired with
+        // `loadtest.group.duration`, which `measure` enforces.
+        case None => selector.get(Hierarchy).fold[Either[String, Scope]](Right(Scope.Global))(hierarchy(_).map(Scope.Group))
 
         case Some(r) if r.asString.contains(Star) && !selector.contains(Hierarchy) => Right(Scope.ForAll)
 
@@ -160,7 +178,7 @@ private[opennfr] object Reach {
       .map(p.threshold * _)
       .toRight(
         s"unit `${p.unit}` is not a unit of $native" +
-          (if (native == ResponseTime && ExcludedDurationUnits.contains(p.unit)) decided(DurationUnitRow) else ""),
+          (if (DurationNatives.contains(native) && ExcludedDurationUnits.contains(p.unit)) decided(DurationUnitRow) else ""),
       )
 
   /** Where the target is a whole number, the converted threshold must be one — refused, never rounded, because rounding moves
@@ -205,10 +223,20 @@ private[opennfr] object Reach {
     for {
       sc <- scope(r.selector)
       op <- operator(p.op)
-      m  <- measure(p)
+      m  <- measure(sc, p)
     } yield Resolved(sc, m, op)
 
-  private def measure(p: Predicate): Either[String, Measure] =
+  /** The metric axis is resolved WITH the scope, because upstream `v0.8.0` pairs the two in BOTH directions:
+    * `loadtest.group.duration` only under a group scope, `loadtest.request.duration` under every scope except it. Resolving
+    * them independently could express the newly permitted row but not the reciprocal refusal, and would let a future metric
+    * name be added without the compiler demanding a decision for the group case.
+    */
+  private def isGroup(sc: Scope): Boolean = sc match {
+    case _: Scope.Group => true
+    case _              => false
+  }
+
+  private def measure(sc: Scope, p: Predicate): Either[String, Measure] =
     (p.metric, p.bad, p.good) match {
       // The schema forbids these three. Nothing here validates against the schema, so its rules are enforced (FR-004).
       case (_, Some(_), Some(_)) => Left("at most one side of a fraction: `bad` and `good` cannot both be present")
@@ -218,7 +246,53 @@ private[opennfr] object Reach {
       case (_, _, Some(_)) =>
         Left("`good` has no expressible numerator: a selector matches presence and never absence")
 
-      case (Some(Duration), None, None) =>
+      // The retired name is refused everywhere, and the message names its replacement: an author who
+      // hits this needs to be told what to write, not merely that something is wrong.
+      case (Some(RetiredDuration), None, None) =>
+        Left(
+          s"metric `$RetiredDuration` was retired in OpenNFR v0.8.0 and is not aliased: it named the vantage, the protocol " +
+            s"and the granularity in one string, and it is published by other producers. Write `$RequestDuration` for the " +
+            s"duration of one recorded operation, or `$GroupDuration` under a selector naming only a group hierarchy",
+        )
+
+      // `loadtest.group.duration` is admitted ONLY under a group scope.
+      case (Some(GroupDuration), None, None) if !isGroup(sc) =>
+        Left(
+          s"metric `$GroupDuration` is admitted only under a selector naming a group hierarchy with no request name: that is " +
+            "the only scope that resolves to a group, and a request has no group statistics",
+        )
+
+      // ...and under a group scope it is the ONLY admissible metric: the path resolves to the group,
+      // whose statistics are its own, so nothing about the enclosed requests is reachable there.
+      case (metric, None, None) if isGroup(sc) && !metric.contains(GroupDuration) =>
+        Left(
+          metric.fold(
+            "a selector naming only a group hierarchy resolves to the group, whose statistics are its own: a predicate with " +
+              s"no metric counts requests, which a group scope does not reach — carry `$GroupDuration`",
+          )(m =>
+            s"metric `$m` is not addressable under a selector naming only a group hierarchy: that path resolves to the group, " +
+              s"whose statistics are its own — only `$GroupDuration` is",
+          ),
+        )
+
+      case (Some(GroupDuration), None, None) =>
+        val millis = wholeInt(p, GroupCumulatedResponseTime, Time)
+        p.aggregation match {
+          case Percentile(n) => millis.map(v => Measure.Percentile(n.toDouble, v))
+          case "max"         => millis.map(v => Measure.Max(v))
+          case "min"         => millis.map(v => Measure.Min(v))
+          case "avg"         => millis.map(v => Measure.Mean(v))
+          case "stddev"      => millis.map(v => Measure.StdDev(v))
+          case "sum"         =>
+            Left(s"aggregation `sum` over a metric has no equivalent: $GroupCumulatedResponseTime offers no sum")
+          case other         =>
+            Left(
+              s"aggregation `$other` over a metric has no equivalent" +
+                (if (RefusedOverMetric.contains(other)) decided(OverMetric) else ""),
+            )
+        }
+
+      case (Some(RequestDuration), None, None) =>
         val millis = wholeInt(p, ResponseTime, Time)
         p.aggregation match {
           case Percentile(n) => millis.map(v => Measure.Percentile(n.toDouble, v))
@@ -266,6 +340,10 @@ private[opennfr] object Reach {
       case Scope.Global         => global
       case Scope.ForAll         => forAll
       case Scope.Details(parts) => details(AssertionPathParts(parts))
+      // The SAME constructor as Details: Gatling has one time metric and chooses the group's
+      // cumulated statistic by resolving the path, so the emitted assertion is indistinguishable.
+      // The distinction lives in the document, and in which metric name `measure` admitted.
+      case Scope.Group(parts)   => details(AssertionPathParts(parts))
     }
 
     def cmpInt(t: AssertionWithPathAndTarget[Int], v: Int): Assertion          = d.op match {

@@ -9,7 +9,7 @@ import scala.util.Using
 
 /** Builds Gatling assertions from an [[https://github.com/galax-io/opennfr OpenNFR]] `RequirementSet`.
   *
-  * '''Experimental.''' OpenNFR is pre-1.0 and moves; this tracks release `v0.6.0` of it, and the surface is outside the
+  * '''Experimental.''' OpenNFR is pre-1.0 and moves; this tracks release `v0.8.0` of it, and the surface is outside the
   * binary-compatibility guarantee the rest of this library keeps. The deprecated NFR-YAML path
   * ([[org.galaxio.gatling.assertions.AssertionsBuilder]]) is untouched and keeps its guarantees in full.
   *

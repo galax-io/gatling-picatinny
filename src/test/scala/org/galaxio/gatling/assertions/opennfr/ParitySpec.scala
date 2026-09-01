@@ -29,8 +29,12 @@ class ParitySpec extends AnyWordSpec with Matchers with EitherValues {
 
   private lazy val oracle: Set[Assertion] = AssertionsBuilder.assertionsFrom(deprecated).toSet
 
-  /** The eleventh: a group-only scope, which OpenNFR refuses by decision. Named, so the comparison subtracts it by reference —
-    * never by shrinking the expected set, which would turn this suite into one that proves nothing.
+  /** The eleventh: a group-only scope. Refused until upstream `v0.8.0` minted `loadtest.group.duration`, the metric name the
+    * old refusal was waiting on — so the comparison below is now WHOLE, with nothing subtracted by name.
+    *
+    * Note what it renders to: `details(...).responseTime`, the very same call a request path makes. Gatling has one time metric
+    * and picks the group's cumulated statistic by resolving the path, so this value is indistinguishable from a request's. The
+    * distinction exists only in the document.
     */
   private lazy val groupOnly: Assertion = details(grp("myGroup")).responseTime.percentile(95).lt(1600)
 
@@ -39,59 +43,73 @@ class ParitySpec extends AnyWordSpec with Matchers with EitherValues {
 
   "the OpenNFR translation of nfr.yml" should {
 
-    "build assertions equal to the deprecated path's, over the ten OpenNFR can state" in {
+    "build assertions equal to the deprecated path's — the WHOLE set, nothing subtracted" in {
       oracle should have size 11
-      val expected = oracle - groupOnly
-      expected should have size 10
-
-      rendered.toSet shouldBe expected
+      rendered.toSet shouldBe oracle
     }
 
-    "produce exactly ten, with no duplicates" in {
-      rendered should have size 10
-      rendered.distinct should have size 10
+    "produce exactly eleven, with no duplicates" in {
+      rendered should have size 11
+      rendered.distinct should have size 11
     }
 
-    "not contain the eleventh" in {
+    "contain the eleventh, which upstream v0.8.0 made renderable" in {
       oracle should contain(groupOnly)
-      rendered should not contain groupOnly
+      rendered should contain(groupOnly)
     }
   }
 
-  "the eleventh assertion" should {
+  "the group-only scope" should {
 
-    "be refused for the reason upstream decided, not merely be absent" in {
-      val groupOnlyDoc =
-        """apiVersion: opennfr.io/v1
-          |kind: RequirementSet
-          |metadata: {name: group-only}
-          |spec:
-          |  requirements:
-          |    - name: mygroup-itself
-          |      selector: {loadtest.group.name: [myGroup]}
-          |      criteria:
-          |        - {metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 1600, unit: ms}
-          |""".stripMargin
-      val f            = java.nio.file.Files.createTempFile("opennfr", ".yaml")
-      f.toFile.deleteOnExit()
-      java.nio.file.Files.write(f, groupOnlyDoc.getBytes("UTF-8"))
-
-      OpenNfrAssertions.build(f.toAbsolutePath.toString).left.value.mkString should
-        include("no Gatling scope denotes the requests a path encloses")
+    /** The pairing binds in BOTH directions, which is the half most easily got wrong: v0.8.0 did not merely permit a new row,
+      * it also made the request metric inadmissible under that row.
+      */
+    "refuse the request-duration metric, which has no meaning against a group" in {
+      val r = Requirement("r", Map("loadtest.group.name" -> io.circe.Json.arr(io.circe.Json.fromString("myGroup"))), Nil, None)
+      val p = Predicate(None, Some("loadtest.request.duration"), "p95", "lt", BigDecimal(1600), "ms", None, None)
+      Reach.render(r, p).left.value should include("resolves to the group")
     }
 
-    "not be recoverable by calling the group a request — the workaround FR-007 forbids" in {
-      // `{loadtest.request.name: myGroup}` renders the identical Gatling call, because a one-part path is one-part
-      // whatever produced it. It is still a document that says *request* about a group, so the renderer must not be
-      // the thing that makes it look legitimate: it renders, and only the migration table may say why not to write it.
+    "refuse a predicate carrying no metric at all" in {
+      val r = Requirement("r", Map("loadtest.group.name" -> io.circe.Json.arr(io.circe.Json.fromString("myGroup"))), Nil, None)
+      val p = Predicate(None, None, "count", "lt", BigDecimal(10), "{request}", None, None)
+      Reach.render(r, p).left.value should include("loadtest.group.duration")
+    }
+
+    "refuse the group metric anywhere else — the reciprocal direction" in {
+      val r = Requirement("r", Map("loadtest.request.name" -> io.circe.Json.fromString("GET /x")), Nil, None)
+      val p = Predicate(None, Some("loadtest.group.duration"), "p95", "lt", BigDecimal(1600), "ms", None, None)
+      Reach.render(r, p).left.value should include("only under a selector naming a group hierarchy")
+    }
+  }
+
+  "the retired metric name" should {
+
+    "be refused, and the refusal must name the replacement to write instead" in {
+      val r      = Requirement("r", Map.empty, Nil, None)
+      val p      = Predicate(None, Some("http.client.request.duration"), "p95", "lt", BigDecimal(500), "ms", None, None)
+      val reason = Reach.render(r, p).left.value
+      reason should include("retired in OpenNFR v0.8.0")
+      reason should include("loadtest.request.duration")
+      reason should include("loadtest.group.duration")
+    }
+  }
+
+  "the workaround the migration table warns against" should {
+
+    /** `{loadtest.request.name: myGroup}` + the request metric renders the IDENTICAL Assertion as the group spelling, because a
+      * one-part path is one-part whatever produced it and Gatling has only one time metric. So the prohibition on writing it
+      * survives ONLY as a documentation rule — the renderer cannot tell the two apart and must not pretend to.
+      */
+    "render the identical value as the legitimate group spelling" in {
       val r = Requirement("r", Map("loadtest.request.name" -> io.circe.Json.fromString("myGroup")), Nil, None)
-      val p = Predicate(None, Some("http.client.request.duration"), "p95", "lt", BigDecimal(1600), "ms", None, None)
+      val p = Predicate(None, Some("loadtest.request.duration"), "p95", "lt", BigDecimal(1600), "ms", None, None)
       Reach.render(r, p).value shouldBe groupOnly
     }
   }
 
   "the deprecated path" should {
-    "still build all eleven, the excluded one included, so the two coexist" in {
+    "still build all eleven, so the two paths coexist" in {
       AssertionsBuilder.assertionsFrom(deprecated).toSet shouldBe oracle
       oracle should contain(groupOnly)
     }

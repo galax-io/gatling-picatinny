@@ -16,6 +16,17 @@ private[opennfr] object Scope {
   case object Global                            extends Scope
   case object ForAll                            extends Scope
   final case class Details(parts: List[String]) extends Scope
+
+  /** A hierarchy with NO request name, which resolves to the GROUP itself (upstream `v0.8.0`).
+    *
+    * Renders through the very same `details(...)` path as [[Details]] — Gatling exposes one time metric and picks the group's
+    * cumulated statistic purely by path resolution, so nothing about the emitted assertion distinguishes the two. This is a
+    * separate case anyway because it is the only scope whose ADMISSIBLE METRIC differs: `loadtest.group.duration` here and
+    * nowhere else, `loadtest.request.duration` everywhere else and not here. Keeping it in the type is what makes the compiler
+    * demand a pairing decision when a metric name is added, rather than letting a new one silently inherit the wrong
+    * admissibility.
+    */
+  final case class Group(parts: List[String]) extends Scope
 }
 
 /** The comparison, resolved from the document's `op`. A closed set, so each surface's application is exhaustive: widening it —

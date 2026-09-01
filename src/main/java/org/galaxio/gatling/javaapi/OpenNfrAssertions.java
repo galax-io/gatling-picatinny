@@ -8,7 +8,7 @@ import java.util.List;
  * Builds Gatling assertions from an <a href="https://github.com/galax-io/opennfr">OpenNFR</a>
  * {@code RequirementSet}, for Java and Kotlin simulations.
  *
- * <p><b>Experimental.</b> OpenNFR is pre-1.0 and moves; this tracks release {@code v0.6.0} of it, and the surface is outside
+ * <p><b>Experimental.</b> OpenNFR is pre-1.0 and moves; this tracks release {@code v0.8.0} of it, and the surface is outside
  * the binary-compatibility guarantee the rest of this library keeps. The deprecated {@code Assertions.assertionFromYaml}
  * is untouched and keeps its guarantees in full.
  *

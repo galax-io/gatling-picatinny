@@ -52,7 +52,7 @@ private[opennfr] object RequirementSet {
     * headers, the Java facade's javadoc, `docs/opennfr.md` and `contracts/reach.md` — is checked against this by
     * `MigrationTableSpec`, so moving the tracked release cannot leave one of them behind.
     */
-  val TracksRelease: String = "v0.6.0"
+  val TracksRelease: String = "v0.8.0"
 
   private final case class Spec(requirements: List[Requirement])
 

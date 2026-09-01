@@ -21,7 +21,7 @@ class ModelSpec extends AnyWordSpec with Matchers with EitherValues with OptionV
       |    - name: r
       |      selector: {}
       |      criteria:
-      |        - {metric: http.client.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
+      |        - {metric: loadtest.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
       |""".stripMargin
 
   "RequirementSet.decode" should {
@@ -38,7 +38,7 @@ class ModelSpec extends AnyWordSpec with Matchers with EitherValues with OptionV
       r.criteria should have size 1
 
       val p = r.criteria.head
-      p.metric shouldBe Some("http.client.request.duration")
+      p.metric shouldBe Some("loadtest.request.duration")
       p.aggregation shouldBe "p95"
       p.op shouldBe "lte"
       p.unit shouldBe "ms"
@@ -106,7 +106,7 @@ class ModelSpec extends AnyWordSpec with Matchers with EitherValues with OptionV
           |    - name: r
           |      selector: {}
           |      criteria:
-          |        - {metric: http.client.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
+          |        - {metric: loadtest.request.duration, aggregation: p95, op: lte, threshold: 500, unit: ms}
           |""".stripMargin,
         "  requirements: []\n",
       )

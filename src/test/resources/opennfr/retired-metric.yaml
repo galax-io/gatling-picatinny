@@ -1,0 +1,12 @@
+# A document carrying the metric name upstream RETIRED at v0.8.0 (#328). Not aliased, so it is
+# refused — and the refusal must name the replacement to write instead. Kept as a fixture so the
+# refusal is exercised from both surfaces.
+apiVersion: opennfr.io/v1
+kind: RequirementSet
+metadata: {name: retired-metric}
+spec:
+  requirements:
+    - name: whole-run
+      selector: {}
+      criteria:
+        - {metric: http.client.request.duration, aggregation: p95, op: lt, threshold: 500, unit: ms}
