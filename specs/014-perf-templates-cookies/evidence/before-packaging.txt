@@ -1,0 +1,11 @@
+# T002 — starting condition: benchmark output leaks into packageBin
+# Recorded: 2026-09-01T16:32:03Z
+# clean build jar entries      :      668
+# after 'Jmh/compile' entries  :      671
+
+## Entries present ONLY after a benchmark run (the leak):
+META-INF/
+META-INF/BenchmarkList
+META-INF/CompilerHints
+
+## Entries lost after a benchmark run (should be none):

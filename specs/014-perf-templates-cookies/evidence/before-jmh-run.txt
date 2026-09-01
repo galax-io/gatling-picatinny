@@ -1,0 +1,26 @@
+# T001 — starting condition: sbt Jmh/run fails before the fix
+# Recorded: 2026-09-01T16:30:27Z
+# sbt: sbt.version=1.13.0
+# command: sbt "Jmh/run -l"
+
+[info] welcome to sbt 1.13.0 (Homebrew Java 17.0.10)
+[info] loading global plugins from /Users/i.akhaltsev/.sbt/1.0/plugins
+[info] loading settings for project algorithm-selection-no-regression-645ec5-build-build-build from metals.sbt...
+[info] loading project definition from /Users/i.akhaltsev/IdeaProjects/personal/gatling-picatinny/.claude/worktrees/algorithm-selection-no-regression-645ec5/project/project/project
+[info] loading settings for project algorithm-selection-no-regression-645ec5-build-build from metals.sbt...
+[info] loading project definition from /Users/i.akhaltsev/IdeaProjects/personal/gatling-picatinny/.claude/worktrees/algorithm-selection-no-regression-645ec5/project/project
+[success] Generated .bloop/algorithm-selection-no-regression-645ec5-build-build.json
+[success] Total time: 1 s, completed 1 сент. 2026 г., 20:30:32
+[info] loading settings for project algorithm-selection-no-regression-645ec5-build from metals.sbt, plugins.sbt...
+[info] loading project definition from /Users/i.akhaltsev/IdeaProjects/personal/gatling-picatinny/.claude/worktrees/algorithm-selection-no-regression-645ec5/project
+[success] Generated .bloop/algorithm-selection-no-regression-645ec5-build.json
+[success] Total time: 1 s, completed 1 сент. 2026 г., 20:30:33
+[info] loading settings for project root from build.sbt, publish.sbt...
+[info] set current project to gatling-picatinny (in build file:/Users/i.akhaltsev/IdeaProjects/personal/gatling-picatinny/.claude/worktrees/algorithm-selection-no-regression-645ec5/)
+[info] running (fork) org.openjdk.jmh.Main -l
+[error] Error: Could not find or load main class org.openjdk.jmh.Main
+[error] Caused by: java.lang.ClassNotFoundException: org.openjdk.jmh.Main
+[error] nonzero exit code returned from runner: 1
+[error] (Jmh / run) nonzero exit code returned from runner: 1
+[error] Total time: 2 s, completed 1 сент. 2026 г., 20:30:36
+exit=1

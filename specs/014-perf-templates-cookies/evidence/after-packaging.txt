@@ -1,0 +1,10 @@
+# T018/T019 — packaging after the fix
+# Recorded: 2026-09-01T16:43:15Z
+
+clean build jar entries      :      668
+after 'Jmh/compile' entries  :      668
+identical                    : yes (diff empty)
+clean jar vs pre-fix baseline: identical (no production entry excluded by accident)
+
+Before the fix (see before-packaging.txt): 668 -> 671, leaking
+  META-INF/, META-INF/BenchmarkList, META-INF/CompilerHints
