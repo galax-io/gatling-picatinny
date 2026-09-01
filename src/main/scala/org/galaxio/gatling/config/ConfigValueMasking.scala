@@ -3,6 +3,7 @@ package org.galaxio.gatling.config
 import com.typesafe.config.Config
 
 import java.net.URI
+import java.util.Locale
 import java.util.regex.{Matcher, Pattern}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -164,14 +165,22 @@ private[gatling] object ConfigValueMasking {
       case present => present.split(Array('.', '/')).filter(_.nonEmpty).lastOption.getOrElse(present)
     }
 
-  /** Split a path segment into lowercase words across camelCase, snake_case and kebab-case boundaries. */
+  /** Split a path segment into lowercase words across camelCase, snake_case and kebab-case boundaries.
+    *
+    * Lowered with `Locale.ROOT`, never the platform default (#333). The secret words this feeds are ASCII, but several contain
+    * `i` — `credential`, `credentials`, `authorization`, `apikey`, `privatekey`, `clientsecret` — and under a Turkish/Azeri
+    * default locale an ASCII capital `I` lowers to a dotless `ı`. A key spelled `AUTHORIZATION` or `API_KEY` then matched
+    * nothing and its value was logged IN FULL, by the helper whose whole purpose is to prevent that. Every masking decision —
+    * the word match, the separator-less `suffixFloor`, and `normalizedTerm` for operator-supplied keys — reads this one
+    * function, so this is the single place the locale can enter.
+    */
   private def splitWords(segment: String): List[String] =
     Option(segment)
       .filter(_.nonEmpty)
       .toList
       .flatMap(seg => CamelBoundary.matcher(seg).replaceAll("$1 $2").split(Array('_', '-', ' ')))
       .filter(_.nonEmpty)
-      .map(_.toLowerCase)
+      .map(_.toLowerCase(Locale.ROOT))
 
   /** Contiguous word runs that END at the last word: for `[a,b,c]` → `"abc"`, `"bc"`, `"c"`. The secret noun is the head (last
     * element) of an English compound (`bearer token`, `client secret`, `api key`), so suffix-anchored runs match those while
