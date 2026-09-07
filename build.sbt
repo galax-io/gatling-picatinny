@@ -66,7 +66,7 @@ lazy val strictScalacOptions = Seq(
 // `ThisBuild / scalacOptions` — a plugin doing `scalacOptions ++=` at project scope would silently
 // win over a delegated value.
 lazy val commonSettings = Seq(
-  scalaVersion      := "2.13.18",
+  scalaVersion      := "3.9.0",
   // Scalafix lint gate (#273): semantic rules need SemanticDB; RemoveUnused feeds on -Wunused.
   semanticdbEnabled := true,
   semanticdbVersion := scalafixSemanticdb.revision,

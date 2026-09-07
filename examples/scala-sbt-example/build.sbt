@@ -3,7 +3,7 @@ val gatlingVersion   = "3.13.5"
 
 resolvers += Resolver.mavenLocal
 
-ThisBuild / scalaVersion := "2.13.18"
+ThisBuild / scalaVersion := "3.9.0"
 
 enablePlugins(GatlingPlugin)
 
