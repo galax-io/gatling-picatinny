@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gatling-picatinny
+  description: Gatling DSL extensions library for feeders, transactions, assertions, templates, config management, JWT generation, and Redis integration
+  annotations:
+    github.com/project-slug: galax-io/gatling-picatinny
+spec:
+  type: library
+  lifecycle: production
+  owner: galaxio

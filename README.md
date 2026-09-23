@@ -232,7 +232,7 @@ Full reference → [docs/transactions.md](docs/transactions.md).
 
 ### Logging & secret masking
 
-> These behaviors arrive in **1.23.0** (current `main`, not yet released). On the latest published release they behave as before — see the [1.23.0 migration notes](docs/logging.md#migration--upgrading-to-1230).
+> These behaviors shipped in **1.23.0** and are present in the current release. Upgrading from an older (≤1.22) release? See the [1.23.0 migration notes](docs/logging.md#migration--upgrading-to-1230).
 
 Output goes through SLF4J; the library ships **no** `logback.xml` (you stay in control). Secrets are redacted at every
 log/print/exception sink — keys whose last segment is a sensitive term (`password`, `secret`, `token`, `apiKey`,
@@ -263,7 +263,7 @@ Full reference + recommended `logback.xml` + [1.23.0 migration](docs/logging.md#
 | [Examples & Testing](docs/examples.md) | Scala / Java / Kotlin example overlays and how to run them |
 | [Migration Guide](docs/migration.md) | Per-version upgrade matrix + before/after code for spec-kit releases (1.16.0+) |
 
-## Contributing
+## Development setup
 
 ### Supported sbt versions
 
