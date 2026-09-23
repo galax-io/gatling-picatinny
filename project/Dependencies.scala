@@ -84,7 +84,9 @@ object Dependencies {
   )
 
   lazy val scalaMock: Seq[ModuleID] = Seq(
-    "org.scalamock" %% "scalamock" % "7.6.0" % Test,
+    "org.scalamock" %% "scalamock"           % "7.6.0" % Test,
+    // 7.6.0 extracted ScalaTest integration (org.scalamock.scalatest.MockFactory) into its own module.
+    "org.scalamock" %% "scalamock-scalatest" % "7.6.0" % Test,
   )
 
   lazy val generex: Seq[ModuleID] = Seq(
