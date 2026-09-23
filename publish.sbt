@@ -3,7 +3,7 @@ ThisBuild / organization         := "org.galaxio"
 ThisBuild / organizationName     := "Galaxio Team"
 ThisBuild / organizationHomepage := Some(url("https://github.com/galax-io"))
 ThisBuild / homepage             := Some(url("https://github.com/galax-io/gatling-picatinny"))
-ThisBuild / description          := "A Scala toolkit that extends the Gatling DSL with production-ready utilities (feeders, transactions, assertions, templates, config helpers, and integrations like InfluxDB and Redis) to build faster, more reliable performance tests."
+ThisBuild / description          := "A Scala toolkit that extends the Gatling DSL with production-ready utilities (feeders, transactions, assertions, templates, config helpers, and a Redis integration) to build faster, more reliable performance tests."
 ThisBuild / scmInfo              := Some(
   ScmInfo(
     url("https://github.com/galax-io/gatling-picatinny"),
