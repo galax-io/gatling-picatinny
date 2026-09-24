@@ -16,8 +16,8 @@ name: sbt upgrade parity
 #         artifact-suffixes: _2.13 # artifact-ID suffixes whose POMs and jars must be identical
 #
 # Deliberately self-contained: a called workflow cannot reliably check out the repository that
-# hosts it, so every step's logic lives here. src/test/.../build/SbtUpgradeParityWorkflowSpec
-# executes the guard, preparation and comparison steps against fixture builds.
+# hosts it, so every step's logic lives here. The gate also runs on this repository's own pull
+# requests that touch project/**, build.sbt or .github/workflows/**.
 #
 # The caller's build must load sbt-mima-plugin (all in-scope builds do); the MiMa step fails
 # otherwise.
@@ -333,8 +333,9 @@ jobs:
 
       # MiMa of the head against the base just published into the isolated Ivy home. Each
       # project's own baseline and filters are replaced: the gate must see EVERY issue between the
-      # two commits, in both directions, and it checks the packaged jar, because the class
-      # directory can hold classes packageBin filters out (JMH benchmarks, for one).
+      # two commits, in both directions. The current class files stay MiMa's default: overriding
+      # mimaCurrentClassfiles with packageBin does not load on sbt 2, whose packageBin returns a
+      # HashedVirtualFileRef, not a File.
       # A project gets the base as its baseline when the base published a module named after it
       # (`publish / skip` is a task, so a setting cannot ask it).
       - name: MiMa of the head against the base
@@ -369,7 +370,6 @@ jobs:
             ref="LocalProject(\"$p\")"
             commands+=(
               "set $ref / mimaPreviousArtifacts := { val published = Set[String]($published); val name = ($ref / moduleName).value; val id = ($ref / projectID).value; if (published.exists(a => a == name || a.startsWith(name + \"_\"))) Set(id.withRevision(\"$BASE_VERSION\").withExplicitArtifacts(Vector.empty)) else Set.empty[ModuleID] }"
-              "set $ref / mimaCurrentClassfiles := ($ref / Compile / packageBin).value"
               "set $ref / mimaFailOnNoPrevious := false"
               "set $ref / mimaCheckDirection := \"both\""
               "set $ref / mimaBinaryIssueFilters := Seq.empty"
