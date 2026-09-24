@@ -1,0 +1,400 @@
+name: sbt upgrade parity
+
+# The one gate every galax-io sbt upgrade pull request runs (spec 015, FR-003). It publishes the
+# pull request's BASE with the base's own launcher and its HEAD with the head's pinned one, and
+# fails on any difference a user of the published artifacts could observe: the artifact set, the
+# normalized POMs, the jar entry lists, the class-file major versions, and any MiMa issue of the
+# head against the base.
+#
+# Other repositories call it pinned by full commit SHA:
+#
+#   jobs:
+#     sbt-upgrade-parity:
+#       uses: galax-io/gatling-picatinny/.github/workflows/sbt-upgrade-parity.yml@<sha>
+#       with:
+#         mode: library            # or sbt-plugin: publishes and checks both cross axes
+#         artifact-suffixes: _2.13 # artifact-ID suffixes whose POMs and jars must be identical
+#
+# Deliberately self-contained: a called workflow cannot reliably check out the repository that
+# hosts it, so every step's logic lives here. src/test/.../build/SbtUpgradeParityWorkflowSpec
+# executes the guard, preparation and comparison steps against fixture builds.
+#
+# The caller's build must load sbt-mima-plugin (all in-scope builds do); the MiMa step fails
+# otherwise.
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "'library' (one Scala axis) or 'sbt-plugin' (publishes and checks both cross axes with '+')."
+        required: false
+        type: string
+        default: library
+      artifact-suffixes:
+        description: >-
+          Space-separated artifact-ID suffixes whose POMs, jar entries and class-file versions must be
+          identical, e.g. '_2.13' or '_2.12_1.0'. Empty means '_2.13' in library mode and
+          '_2.12_1.0 _sbt2_3' in sbt-plugin mode. The artifact set and MiMa always cover everything.
+        required: false
+        type: string
+        default: ''
+  pull_request:
+    paths:
+      - 'project/**'
+      - 'build.sbt'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: sbt upgrade parity (${{ inputs.mode || 'library' }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      BASE_VERSION: 0.0.0-parity-base
+      HEAD_VERSION: 0.0.0-parity-head
+      # MUST NOT contain -Dsbt.version=: each checkout is built by the sbt its own
+      # project/build.properties names, which is the whole point of the comparison.
+      SBT_OPTS: -Xms2G -Xmx3G -Xss4M -Dsbt.color=false -Dsbt.supershell=false
+    steps:
+      - name: Prepare the mode and the isolated publishing homes
+        id: prepare
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode || 'library' }}
+          SUFFIXES_INPUT: ${{ inputs.artifact-suffixes }}
+        run: |
+          set -euo pipefail
+          case "$MODE" in
+            library)
+              publish='publishLocal publishM2'
+              mima='mimaReportBinaryIssues'
+              default_suffixes='_2.13'
+              ;;
+            sbt-plugin)
+              # '+' so a pluginCrossBuild base publishes its sbt 1 AND sbt 2 axes; with
+              # projectMatrix every row has its own crossScalaVersions and '+' is a no-op.
+              publish='+publishLocal +publishM2'
+              mima='+mimaReportBinaryIssues'
+              default_suffixes='_2.12_1.0 _sbt2_3'
+              ;;
+            *)
+              echo "::error title=Unknown mode::mode must be 'library' or 'sbt-plugin', got '${MODE}'."
+              exit 1
+              ;;
+          esac
+          suffixes=$(echo "${SUFFIXES_INPUT:-}" | xargs)
+          suffixes="${suffixes:-$default_suffixes}"
+
+          # One Ivy and Coursier home shared by both sides and by nothing else on the runner:
+          # the head's MiMa resolves the base from this Ivy local repository. Each side publishes
+          # its Maven layout into its own directory, which is what the comparison reads.
+          home="${RUNNER_TEMP}/sbt-parity"
+          mkdir -p "$home/ivy" "$home/coursier" "$home/m2-base" "$home/m2-head" "$home/report"
+          {
+            echo "PARITY_IVY_HOME=$home/ivy"
+            echo "COURSIER_CACHE=$home/coursier"
+            echo "BASE_M2=$home/m2-base"
+            echo "HEAD_M2=$home/m2-head"
+            echo "REPORT_DIR=$home/report"
+            echo "PUBLISH_TASKS=$publish"
+            echo "MIMA_TASK=$mima"
+            echo "ARTIFACT_SUFFIXES=$suffixes"
+          } >> "$GITHUB_ENV"
+          echo "mode=${MODE} publish='${publish}' mima='${mima}' compared suffixes='${suffixes}'"
+
+      - name: Resolve the pull request's base and head
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then
+            echo "::error title=Not a pull request::the parity gate compares a pull request's base with its head; call it from a pull_request workflow."
+            exit 1
+          fi
+          echo "base=${BASE_SHA} head=${HEAD_SHA}"
+
+      - name: Check out the head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          persist-credentials: false
+
+      # FR-003: a milestone or release candidate is never a release target, and sbt-mima-plugin
+      # 1.2.x picks its previous artifact correctly only from sbt 2.0.7 on.
+      - name: Reject a pre-release sbt or an sbt 2 below 2.0.7
+        id: sbt-version-guard
+        shell: bash
+        env:
+          BUILD_PROPERTIES: head/project/build.properties
+        run: |
+          set -euo pipefail
+          if [ ! -f "$BUILD_PROPERTIES" ]; then
+            echo "::error title=No sbt pin::${BUILD_PROPERTIES} does not exist."
+            exit 1
+          fi
+          # Last assignment wins, as in java.util.Properties; tolerate spaces and CRLF.
+          version=$(sed -n 's/^[[:space:]]*sbt\.version[[:space:]]*[=:][[:space:]]*//p' "$BUILD_PROPERTIES" \
+            | tail -1 | tr -d '[:space:]' || true)
+          if [ -z "$version" ]; then
+            echo "::error title=No sbt pin::${BUILD_PROPERTIES} sets no sbt.version."
+            exit 1
+          fi
+          case "$version" in
+            *-M*|*-RC*)
+              echo "::error title=Pre-release sbt::sbt.version=${version} is a pre-release (milestone or release candidate); pin a stable release."
+              exit 1
+              ;;
+          esac
+          if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error title=Unrecognised sbt version::sbt.version=${version} is not a stable X.Y.Z release."
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}" minor="${BASH_REMATCH[2]}" patch="${BASH_REMATCH[3]}"
+          if [ "$major" -eq 2 ] && [ "$minor" -eq 0 ] && [ "$patch" -lt 7 ]; then
+            echo "::error title=sbt 2 too old::sbt.version=${version}: sbt 2 builds must pin 2.0.7 or newer (sbt-mima-plugin 1.2.x relies on it)."
+            exit 1
+          fi
+          echo "head pins sbt ${version}"
+
+      - name: Check out the base
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+
+      # No dependency, sbt task or target/ cache is restored (FR-007): both sides build from clean.
+      - name: Setup Java (Temurin 17)
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The launcher script only boots the sbt each checkout's project/build.properties names.
+      - name: Setup sbt
+        uses: sbt/setup-sbt@96cf3f09dc501acdad7807fffe97dba9fa0709be # v1.1.5
+
+      - name: Publish the base with its own launcher
+        id: publish-base
+        working-directory: base
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "base pins: $(grep -h '^sbt.version' project/build.properties || true)"
+          # $PUBLISH_TASKS is word-split on purpose: it holds one or two sbt commands.
+          sbt --batch -Dsbt.ivy.home="$PARITY_IVY_HOME" -Dmaven.repo.local="$BASE_M2" \
+            "set ThisBuild / version := \"$BASE_VERSION\"" \
+            $PUBLISH_TASKS 2>&1 | tee "$REPORT_DIR/publish-base.log"
+
+      - name: Publish the head with its pinned launcher
+        id: publish-head
+        working-directory: head
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "head pins: $(grep -h '^sbt.version' project/build.properties || true)"
+          sbt --batch -Dsbt.ivy.home="$PARITY_IVY_HOME" -Dmaven.repo.local="$HEAD_M2" \
+            "set ThisBuild / version := \"$HEAD_VERSION\"" \
+            $PUBLISH_TASKS 2>&1 | tee "$REPORT_DIR/publish-head.log"
+
+      # Artifact set: every published file (checksums aside) of every module, version-normalized.
+      # For modules matching $ARTIFACT_SUFFIXES: the normalized POM, each jar's entry list, and the
+      # major version of each class file. One unified diff of the two sides; empty or the gate fails.
+      - name: Compare the published artifacts
+        id: compare
+        shell: python
+        run: |
+          import difflib
+          import os
+          import pathlib
+          import shutil
+          import sys
+          import zipfile
+          import xml.etree.ElementTree as ET
+
+          MARKER = "{version}"
+          CHECKSUMS = (".md5", ".sha1", ".sha256", ".sha512", ".asc")
+          SCALA_LIBRARIES = {("org.scala-lang", "scala-library"), ("org.scala-lang", "scala3-library_3")}
+
+          suffixes = os.environ["ARTIFACT_SUFFIXES"].split()
+          report = pathlib.Path(os.environ["REPORT_DIR"])
+          report.mkdir(parents=True, exist_ok=True)
+
+
+          def published(repo, version):
+              """Files published under `version`, keyed by their version-free path relative to the repository."""
+              files = {}
+              if repo.is_dir():
+                  for path in sorted(repo.rglob("*")):
+                      if (path.is_file() and path.parent.name == version
+                              and not path.name.endswith(CHECKSUMS) and not path.name.startswith("maven-metadata")):
+                          files[path.relative_to(repo).as_posix().replace(version, MARKER)] = path
+              return files
+
+
+          def artifact_id(rel):
+              return rel.split("/")[-3]
+
+
+          def normalized_pom(path, version):
+              root = ET.parse(path).getroot()
+              for element in root.iter():
+                  if isinstance(element.tag, str):
+                      element.tag = element.tag.rsplit("}", 1)[-1]
+
+              def text(element, tag):
+                  child = element.find(tag) if element is not None else None
+                  value = (child.text or "").strip() if child is not None else ""
+                  return value.replace(version, MARKER)
+
+              def joined(element, *tags):
+                  return " | ".join(text(element, tag) for tag in tags)
+
+              lines = [f"  {tag}: {text(root, tag)}"
+                       for tag in ("groupId", "artifactId", "packaging", "name", "description", "url")]
+              lines.append(f"  organization: {joined(root.find('organization'), 'name', 'url')}")
+              properties = root.find("properties")
+              lines += sorted(f"  property {p.tag}: {(p.text or '').strip()}" for p in (properties if properties is not None else []))
+              lines += sorted(f"  license: {joined(l, 'name', 'url', 'distribution')}" for l in root.findall("licenses/license"))
+              lines.append(f"  scm: {joined(root.find('scm'), 'url', 'connection', 'developerConnection', 'tag')}")
+              lines += sorted(f"  developer: {joined(d, 'id', 'name', 'email', 'url', 'organization')}"
+                              for d in root.findall("developers/developer"))
+              lines += sorted(f"  repository: {joined(r, 'id', 'url')}" for r in root.findall("repositories/repository"))
+              dependencies, scala = [], []
+              for d in root.findall("dependencies/dependency"):
+                  coordinates = f"{text(d, 'groupId')}:{text(d, 'artifactId')}:{text(d, 'version')}"
+                  if (text(d, "groupId"), text(d, "artifactId")) in SCALA_LIBRARIES:
+                      scala.append(coordinates)
+                  exclusions = sorted(f"{text(e, 'groupId')}:{text(e, 'artifactId')}" for e in d.findall("exclusions/exclusion"))
+                  dependencies.append(
+                      f"  dependency: {coordinates} scope={text(d, 'scope') or 'compile'} type={text(d, 'type') or 'jar'}"
+                      f" classifier={text(d, 'classifier')} optional={text(d, 'optional') or 'false'}"
+                      f" exclusions={','.join(exclusions)}")
+              lines += [f"  scala-library: {s}" for s in sorted(scala) or ["none"]]
+              return lines + sorted(dependencies)
+
+
+          def jar_listing(path):
+              with zipfile.ZipFile(path) as jar:
+                  names = sorted(jar.namelist())
+                  majors = []
+                  for name in names:
+                      if name.endswith(".class"):
+                          with jar.open(name) as entry:
+                              header = entry.read(8)
+                          major = int.from_bytes(header[6:8], "big") if header[:4] == b"\xca\xfe\xba\xbe" else "not-a-class-file"
+                          majors.append(f"  class-major {major} {name}")
+              return [f"  entry {n}" for n in names] + majors
+
+
+          def manifest(side, repo, version):
+              files = published(pathlib.Path(repo), version)
+              lines = ["## published artifact set"] + [f"  {rel}" for rel in files]
+              compared = {rel: path for rel, path in files.items() if artifact_id(rel).endswith(tuple(suffixes))}
+              missing = [s for s in suffixes if not any(artifact_id(rel).endswith(s) for rel in compared)]
+              poms = report / f"{side}-poms"
+              poms.mkdir(exist_ok=True)
+              for rel, path in compared.items():
+                  if path.suffix == ".pom":
+                      shutil.copy(path, poms / path.name)
+                      lines += [f"## pom {rel}"] + normalized_pom(path, version)
+                  elif path.suffix == ".jar":
+                      lines += [f"## jar {rel}"] + jar_listing(path)
+              (report / f"{side}-normalized.txt").write_text("\n".join(lines) + "\n")
+              return lines, missing
+
+
+          if not suffixes:
+              print("::error title=Nothing to compare::no artifact suffixes were given.")
+              sys.exit(1)
+          base, base_missing = manifest("base", os.environ["BASE_M2"], os.environ["BASE_VERSION"])
+          head, head_missing = manifest("head", os.environ["HEAD_M2"], os.environ["HEAD_VERSION"])
+          diff = list(difflib.unified_diff(base, head, "base", "head", lineterm=""))
+          (report / "parity.diff").write_text("".join(line + "\n" for line in diff))
+
+          failed = False
+          for side, missing in (("base", base_missing), ("head", head_missing)):
+              if missing:
+                  print(f"::error title=Vacuous comparison::the {side} published no artifact ending in {' '.join(missing)}.")
+                  failed = True
+          if diff:
+              print("\n".join(diff))
+              print("::error title=Artifact drift::the head's published artifacts differ from the base's (see parity.diff).")
+              failed = True
+          compared_poms = sum(1 for line in head if line.startswith("## pom "))
+          print(f"compared {compared_poms} POM(s) for suffixes {' '.join(suffixes)}; {len(diff)} diff line(s)")
+          sys.exit(1 if failed else 0)
+
+      # MiMa of the head against the base just published into the isolated Ivy home. Each
+      # project's own baseline and filters are replaced: the gate must see EVERY issue between the
+      # two commits, in both directions, and it checks the packaged jar, because the class
+      # directory can hold classes packageBin filters out (JMH benchmarks, for one).
+      # A project gets the base as its baseline when the base published a module named after it
+      # (`publish / skip` is a task, so a setting cannot ask it).
+      - name: MiMa of the head against the base
+        id: mima
+        if: ${{ !cancelled() && steps.publish-base.outcome == 'success' && steps.publish-head.outcome == 'success' }}
+        working-directory: head
+        shell: bash
+        run: |
+          set -euo pipefail
+          sbt --batch -Dsbt.ivy.home="$PARITY_IVY_HOME" projects 2>&1 \
+            | sed -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' | tee "$REPORT_DIR/projects.log"
+          mapfile -t projects < <(awk '
+            /^\[info\] In file:/ { listing = 1; next }
+            listing && /^\[info\][ \t]+(\*[ \t]+)?[A-Za-z0-9_.-]+[ \t]*$/ {
+              sub(/^\[info\][ \t]+(\*[ \t]+)?/, ""); gsub(/[ \t]/, ""); print; next
+            }
+            { listing = 0 }
+          ' "$REPORT_DIR/projects.log")
+          if [ "${#projects[@]}" -eq 0 ]; then
+            echo "::error title=No projects::could not list the head build's projects; MiMa would check nothing."
+            exit 1
+          fi
+          echo "projects: ${projects[*]}"
+
+          # The artifact IDs the base published, as a Scala Set literal.
+          published=$(find "$BASE_M2" -type d -name "$BASE_VERSION" -exec dirname {} \; \
+            | xargs -n1 basename | sort -u | sed 's/.*/"&"/' | paste -sd, -)
+          echo "base modules: ${published}"
+
+          commands=("set ThisBuild / version := \"$HEAD_VERSION\"")
+          for p in "${projects[@]}"; do
+            ref="LocalProject(\"$p\")"
+            commands+=(
+              "set $ref / mimaPreviousArtifacts := { val published = Set[String]($published); val name = ($ref / moduleName).value; val id = ($ref / projectID).value; if (published.exists(a => a == name || a.startsWith(name + \"_\"))) Set(id.withRevision(\"$BASE_VERSION\").withExplicitArtifacts(Vector.empty)) else Set.empty[ModuleID] }"
+              "set $ref / mimaCurrentClassfiles := ($ref / Compile / packageBin).value"
+              "set $ref / mimaFailOnNoPrevious := false"
+              "set $ref / mimaCheckDirection := \"both\""
+              "set $ref / mimaBinaryIssueFilters := Seq.empty"
+              "set $ref / mimaBackwardIssueFilters := Map.empty"
+              "set $ref / mimaForwardIssueFilters := Map.empty"
+            )
+          done
+          # Per project, so a root that does not aggregate every project cannot hide one;
+          # $MIMA_TASK keeps its '+' in sbt-plugin mode.
+          for p in "${projects[@]}"; do
+            commands+=("show $p/mimaPreviousArtifacts" "${MIMA_TASK%mimaReportBinaryIssues}$p/mimaReportBinaryIssues")
+          done
+          sbt --batch -Dsbt.ivy.home="$PARITY_IVY_HOME" "${commands[@]}" 2>&1 | tee "$REPORT_DIR/mima.log"
+
+          # A run in which no project had the base as its baseline checked nothing.
+          if ! grep -q ":${BASE_VERSION}" "$REPORT_DIR/mima.log"; then
+            echo "::error title=Vacuous MiMa run::no project of the head was checked against ${BASE_VERSION}."
+            exit 1
+          fi
+
+      - name: Upload the POM sets and the diff
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbt-upgrade-parity-${{ inputs.mode || 'library' }}
+          path: ${{ runner.temp }}/sbt-parity/report/
+          if-no-files-found: warn
+          retention-days: 14
