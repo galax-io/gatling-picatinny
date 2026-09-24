@@ -4,7 +4,7 @@
 // the opt-in `project/hygiene/` overlay instead (research D-06).
 addSbtPlugin("com.github.sbt"       % "sbt-ci-release"        % "1.12.1")
 // sbt-ci-release 1.12.0 dropped its transitive sbt-git dependency; GitVersioning below needs it declared directly.
-addSbtPlugin("com.github.sbt"       % "sbt-git"               % "2.1.0")
+addSbtPlugin("com.github.sbt"       % "sbt-git"               % "2.2.0")
 addSbtPlugin("io.gatling"           % "gatling-sbt"           % "4.19.1")
 addSbtPlugin("com.github.sbt.junit" % "sbt-jupiter-interface" % "0.19.0")
 addSbtPlugin("org.scalameta"        % "sbt-scalafmt"          % "2.6.2")
