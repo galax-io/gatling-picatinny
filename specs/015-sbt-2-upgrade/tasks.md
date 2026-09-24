@@ -10,7 +10,7 @@ is prepared (plan.md, "Delivery order").
 
 ## gatling-picatinny
 
-- [ ] T-001 [repo:galax-io/gatling-picatinny] [US3] Add the reusable parity gate `.github/workflows/sbt-upgrade-parity.yml`
+- [x] T-001 [repo:galax-io/gatling-picatinny] [US3] Add the reusable parity gate `.github/workflows/sbt-upgrade-parity.yml`
   AC: `.github/workflows/sbt-upgrade-parity.yml` runs on `workflow_call` with the inputs `mode` (`library` or `sbt-plugin`) and `artifact-suffixes`, and on `pull_request` when `project/**`, `build.sbt` or `.github/workflows/**` change.
   AC: The gate fails when the head's `project/build.properties` names a pre-release sbt version (`-M` or `-RC`) or an sbt 2 version below 2.0.7.
   AC: The gate publishes the base commit with that commit's own launcher under version `0.0.0-parity-base` and the head under `0.0.0-parity-head`, into an isolated Ivy and Coursier home, both cross axes in `sbt-plugin` mode.
