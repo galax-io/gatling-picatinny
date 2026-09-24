@@ -333,9 +333,11 @@ jobs:
 
       # MiMa of the head against the base just published into the isolated Ivy home. Each
       # project's own baseline and filters are replaced: the gate must see EVERY issue between the
-      # two commits, in both directions. The current class files stay MiMa's default: overriding
-      # mimaCurrentClassfiles with packageBin does not load on sbt 2, whose packageBin returns a
-      # HashedVirtualFileRef, not a File.
+      # two commits, in both directions. The current class files point at the jar this same job's
+      # "Publish the head" step wrote under $HEAD_M2, not MiMa's default class directory: that
+      # directory holds classes (e.g. the JMH benchmarks) that build.sbt's Compile/packageBin
+      # mappings leave out of the published jar, which would surface as false positives. file(...)
+      # is used, not packageBin or artifactPath, whose types differ between sbt 1 and sbt 2.
       # A project gets the base as its baseline when the base published a module named after it
       # (`publish / skip` is a task, so a setting cannot ask it).
       - name: MiMa of the head against the base
@@ -365,11 +367,27 @@ jobs:
             | xargs -n1 basename | sort -u | sed 's/.*/"&"/' | paste -sd, -)
           echo "base modules: ${published}"
 
+          # Each jar the head published, as a Scala Map[String, java.io.File] literal keyed by its
+          # artifact ID: the source for mimaCurrentClassfiles below, in place of MiMa's default
+          # class directory.
+          mapfile -t head_dirs < <(find "$HEAD_M2" -type d -name "$HEAD_VERSION")
+          head_jars=""
+          for dir in "${head_dirs[@]}"; do
+            artifact="$(basename "$(dirname "$dir")")"
+            jar="$dir/$artifact-$HEAD_VERSION.jar"
+            if [ -f "$jar" ]; then
+              head_jars+="\"$artifact\" -> file(\"$jar\"), "
+            fi
+          done
+          head_jars="${head_jars%, }"
+          echo "head jars: ${head_jars}"
+
           commands=("set ThisBuild / version := \"$HEAD_VERSION\"")
           for p in "${projects[@]}"; do
             ref="LocalProject(\"$p\")"
             commands+=(
               "set $ref / mimaPreviousArtifacts := { val published = Set[String]($published); val name = ($ref / moduleName).value; val id = ($ref / projectID).value; if (published.exists(a => a == name || a.startsWith(name + \"_\"))) Set(id.withRevision(\"$BASE_VERSION\").withExplicitArtifacts(Vector.empty)) else Set.empty[ModuleID] }"
+              "set $ref / mimaCurrentClassfiles := { val jars = Map[String, java.io.File]($head_jars); val name = ($ref / moduleName).value; jars.collectFirst { case (a, f) if a == name || a.startsWith(name + \"_\") => f }.getOrElse(($ref / mimaCurrentClassfiles).value) }"
               "set $ref / mimaFailOnNoPrevious := false"
               "set $ref / mimaCheckDirection := \"both\""
               "set $ref / mimaBinaryIssueFilters := Seq.empty"
