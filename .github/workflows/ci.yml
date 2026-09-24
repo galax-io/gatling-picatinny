@@ -23,9 +23,9 @@ env:
   FORCE_COLOR: "1"
   TERM: xterm-256color
   # v0.16.0 is the first tag whose scala-sbt template defaults are sbt-2 compatible:
-  # SbtGatlingVersion 4.18.3 -> 4.19.1 (4.18.3 publishes no _sbt2_3 artifact) and
-  # SbtVersion 1.12.13 -> 1.12.15, matching project/build.properties. The `--set` overrides in
-  # scripts/test-scala-sbt-template.sh are kept as belt-and-braces against a future default drift.
+  # SbtGatlingVersion 4.18.3 -> 4.19.1 (4.18.3 publishes no _sbt2_3 artifact). The rendered project
+  # still pins an sbt 1 launcher; the `--set` overrides in scripts/test-scala-sbt-template.sh are
+  # kept as belt-and-braces against a future default drift.
   TEMPLATES_GATLING_VERSION: v0.16.0
 
 jobs:
@@ -91,7 +91,7 @@ jobs:
           java-version: ${{ matrix.java-version }}
       - name: Test
         # `testOnly`, not `test`: on sbt 2 `test` is `testQuick` and reports success having run
-        # zero tests. This leg is sbt 1, but CI, docs and the sbt 2 gate stay on one spelling.
+        # zero tests off the task cache.
         run: sbt "Test/testOnly"
       - name: Publish unit test results (Java ${{ matrix.java-version }})
         if: always()
@@ -138,6 +138,50 @@ jobs:
           path: ${{ github.workspace }}/ci-artifacts/
           retention-days: 1
           if-no-files-found: error
+
+  # The checked-in Scala/sbt overlay is the consumer-facing starting point and the e2e layer; it is
+  # built nowhere else (template-tests renders the external template instead). Moved here from the
+  # deleted sbt2-compat.yml. The overlay keeps its own sbt 1 pin for users, so it runs on the root
+  # pin explicitly, against an artifact the same sbt 2 build just published.
+  example-overlay:
+    name: Example overlay (Scala sbt)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/sbt-setup
+      - name: Example overlay e2e
+        env:
+          PICATINNY_VERSION: 0.0.0-overlay
+        run: |
+          set -euo pipefail
+          sbt_version=$(sed -n 's/^sbt\.version=//p' project/build.properties | tr -d '[:space:]')
+          # A fresh --sbt-cache per run: sbt 2 must not serve a compile or test result that this
+          # runner did not produce.
+          sbt_cache="${RUNNER_TEMP}/sbt2-cache"
+          sbt --sbt-cache "$sbt_cache" 'set ThisBuild / version := "0.0.0-overlay"' publishLocal
+          cd examples/scala-sbt-example
+          # `Gatling/testOnly *`, never `Gatling/test`: on sbt 2 `test` is `testQuick` and prints
+          # "No tests to run" / [success] off the task cache. `--server`: the thin client would
+          # leave a background server behind and join the arguments into one command line.
+          sbt --server --sbt-version "$sbt_version" --sbt-cache "$sbt_cache" \
+            -Dsbt.color=false -Dsbt.supershell=false 'Gatling/testOnly *' 2>&1 | tee /tmp/overlay.log
+
+          # Anti-vacuity: three simulations must have run AND issued a non-zero number of requests.
+          # A Gatling run with zero requests passes its assertions vacuously. `|| true` on BOTH:
+          # without it a Gatling output-format change kills the step at the assignment and the
+          # ::error annotations below never print.
+          sims=$(grep -c 'Simulation .* successful' /tmp/overlay.log || true)
+          reqs=$(grep -oE 'request count *\|? *[0-9]+' /tmp/overlay.log | grep -oE '[0-9]+$' | awk '{s+=$1} END {print s+0}' || true)
+          echo "simulations=${sims} total_requests=${reqs}"
+          if [ "${sims:-0}" -lt 3 ]; then
+            echo "::error title=Overlay did not run::expected 3 successful simulations, saw ${sims}."
+            exit 1
+          fi
+          if [ "${reqs:-0}" -lt 1 ]; then
+            echo "::error title=Vacuous overlay run::simulations reported ${reqs} requests; assertions passed against nothing."
+            exit 1
+          fi
 
   template-tests:
     name: Template / ${{ matrix.template }} (Java ${{ matrix.java-version }})

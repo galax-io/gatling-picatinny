@@ -205,7 +205,8 @@ lazy val integration = (project in file("integration"))
 
 // sbt 2 defaults `exportJars` to true, putting the packaged jar rather than the class directory on
 // the Test and inter-project classpaths. Several specs resolve real files through the classpath
-// (JWT key loading), which cannot work from inside a jar. Pin sbt 1's shape on both majors.
+// (JWT key loading), which cannot work from inside a jar. Pin sbt 1's shape. Build-wide on purpose:
+// sbt 2 would apply a bare, unscoped setting here to every subproject anyway, so say so explicitly.
 // NOTE: the `Compile/Test products` pin that used to live here is gone — it existed only to hide an
 // absolute-path bug in templates/Templates.scala, which is now fixed at source (classpath-relative
 // ElFileBody + jar-safe discovery), so the build no longer has to reshape the classpath for it.

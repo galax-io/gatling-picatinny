@@ -83,12 +83,16 @@ running the real meta-build: the sbt 2 load reported unresolved coordinates in e
 | `com.github.sbt.junit:sbt-jupiter-interface` | 0.19.0 | 0.19.0 | 0.19.0 | ✅ |
 | `org.scalameta:sbt-scalafmt` | 2.6.2 | 2.6.2 | 2.6.2 | ✅ |
 | `ch.epfl.scala:sbt-scalafix` | 0.14.7 | 0.14.7 | 0.14.7 | ✅ |
-| `com.typesafe:sbt-mima-plugin` | 1.1.6 | 1.1.6 | 1.1.6 | ✅ |
+| `com.typesafe:sbt-mima-plugin` | 1.2.1 | 1.2.1 | 1.2.1 | ✅ sbt 2 floor 2.0.7 (see note) |
 | `org.scoverage:sbt-scoverage` | 2.4.4 | 2.4.4 | 2.4.4 | ✅ |
 | `pl.project13.scala:sbt-jmh` | 0.4.8 | 0.4.8 | 0.4.8 | ✅ |
 | `ch.epfl.scala:sbt-bloop` | 2.1.1 | 2.1.1 | 2.1.1 | ✅ |
 | `io.gatling:gatling-sbt` | **4.18.3** | 4.19.1 | **4.19.1 only** | ⚠️ bump to 4.19.1 |
 | `com.github.cb372:sbt-explicit-dependencies` | 0.3.1 | 0.3.1 | **none published** | ❌ see D-06 |
+
+**Note (spec 015)**: the sbt-mima-plugin row was surveyed at 1.1.6. The build now pins 1.2.1, whose
+sbt 2 artifact relies on sbt 2.0.7 or newer to pick its previous artifact. That floor rules out the
+sbt 2.0.6 secondary recorded here; the build moved to sbt 2.0.9 instead (spec 015).
 
 **Alternatives considered**:
 - Conditional `libraryDependencies ++= if (sbtVersion.value…)` — unnecessary for ten of eleven

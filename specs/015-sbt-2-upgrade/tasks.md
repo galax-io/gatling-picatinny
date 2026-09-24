@@ -16,7 +16,7 @@ is prepared (plan.md, "Delivery order").
   AC: The gate publishes the base commit with that commit's own launcher under version `0.0.0-parity-base` and the head under `0.0.0-parity-head`, into an isolated Ivy and Coursier home, both cross axes in `sbt-plugin` mode.
   AC: The gate fails on any difference in the published artifact set, the normalized POMs (dependencies with scopes and versions, the Scala library, licenses, scm and developers), the jar entry lists or the class-file major versions, and on any MiMa issue of the head against the base.
   AC: The gate uploads both POM sets and the diff, runs on JDK 17, declares `permissions: contents: read`, passes no secrets, and pins every action by full commit SHA.
-- [ ] T-002 [repo:galax-io/gatling-picatinny] [US1] Move the build to sbt 2.0.9 (`project/build.properties`, `build.sbt`, `.github/workflows/ci.yml`)
+- [x] T-002 [repo:galax-io/gatling-picatinny] [US1] Move the build to sbt 2.0.9 (`project/build.properties`, `build.sbt`, `.github/workflows/ci.yml`)
   AC: `project/build.properties` pins exactly `sbt.version=2.0.9`, while Scala 2.13.18 and gatling-sbt 4.19.1 stay as they are.
   AC: `build.sbt` loads on sbt 2: URI-typed keys, `Seq[License]`, bare settings scoped where they must not reach every subproject, and `Def.uncached` for tasks whose result has no JsonFormat.
   AC: `.github/workflows/ci.yml` runs on sbt 2.0.9 with JDK 17 or newer, restores no sbt 2 task cache or `target/` directory, and runs the example overlay that `.github/workflows/sbt2-compat.yml` ran; `.github/workflows/sbt2-compat.yml` is deleted.

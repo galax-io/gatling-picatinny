@@ -84,5 +84,29 @@ class TemplatesSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
         Files.deleteIfExists(root)
       }
     }
+
+    "discover templates behind an empty templates directory earlier on the classpath" in {
+      // sbt 2 puts resource directories on the classpath as-is, behind a class directory that can
+      // hold an empty `templates/` of its own; the first `getResource` hit must not hide the rest.
+      val original = Thread.currentThread.getContextClassLoader
+      val empty    = Files.createTempDirectory("tpl-empty")
+      val filled   = Files.createTempDirectory("tpl-filled")
+      Files.createDirectory(empty.resolve("templates"))
+      Files.createDirectory(filled.resolve("templates"))
+      Files.write(filled.resolve("templates").resolve("late.json"), "{}".getBytes)
+      val cl       = new java.net.URLClassLoader(Array(empty.toUri.toURL, filled.toUri.toURL), null)
+      try {
+        Thread.currentThread.setContextClassLoader(cl)
+        new TemplatesProbe().names shouldBe Set("late")
+      } finally {
+        Thread.currentThread.setContextClassLoader(original)
+        cl.close()
+        Files.deleteIfExists(filled.resolve("templates").resolve("late.json"))
+        Seq(empty, filled).foreach { root =>
+          Files.deleteIfExists(root.resolve("templates"))
+          Files.deleteIfExists(root)
+        }
+      }
+    }
   }
 }

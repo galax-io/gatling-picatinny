@@ -8,11 +8,10 @@ inputs:
     default: '21'
   sbt-version:
     # EMPTY is deliberate, not an oversight. Empty means "use project/build.properties", i.e. the
-    # declared default major (sbt 1.x). Every existing caller passes only java-version and keeps
-    # working unchanged. A non-empty value selects the secondary major for this job.
+    # pinned sbt 2 release. Every existing caller passes only java-version.
     description: >-
       sbt version to run against. Leave empty to use the repository's pin in
-      project/build.properties. Set (e.g. '2.0.6') to run the job against the secondary major.
+      project/build.properties. Set (e.g. '1.13.0') to run the job against another launcher.
     required: false
     default: ''
 
@@ -65,11 +64,12 @@ runs:
     - name: Cache Ivy/SBT
       uses: actions/cache@v5
       with:
+        # Deliberately NOT ~/.cache/sbt (sbt 2's disk cache) and never target/: a restored task cache
+        # lets sbt 2 serve compile and test results this runner never produced (spec 015, FR-007).
         path: |
           ~/.ivy2/cache
           ~/.sbt
           ~/.config/sbt
-          ~/.cache/sbt
           ~/.cache/coursier
         # The major belongs in BOTH key and restore-keys. An unqualified restore-keys lets the sbt 2
         # leg restore an sbt 1 cache, which is how a cross-build check quietly stops being one.

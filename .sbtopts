@@ -1,0 +1,5 @@
+# On sbt 2 the runner defaults to the sbtn thin client, which joins every argument into ONE command
+# line: `sbt compile "Test/testOnly" integration/testOnly` then runs `Test/testOnly` with
+# `integration/testOnly` as a test filter, runs zero tests and reports success. `--server` keeps the
+# sbt 1 shape — each argument is its own command, in a JVM that exits with the run (spec 015).
+--server
