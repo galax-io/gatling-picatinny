@@ -215,6 +215,8 @@ jobs:
       - name: Setup sbt
         if: steps.scope.outputs.applies == 'true'
         uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
+        with:
+          disk-cache: false # FR-007: never restore the sbt 2 task cache
 
       - name: Publish the base with its own launcher
         id: publish-base

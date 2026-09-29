@@ -30,6 +30,8 @@ runs:
       # already an sbt 2 launcher, and the launcher is version-agnostic — it fetches whichever sbt
       # the build asks for. So it is not a mechanism for choosing the major; SBT_VERSION_FLAG is.
       uses: sbt/setup-sbt@v1
+      with:
+        disk-cache: false # FR-007: never restore the sbt 2 task cache
 
     - name: Resolve sbt major
       id: sbt
