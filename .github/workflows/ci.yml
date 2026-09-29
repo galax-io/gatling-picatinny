@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
       - run: sbt scalafmtCheckAll scalafmtSbtCheck
 
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
       # Idiomatic-Scala gate (#273): DisableSyntax + ProcedureSyntax + RemoveUnused + OrganizeImports.
       # Local fix: sbt scalafixAll scalafmtAll. Escape hatch: per-site `// scalafix:ok <Rule>` with justification.
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
       # ADVISORY check (#274): NEVER blocks a merge — incompatibilities vs the latest published
       # release surface as warning annotations on the PR; reviewing them is a release-checklist
@@ -85,7 +85,7 @@ jobs:
       matrix:
         java-version: ['17', '21']
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
         with:
           java-version: ${{ matrix.java-version }}
@@ -105,7 +105,7 @@ jobs:
           action_fail_on_inconclusive: true
       - name: Upload unit test report XML (Java ${{ matrix.java-version }})
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: test-reports-unit-java${{ matrix.java-version }}
           path: "**/test-reports/*.xml"
@@ -117,7 +117,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
       - name: Publish local Picatinny artifact
         shell: bash
@@ -132,7 +132,7 @@ jobs:
           cp -r "$HOME/.ivy2/local/org.galaxio" "${OUT}/ivy/"
           cp -r "$HOME/.m2/repository/org/galaxio" "${OUT}/m2/"
           echo "Staged $(find "${OUT}" -type f | wc -l) files to ${OUT}"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7.0.1
         with:
           name: picatinny-local
           path: ${{ github.workspace }}/ci-artifacts/
@@ -148,7 +148,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
       - name: Example overlay e2e
         env:
@@ -194,7 +194,7 @@ jobs:
         java-version: ['21']
         template: [java-maven, kotlin-gradle, scala-sbt]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/sbt-setup
         with:
@@ -330,7 +330,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
       - name: Coverage
         run: sbt clean coverage "Test/testOnly" "integration/testOnly" coverageOff coverageReport coverageAggregate
@@ -346,7 +346,7 @@ jobs:
           action_fail_on_inconclusive: true
       - name: Upload test report XML (coverage gate)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: test-reports-coverage
           path: "**/test-reports/*.xml"
@@ -361,7 +361,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/sbt-setup
       - name: Run Redis integration tests
         run: sbt integration/testOnly
@@ -377,7 +377,7 @@ jobs:
           action_fail_on_inconclusive: true
       - name: Upload integration test report XML
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: test-reports-integration
           path: "**/test-reports/*.xml"
