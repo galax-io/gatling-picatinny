@@ -49,6 +49,16 @@ jobs:
       # Local fix: sbt scalafixAll scalafmtAll. Escape hatch: per-site `// scalafix:ok <Rule>` with justification.
       - run: sbt "scalafixAll --check"
 
+  workflow-scripts:
+    name: Workflow scripts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # The parity gate is self-contained, so its scope decision (does this PR upgrade sbt?) is
+      # tested by running the block the workflow marks against fixture build.properties trees.
+      - run: scripts/test-sbt-upgrade-parity-scope.sh
+
   binary-compat:
     name: Binary compatibility (advisory)
     runs-on: ubuntu-24.04

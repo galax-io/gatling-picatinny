@@ -6,6 +6,12 @@ name: sbt upgrade parity
 # normalized POMs, the jar entry lists, the class-file major versions, and any MiMa issue of the
 # head against the base.
 #
+# It applies only to a pull request that changes sbt.version in project/build.properties. Any
+# other pull request that reaches it (a Scala Steward or Dependabot bump, a feature) changes the
+# published artifacts on purpose: a dependency version in the POM, a class in the jar. Compared
+# with its base it would fail for doing its job, so it skips every later step, says so in a
+# notice and stays green.
+#
 # Other repositories call it pinned by full commit SHA:
 #
 #   jobs:
@@ -125,10 +131,45 @@ jobs:
           path: head
           persist-credentials: false
 
+      - name: Check out the base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+
+      # The gate proves an sbt upgrade. A pull request that leaves sbt.version alone changes the
+      # published artifacts on purpose, so this step decides once, from the two build.properties
+      # files, whether every later step runs. When in doubt (a side without a pin) it runs. The
+      # block between the markers is what scripts/test-sbt-upgrade-parity-scope.sh executes.
+      - name: Decide whether this pull request upgrades sbt
+        id: scope
+        shell: bash
+        run: |
+          # >>> scope-decision
+          set -euo pipefail
+          # Last assignment wins, as in java.util.Properties; tolerate spaces and CRLF.
+          pin() {
+            [ -f "$1/project/build.properties" ] || return 0
+            sed -n 's/^[[:space:]]*sbt\.version[[:space:]]*[=:][[:space:]]*//p' "$1/project/build.properties" \
+              | tail -1 | tr -d '[:space:]'
+          }
+          base_pin=$(pin base)
+          head_pin=$(pin head)
+          if [ -n "$base_pin" ] && [ "$base_pin" = "$head_pin" ]; then
+            echo "applies=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No sbt upgrade::the pull request leaves sbt.version at ${head_pin}; the parity gate compares published artifacts across an sbt upgrade only, so it is skipped."
+          else
+            echo "applies=true" >> "$GITHUB_OUTPUT"
+            echo "base pins '${base_pin:-nothing}', head pins '${head_pin:-nothing}': running the parity gate"
+          fi
+          # <<< scope-decision
+
       # FR-003: a milestone or release candidate is never a release target, and sbt-mima-plugin
       # 1.2.x picks its previous artifact correctly only from sbt 2.0.7 on.
       - name: Reject a pre-release sbt or an sbt 2 below 2.0.7
         id: sbt-version-guard
+        if: steps.scope.outputs.applies == 'true'
         shell: bash
         env:
           BUILD_PROPERTIES: head/project/build.properties
@@ -162,15 +203,9 @@ jobs:
           fi
           echo "head pins sbt ${version}"
 
-      - name: Check out the base
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: base
-          persist-credentials: false
-
       # No dependency, sbt task or target/ cache is restored (FR-007): both sides build from clean.
       - name: Setup Java (Temurin 17)
+        if: steps.scope.outputs.applies == 'true'
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -178,10 +213,12 @@ jobs:
 
       # The launcher script only boots the sbt each checkout's project/build.properties names.
       - name: Setup sbt
+        if: steps.scope.outputs.applies == 'true'
         uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
 
       - name: Publish the base with its own launcher
         id: publish-base
+        if: steps.scope.outputs.applies == 'true'
         working-directory: base
         shell: bash
         run: |
@@ -194,6 +231,7 @@ jobs:
 
       - name: Publish the head with its pinned launcher
         id: publish-head
+        if: steps.scope.outputs.applies == 'true'
         working-directory: head
         shell: bash
         run: |
@@ -208,6 +246,7 @@ jobs:
       # major version of each class file. One unified diff of the two sides; empty or the gate fails.
       - name: Compare the published artifacts
         id: compare
+        if: steps.scope.outputs.applies == 'true'
         shell: python
         run: |
           import difflib
@@ -342,7 +381,7 @@ jobs:
       # (`publish / skip` is a task, so a setting cannot ask it).
       - name: MiMa of the head against the base
         id: mima
-        if: ${{ !cancelled() && steps.publish-base.outcome == 'success' && steps.publish-head.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.scope.outputs.applies == 'true' && steps.publish-base.outcome == 'success' && steps.publish-head.outcome == 'success' }}
         working-directory: head
         shell: bash
         run: |
@@ -409,7 +448,7 @@ jobs:
           fi
 
       - name: Upload the POM sets and the diff
-        if: always()
+        if: ${{ always() && steps.scope.outputs.applies == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbt-upgrade-parity-${{ inputs.mode || 'library' }}
