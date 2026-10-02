@@ -214,7 +214,7 @@ jobs:
       # The launcher script only boots the sbt each checkout's project/build.properties names.
       - name: Setup sbt
         if: steps.scope.outputs.applies == 'true'
-        uses: sbt/setup-sbt@ce95da69b39609ea153bad087708da5f37366897 # v1.5.10
+        uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
         with:
           disk-cache: false # FR-007: never restore the sbt 2 task cache
 
