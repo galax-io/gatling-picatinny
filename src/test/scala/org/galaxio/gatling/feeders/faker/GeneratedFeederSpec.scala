@@ -2,8 +2,10 @@ package org.galaxio.gatling.feeders.faker
 
 import org.galaxio.gatling.feeders.LuhnValidator
 import org.galaxio.gatling.feeders.faker.Predef._
+import org.galaxio.gatling.testutil.LocaleFixture
 import org.galaxio.gatling.utils.phone.PhoneFormat
 import org.scalacheck.Gen
+import org.scalatest.Outcome
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
@@ -15,6 +17,19 @@ import java.time.{LocalDate, LocalDateTime, ZoneId}
 class GeneratedFeederSpec extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
   private val sampleCount = 50
+
+  // Faker case-folds with the JVM default locale. A LocaleFixture window opened by another suite while a test runs changes
+  // that default under it: between a production call and the reference it is compared with (the e-mail normalisation test),
+  // or around a generator whose output is format-checked (postal codes, passport numbers). Every test therefore runs holding
+  // the fixture's lock; see LocaleFixture.
+  override def withFixture(test: NoArgTest): Outcome =
+    LocaleFixture.withStableDefault(super.withFixture(test))
+
+  "A test in this suite" should {
+    "run with the default locale held steady, whatever other suites do" in {
+      Thread.holdsLock(LocaleFixture) shouldBe true
+    }
+  }
 
   "GeneratedFeeder" should {
     "create a heterogeneous Gatling feeder from generators" in {
