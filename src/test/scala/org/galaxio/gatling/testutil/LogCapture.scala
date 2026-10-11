@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters._
 
 /** Shared log capture for tests — safe under ScalaTest's PARALLEL suite execution.
   *
-  * Capturing mutates the GLOBAL logback `LoggerContext` (a logger's level), which is shared across suites. Three independent
+  * Capturing mutates the GLOBAL logback `LoggerContext` (a logger's level), which is shared across suites. Four independent
   * safeguards make it deterministic without serializing the whole test run:
   *
   *   1. `synchronized` — serializes the level save/set/restore + queue swap so two captures never corrupt each other's level
@@ -30,6 +30,15 @@ import scala.jdk.CollectionConverters._
   *      suite boundaries, causing spurious inclusions or exclusions. Nested captures on the same thread (a capture whose `body`
   *      opens another capture) save/restore the slot rather than clearing it, so the outer window keeps recording once the
   *      inner one closes.
+  *   4. SLF4J-initialisation barrier — `LoggerFactory.getLogger` hands out a real logback logger as soon as SLF4J's one-time
+  *      initialisation has flipped to "successful", but the initialising thread is not done: it then fixes up the
+  *      `SubstituteLogger`s handed out earlier and replays what they queued, on its own thread. Production objects keep the
+  *      logger they obtained in that stretch for good (`CookieParser` is an `object extends StrictLogging`), so a window opened
+  *      inside it queued the capturing thread's event inside SLF4J and got it back after the window had closed, on a thread
+  *      whose `ThreadLocal` slot is empty — lost, observed as a flaky "0 was not equal to 1" (#329). The capture resolves its
+  *      logger under the `LoggerFactory` class monitor, which the initialiser holds until it is completely done, so a window
+  *      never opens on a half-initialised SLF4J. That, not the one-time attach in safeguard 2, was the cause: the capturing
+  *      thread attaches the appender itself and so always sees its own appender list.
   *
   * All log-capturing suites must go through this object so the guarantee holds.
   */
@@ -89,23 +98,22 @@ object LogCapture {
   def warns(loggerName: String)(body: => Unit): List[String] =
     events(loggerName, Level.WARN)(body).filter(_.getLevel == Level.WARN).map(_.getFormattedMessage)
 
-  /** Resolve the logback `Logger`, retrying past SLF4J's initialization window.
+  /** Resolve the logback `Logger` once SLF4J's one-time initialisation has COMPLETELY finished (safeguard 4 in the object doc).
     *
-    * Under parallel suite STARTUP, `LoggerFactory.getLogger` returns a temporary `org.slf4j.helpers.SubstituteLogger` until
-    * logback finishes binding — casting that to `ch.qos.logback.classic.Logger` throws `ClassCastException`. The first real
-    * call triggers binding; we retry briefly until the backend is installed (bounded so a genuine misbind still surfaces a
-    * clear cast error rather than hanging).
+    * Under parallel suite STARTUP, `LoggerFactory.getLogger` returns a temporary `org.slf4j.helpers.SubstituteLogger` while
+    * another thread initialises SLF4J — casting that to `ch.qos.logback.classic.Logger` throws `ClassCastException` — and, once
+    * the state has flipped, a real logger while that thread is still fixing up and replaying. Polling for the real logger waits
+    * for the flip only; taking the `LoggerFactory` class monitor waits for the end. The initialiser holds it for all of
+    * `performInitialization`, so this returns after the fix-up and replay and not before. If nobody has initialised SLF4J yet,
+    * `getLogger` does it right here under the same (reentrant) monitor, so there is nothing to poll for either way. A genuine
+    * misbind still surfaces as a clear cast error rather than a hang.
     */
-  @annotation.tailrec
-  private def logbackLogger(loggerName: String, attemptsLeft: Int = 2000): LogbackLogger =
-    LoggerFactory.getLogger(loggerName) match {
+  private def logbackLogger(loggerName: String): LogbackLogger =
+    classOf[LoggerFactory].synchronized(LoggerFactory.getLogger(loggerName)) match {
       case logback: LogbackLogger => logback
-      // Justification: bounded 1 ms poll probe with an attempt cap — a retry loop, not sleep-based synchronization (#109).
-      case _ if attemptsLeft > 0  =>
-        Thread.sleep(1); logbackLogger(loggerName, attemptsLeft - 1) // scalafix:ok DisableSyntax.threadSleep
-      case other =>
+      case other                  =>
         other
-          // Justification: deliberate: exhausted retries surface a clear cast error naming the foreign logger binding
+          // Justification: deliberate: a non-logback binding surfaces a clear cast error naming the foreign logger binding
           .asInstanceOf[LogbackLogger] // scalafix:ok DisableSyntax.asInstanceOf
     }
 }
