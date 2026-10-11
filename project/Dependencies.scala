@@ -140,7 +140,7 @@ object Dependencies {
   // sets `publish / skip := true` — that is what keeps it out of the POM now that the `it`
   // configuration is gone (spec 012).
   lazy val jdbcDrivers: Seq[ModuleID] = Seq(
-    "org.postgresql" % "postgresql" % "42.7.13" % Test,
+    "org.postgresql" % "postgresql" % "42.7.14" % Test,
   )
 
   // Root project's test bundle. Testcontainers + the JDBC driver deliberately are NOT here: they
