@@ -16,6 +16,10 @@ What each entity owes (this script enforces it):
              is allowed; do not fabricate issues to satisfy the gate). If it does
              close an issue, that issue sits in the same milestone. (1 issue = 1 PR is an
              AGENTS convention for history hygiene — preferred, but not gated by this script.)
+  Feature    an issue in the backlog repository whose milestone says "Release: business"
+             on a line of its own. It sits in that business milestone, not in the version
+             milestone of the PR that does a part of it, so a `Part of <backlog>#N` link to
+             a feature skips the same-milestone rule. The PR still carries its own milestone.
   Milestone  one release (vX.Y.Z); tag only when every issue is closed and every PR merged.
 
 Usage:
@@ -26,7 +30,9 @@ Usage:
   scripts/check-linkage.sh --help
 
 Env:
-  REPO=owner/name   # override repo (default: gh repo view, fallback galax-io/gatling-picatinny)
+  REPO=owner/name          # override repo (default: gh repo view, fallback galax-io/gatling-picatinny)
+  BACKLOG_REPO=owner/name  # the repository whose business milestones hold features
+                           # (default: galax-io/galaxio-sdlc-backlog)
 
 Exit: 0 all rules hold | 1 at least one violation | 2 usage/prereq error.
 EOF
@@ -37,6 +43,22 @@ for bin in gh jq; do
 done
 
 REPO="${REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo galax-io/gatling-picatinny)}"
+
+BACKLOG_REPO="${BACKLOG_REPO:-galax-io/galaxio-sdlc-backlog}"
+
+# The business milestone's title when owner/repo#N is a feature of the backlog, else nothing.
+feature_ms() {
+  [ "${1%#*}" = "$BACKLOG_REPO" ] || return 0
+  gh issue view "${1##*#}" --repo "${1%#*}" --json milestone -q '
+    select(.milestone != null and ((.milestone.description // "")
+      | test("(^|\n)[ \t]*Release:[ \t]*business[ \t]*\r?(\n|$)"; "i"))) | .milestone.title' 2>/dev/null || true
+}
+
+# The backlog issues a PR body says it is "Part of" (as owner/repo#N), one per line.
+backlog_parts() { # pr-json
+  jq -r '.body // ""' <<<"$1" | grep -oiE 'part of +[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+' \
+    | sed -E 's/^[^ ]+ +[^ ]+ +//' | awk -v r="$BACKLOG_REPO" 'index($0, r "#") == 1' || true
+}
 
 TAG_MODE=0
 MS=""
@@ -73,12 +95,13 @@ if [ -n "$PR_NUM" ]; then
       | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+' | grep -oE '[0-9]+' || true)
     [ -n "$p_closes" ] && p_bodyonly=1
   fi
+  p_parts=$(backlog_parts "$pj")
   e=0
   printf 'PR #%s  %s\n' "$PR_NUM" "$p_title"
   if [ -z "$p_ms" ]; then printf '  ✗ no milestone — assign one (gh pr edit %s --milestone "…")\n' "$PR_NUM"; e=1
   else printf '  ✓ milestone: %s\n' "$p_ms"; fi
   if [ -z "$p_closes" ]; then
-    printf '  – closes no issue (allowed: a PR may carry just a milestone)\n'
+    [ -n "$p_parts" ] || printf '  – closes no issue (allowed: a PR may carry just a milestone)\n'
   else
     [ "$p_bodyonly" = 1 ] && printf '  ! links issue via body text only (not a registered GitHub closing link)\n'
     for i in $p_closes; do
@@ -87,6 +110,17 @@ if [ -n "$PR_NUM" ]; then
       else printf '  ✗ closes #%s but its milestone is "%s", not "%s"\n' "$i" "${i_ms:-none}" "$p_ms"; e=1; fi
     done
   fi
+  # A "Part of <backlog>#N" link: a feature sits in its business milestone, any other
+  # backlog issue has to share the PR's milestone.
+  for i in $p_parts; do
+    i_feature=$(feature_ms "$i")
+    if [ -n "$i_feature" ]; then printf '  ✓ links %s (feature of business milestone "%s")\n' "$i" "$i_feature"
+    else
+      i_ms=$(gh issue view "${i##*#}" --repo "${i%#*}" --json milestone -q '.milestone.title // ""' 2>/dev/null || echo "")
+      if [ "$i_ms" = "$p_ms" ]; then printf '  ✓ links %s (same milestone)\n' "$i"
+      else printf '  ✗ links %s but its milestone is "%s", not "%s"\n' "$i" "${i_ms:-none}" "$p_ms"; e=1; fi
+    fi
+  done
   if [ "$e" = 0 ]; then printf 'PASS: PR #%s is well-formed.\n' "$PR_NUM"; exit 0; fi
   printf 'FAIL: PR #%s is malformed — fix the above before merge.\n' "$PR_NUM"; exit 1
 fi
@@ -159,6 +193,7 @@ for pr in $pr_numbers; do
     note="closes #$(echo "$ref_nums" | paste -sd, -)"
     for ri in $ref_nums; do
       linked_issues="$linked_issues$ri "
+      [ -z "$(feature_ms "$REPO#$ri")" ] || continue   # a feature sits in its business milestone
       ri_ms=$(gh issue view "$ri" --repo "$REPO" --json milestone -q '.milestone.title // ""' 2>/dev/null || echo "")
       if [ "$ri_ms" != "$ms_title" ]; then
         err "PR #$pr closes issue #$ri but that issue's milestone is '${ri_ms:-none}', not '$ms_title'"
@@ -166,6 +201,18 @@ for pr in $pr_numbers; do
       fi
     done
   fi
+
+  # "Part of <backlog>#N": a feature is exempt, any other backlog issue must share the milestone.
+  for pi in $(backlog_parts "$pr_json"); do
+    [ "$note" = "milestone-only" ] && note=""
+    note="$note${note:+, }part of $pi"
+    [ -z "$(feature_ms "$pi")" ] || continue
+    pi_ms=$(gh issue view "${pi##*#}" --repo "${pi%#*}" --json milestone -q '.milestone.title // ""' 2>/dev/null || echo "")
+    if [ "$pi_ms" != "$ms_title" ]; then
+      err "PR #$pr links issue $pi but that issue's milestone is '${pi_ms:-none}', not '$ms_title'"
+      pr_bad=1
+    fi
+  done
 
   # Tag-readiness gate applies to every milestone PR regardless of issue linkage.
   if [ "$TAG_MODE" = 1 ] && [ "$pr_state" != "MERGED" ]; then
