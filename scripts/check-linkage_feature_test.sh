@@ -100,9 +100,12 @@ add_issue() { # number, state (open|closed) — an issue of this repository in v
   printf '{"number":%s,"state":"%s","milestone":{"number":8}}\n' "$1" "$2" >> "$fx/items.ndjson"
   issue_in "$REPO" "$1" v0.8.0
 }
+AUTHOR=jigarkhwar; AUTHOR_BOT=false; HEAD=feat/something   # a case may change these before pr_json
 pr_json() { # number, state (OPEN|CLOSED|MERGED), closing link owner/repo#N or "", body, milestone title or "", [base branch]
-  jq -nc --argjson n "$1" --arg state "$2" --arg link "$3" --arg body "$4" --arg ms "$5" --arg base "${6:-main}" '{
+  jq -nc --argjson n "$1" --arg state "$2" --arg link "$3" --arg body "$4" --arg ms "$5" --arg base "${6:-main}" \
+    --arg author "$AUTHOR" --argjson isbot "$AUTHOR_BOT" --arg head "$HEAD" '{
     number: $n, title: "PR \($n)", state: $state, body: $body, baseRefName: $base,
+    author: {login: $author, is_bot: $isbot}, headRefName: $head,
     milestone: (if $ms == "" then null else {title: $ms} end),
     closingIssuesReferences: [$link | select(. != "")
       | capture("^(?<owner>[^/]+)/(?<name>[^#]+)#(?<n>[0-9]+)$")
@@ -115,8 +118,11 @@ add_pr() { # number, state, closing link or "", [body] — a PR in v0.8.0
   printf '{"number":%s,"state":"%s","pull_request":{},"milestone":{"number":8}}\n' "$1" "$rest" >> "$fx/items.ndjson"
   pr_json "$1" "$2" "$3" "${4:-}" v0.8.0
 }
+# The cases above the strict section keep the local behaviour: they run with the feature
+# rule off (FEATURE_LINK=optional). A strict case sets FL=required (the default of the script).
+FL=optional
 run() { # the script's arguments; sets $out and $rc
-  out="$(PATH="$bin:$PATH" REPO="$REPO" BACKLOG_REPO="$BACKLOG" FIXTURES="$fx" bash "$script" "$@" 2>&1)"; rc=$?
+  out="$(PATH="$bin:$PATH" REPO="${RUN_REPO:-$REPO}" BACKLOG_REPO="$BACKLOG" FEATURE_LINK="$FL" FIXTURES="$fx" bash "$script" "$@" 2>&1)"; rc=$?
 }
 has() { grep -qF -- "$1" <<<"$out"; }
 only_known_calls() { [ ! -s "$fx/unexpected.log" ]; }
@@ -225,6 +231,128 @@ issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
 run --tag
 check "tag: a merged PR that links a feature does not block the tag" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
 check "tag: the milestone is tag-ready" $(has 'Milestone #8 is tag-ready.' && echo 0 || echo 1) "out=$out"
+
+# ---- the strict rule: every PR links a feature of the backlog ---------------------
+echo "check-linkage.sh (every PR links a feature)"
+FL=required
+NOFEAT='✗ links no feature of the backlog — add "Part of '"$BACKLOG"'#<feature>" (maintenance with no feature of its own: the standing feature of the active business milestone, the issue with the label standing)'
+
+# 14. gate: a PR that links nothing fails
+new_case strict-none
+pr_json 3 OPEN "" "Just a change." v0.8.0
+run --pr 3
+check "strict: a milestone-only PR links no feature and fails" $([ "$rc" -eq 1 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: it says what to add" $(has "$NOFEAT" && echo 0 || echo 1) "out=$out"
+
+# 15. gate: Part of an ordinary backlog issue is no feature
+new_case strict-part-plain
+pr_json 3 OPEN "" "Part of $BACKLOG#31" v0.8.0
+issue_in "$BACKLOG" 31 v0.8.0 'Tooling of the backlog itself.'
+run --pr 3
+check "strict: Part of a backlog issue that is no feature fails" $([ "$rc" -eq 1 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: it says no feature" $(has '✗ links no feature of the backlog' && echo 0 || echo 1) "out=$out"
+
+# 16. gate: a closing link to an issue of its own repository, without a feature
+new_case strict-close-only
+pr_json 3 OPEN "$REPO#1" "Closes #1" v0.8.0
+add_issue 1 open
+run --pr 3
+check "strict: closing an own issue without a feature fails" $([ "$rc" -eq 1 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: it says no feature" $(has '✗ links no feature of the backlog' && echo 0 || echo 1) "out=$out"
+
+# 17. gate: Part of a feature passes
+new_case strict-feature
+pr_json 3 OPEN "" "Part of $BACKLOG#30" v0.8.0
+issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
+run --pr 3
+check "strict: Part of a feature passes" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: it names the feature once" $([ "$(grep -cF "links $BACKLOG#30" <<<"$out")" -eq 1 ] && echo 0 || echo 1) "out=$out"
+
+# 18. gate: a closing link to an own issue, with a feature next to it
+new_case strict-close-and-feature
+pr_json 3 OPEN "$REPO#1" "Closes #1
+Part of $BACKLOG#30" v0.8.0
+add_issue 1 open
+issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
+run --pr 3
+check "strict: a closing link plus Part of a feature passes" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: the feature next to the closing link is seen" $(has "✓ links $BACKLOG#30 (feature of business milestone" && echo 0 || echo 1) "out=$out"
+
+# 19. gate: a closing link to the feature itself
+new_case strict-close-feature
+pr_json 3 OPEN "$BACKLOG#30" "Closes $BACKLOG#30" v0.8.0
+issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
+run --pr 3
+check "strict: a closing link to a feature passes" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+
+# 20-22. gate: a bot's PR is exempt
+new_case strict-bot-author
+AUTHOR="dependabot[bot]"; AUTHOR_BOT=true
+pr_json 3 OPEN "" "Bumps a pin." v0.8.0
+run --pr 3
+check "strict: a PR by a bot passes without a feature" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: it says a bot needs none" $(has "a bot's PR needs no feature" && echo 0 || echo 1) "out=$out"
+AUTHOR=jigarkhwar; AUTHOR_BOT=false
+
+new_case strict-dependabot-branch
+HEAD=dependabot/sbt/foo-1.2
+pr_json 3 OPEN "" "Bumps a pin." v0.8.0
+run --pr 3
+check "strict: a dependabot/ branch passes without a feature" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+
+new_case strict-update-branch
+HEAD=update/foo-1.2
+pr_json 3 OPEN "" "Updates foo." v0.8.0
+run --pr 3
+check "strict: an update/ branch passes without a feature" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+HEAD=feat/something
+
+# 23. gate: a bot's PR still needs its milestone
+new_case strict-bot-no-milestone
+HEAD=dependabot/sbt/foo-1.2
+pr_json 3 OPEN "" "Bumps a pin." ""
+run --pr 3
+check "strict: a bot's PR still needs a milestone" $([ "$rc" -eq 1 ] && echo 0 || echo 1) "rc=$rc out=$out"
+HEAD=feat/something
+
+# 24. gate: the backlog repository itself is exempt
+new_case strict-backlog-repo
+pr_json 3 OPEN "" "Just a change." v0.8.0
+RUN_REPO=$REPO run --pr 3
+check "strict: a PR of a repository other than the backlog fails (control)" $([ "$rc" -eq 1 ] && echo 0 || echo 1) "rc=$rc out=$out"
+BACKLOG_SAVE=$BACKLOG; BACKLOG=$REPO
+run --pr 3
+check "strict: a PR of the backlog repository needs no feature" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+BACKLOG=$BACKLOG_SAVE
+
+# 25. env: FEATURE_LINK=optional lets a PR without a feature pass; anything else is refused
+new_case strict-optional
+pr_json 3 OPEN "" "Just a change." v0.8.0
+FL=optional run --pr 3
+check "strict: FEATURE_LINK=optional lets a PR without a feature pass" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+FL=sometimes run --pr 3
+check "strict: any other FEATURE_LINK is refused with exit 2" $([ "$rc" -eq 2 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: it says what is allowed" $(has 'FEATURE_LINK must be required or optional' && echo 0 || echo 1) "out=$out"
+
+# 26. audit: a PR without a feature is a warning, not an error
+new_case strict-audit
+add_pr 2 OPEN "" "Just a change."
+run
+check "strict audit: a PR without a feature only warns" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict audit: the warning names the PR" $(has "! PR #2 links no feature of the backlog" && echo 0 || echo 1) "out=$out"
+
+new_case strict-audit-feature
+add_pr 2 OPEN "" "Part of $BACKLOG#30"
+issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
+run
+check "strict audit: a PR with a feature draws no warning" $(! has 'links no feature' && echo 0 || echo 1) "out=$out"
+
+new_case strict-audit-bot
+AUTHOR="app/dependabot"; AUTHOR_BOT=true
+add_pr 2 OPEN "" "Bumps a pin."
+run
+check "strict audit: a bot's PR draws no warning" $(! has 'links no feature' && echo 0 || echo 1) "out=$out"
+AUTHOR=jigarkhwar; AUTHOR_BOT=false
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
