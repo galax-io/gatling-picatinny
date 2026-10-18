@@ -41,6 +41,13 @@ cat > "$bin/gh" <<'STUB'
 fx="${FIXTURES:?}"
 unexpected() { echo "gh $*" >> "$fx/unexpected.log"; echo "stub gh: unexpected call: gh $*" >&2; exit 99; }
 all="$*"
+echo "GH_TOKEN=${GH_TOKEN:-none} gh $*" >> "$fx/calls.log"
+# With a backlog-hidden fixture the backlog is private: only GH_TOKEN=backlog-secret reads it.
+if [ -f "$fx/backlog-hidden" ]; then
+  case "$all" in
+    *"$BACKLOG_REPO"*) [ "${GH_TOKEN:-}" = backlog-secret ] || { echo "HTTP 404: Not Found" >&2; exit 1; } ;;
+  esac
+fi
 cmd="${1:-}"; [ $# -gt 0 ] && shift
 expr=""; paginate=0; repo=""; positional=()
 while [ $# -gt 0 ]; do
@@ -64,6 +71,8 @@ case "$cmd" in
         echo '[{"number":8,"title":"v0.8.0"}]' | jq -r "${expr:-.}" ;;
       "repos/$REPO/milestones?state=all&per_page=100")
         echo '[{"number":7,"title":"v0.7.0"},{"number":8,"title":"v0.8.0"}]' ;;
+      "repos/$BACKLOG_REPO")
+        echo '{}' ;;
       "repos/$REPO")
         echo '{"default_branch":"main"}' | jq -r "${expr:-.}" ;;
       "repos/$REPO/milestones/8")
@@ -122,7 +131,7 @@ add_pr() { # number, state, closing link or "", [body] — a PR in v0.8.0
 # rule off (FEATURE_LINK=optional). A strict case sets FL=required (the default of the script).
 FL=optional
 run() { # the script's arguments; sets $out and $rc
-  out="$(PATH="$bin:$PATH" REPO="${RUN_REPO:-$REPO}" BACKLOG_REPO="$BACKLOG" FEATURE_LINK="$FL" FIXTURES="$fx" bash "$script" "$@" 2>&1)"; rc=$?
+  out="$(GH_TOKEN=job-token PATH="$bin:$PATH" REPO="${RUN_REPO:-$REPO}" BACKLOG_REPO="$BACKLOG" FEATURE_LINK="$FL" FIXTURES="$fx" bash "$script" "$@" 2>&1)"; rc=$?
 }
 has() { grep -qF -- "$1" <<<"$out"; }
 only_known_calls() { [ ! -s "$fx/unexpected.log" ]; }
@@ -353,6 +362,33 @@ add_pr 2 OPEN "" "Bumps a pin."
 run
 check "strict audit: a bot's PR draws no warning" $(! has 'links no feature' && echo 0 || echo 1) "out=$out"
 AUTHOR=jigarkhwar; AUTHOR_BOT=false
+
+# 27-29. the private backlog is read with BACKLOG_READ_TOKEN, and only for calls about the backlog
+new_case token-hidden
+pr_json 3 OPEN "" "Part of $BACKLOG#30" v0.8.0
+issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
+: > "$fx/backlog-hidden"
+run --pr 3
+check "token: an unreadable backlog fails the gate" $([ "$rc" -eq 1 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "token: it names BACKLOG_READ_TOKEN" $(has 'give the job BACKLOG_READ_TOKEN' && echo 0 || echo 1) "out=$out"
+check "token: it does not claim the PR links no feature" $(! has 'links no feature' && echo 0 || echo 1) "out=$out"
+
+new_case token-given
+pr_json 3 OPEN "" "Part of $BACKLOG#30" v0.8.0
+issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
+: > "$fx/backlog-hidden"
+BACKLOG_READ_TOKEN=backlog-secret run --pr 3
+check "token: with BACKLOG_READ_TOKEN the feature is seen" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "token: backlog calls carry the backlog token" $(grep -F "$BACKLOG" "$fx/calls.log" | grep -qv 'GH_TOKEN=backlog-secret' && echo 1 || echo 0) "$(cat "$fx/calls.log")"
+check "token: the PR is read with the job token" $(grep -F 'pr view' "$fx/calls.log" | grep -q 'GH_TOKEN=job-token' && echo 0 || echo 1) "$(cat "$fx/calls.log")"
+check "token: the backlog token is used for nothing else" $(grep -F 'GH_TOKEN=backlog-secret' "$fx/calls.log" | grep -qv "$BACKLOG" && echo 1 || echo 0) "$(cat "$fx/calls.log")"
+
+new_case token-readable
+pr_json 3 OPEN "" "Part of $BACKLOG#30" v0.8.0
+issue_in "$BACKLOG" 30 'M1 — first run' "$BUSINESS"
+run --pr 3
+check "token: a readable backlog needs no token" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "token: and says nothing about one" $(! has 'BACKLOG_READ_TOKEN' && echo 0 || echo 1) "out=$out"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
