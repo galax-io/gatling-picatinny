@@ -1,8 +1,10 @@
 installed:
 - agent-context
 - bug
+- changelog
 - git
 - harness
+- spectest
 - worktrees
 settings:
   auto_execute_hooks: true
@@ -27,7 +29,7 @@ hooks:
   - extension: worktrees
     command: speckit.worktrees.create
     enabled: true
-    optional: true
+    optional: false
     priority: 10
     prompt: Execute speckit.worktrees.create?
     description: Auto-spawn a worktree after a new feature is specified
@@ -181,6 +183,22 @@ hooks:
     priority: 10
     prompt: Commit implementation changes?
     description: Auto-commit after implementation
+    condition: null
+  - extension: spectest
+    command: speckit.spectest.gaps
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Check for untested spec requirements?
+    description: Scan for spec requirements with no matching tests after implementation
+    condition: null
+  - extension: changelog
+    command: speckit.changelog.generate
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Generate a changelog entry for this change?
+    description: Offer to generate changelog entry after implementation
     condition: null
   after_checklist:
   - extension: git
