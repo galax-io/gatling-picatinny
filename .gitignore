@@ -26,3 +26,8 @@ metals.sbt
 .specify/presets/.registry
 .specify/presets/.cache/
 .specify/presets/.backup/
+
+# Spec Kit: Python caches and the CLI state, which the kit does not ship (scripts/check-speckit.sh)
+__pycache__/
+.specify/integrations/*.manifest.json
+.specify/workflows/workflow-registry.json
