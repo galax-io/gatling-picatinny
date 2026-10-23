@@ -94,7 +94,7 @@ object Dependencies {
   )
 
   lazy val jwt: Seq[ModuleID] = Seq(
-    "com.github.jwt-scala" %% "jwt-core" % "11.0.4",
+    "com.github.jwt-scala" %% "jwt-core" % "12.0.0",
   )
 
   // National-ID generation via libraries so Faker emits values with real, validator-passing checksums.
