@@ -45,10 +45,10 @@ object Dependencies {
 
   // Explicit modules instead of the unused umbrella (dependency-hygiene report #276).
   lazy val pureConfig: Seq[ModuleID] = Seq(
-    "com.github.pureconfig" %% "pureconfig-core"         % "0.17.10",
-    "com.github.pureconfig" %% "pureconfig-generic"      % "0.17.10",
-    "com.github.pureconfig" %% "pureconfig-generic-base" % "0.17.10",
-    "com.github.pureconfig" %% "pureconfig-yaml"         % "0.17.10",
+    "com.github.pureconfig" %% "pureconfig-core"         % "0.17.11",
+    "com.github.pureconfig" %% "pureconfig-generic"      % "0.17.11",
+    "com.github.pureconfig" %% "pureconfig-generic-base" % "0.17.11",
+    "com.github.pureconfig" %% "pureconfig-yaml"         % "0.17.11",
     "com.typesafe"           % "config"                  % "1.4.9", // direct Config API use (SimulationConfig)
   )
 
