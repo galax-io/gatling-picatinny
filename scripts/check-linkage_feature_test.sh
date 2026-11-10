@@ -316,12 +316,13 @@ run --pr 3
 check "strict: an update/ branch passes without a feature" $([ "$rc" -eq 0 ] && echo 0 || echo 1) "rc=$rc out=$out"
 HEAD=feat/something
 
-# 23. gate: a bot's PR still needs its milestone
+# 23. gate: a bot's PR passes without a milestone: the dependency conveyor gives it the active one when it
+#     merges it (galax-io/galaxio-sdlc-backlog#831)
 new_case strict-bot-no-milestone
 HEAD=dependabot/sbt/foo-1.2
 pr_json 3 OPEN "" "Bumps a pin." ""
 run --pr 3
-check "strict: a bot's PR still needs a milestone" $([ "$rc" -eq 1 ] && echo 0 || echo 1) "rc=$rc out=$out"
+check "strict: a bot's PR passes without a milestone" $([ "$rc" -eq 0 ] && grep -qF "no milestone yet" <<<"$out" && echo 0 || echo 1) "rc=$rc out=$out"
 HEAD=feat/something
 
 # 24. gate: the backlog repository itself is exempt
