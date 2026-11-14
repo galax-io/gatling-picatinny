@@ -120,8 +120,8 @@ object Dependencies {
   // official @INN constraint (Russian INN, 10/12-digit FTS checksum). Used with ParameterMessageInterpolator
   // so no Jakarta EL implementation is needed.
   lazy val idValidationTest: Seq[ModuleID] = Seq(
-    "dev.personnummer"        % "personnummer"        % "3.5.0"       % Test,
-    "org.hibernate.validator" % "hibernate-validator" % "9.1.6.Final" % Test,
+    "dev.personnummer"        % "personnummer"        % "3.5.0"     % Test,
+    "org.hibernate.validator" % "hibernate-validator" % "9.2.0.CR2" % Test,
   )
 
   lazy val circeDeps: Seq[ModuleID] = Seq(
