@@ -1,6 +1,6 @@
 package org.galaxio.gatling.feeders.faker
 
-import org.galaxio.gatling.utils.RandomDataGenerators.{digitString, lettersString, randomValue}
+import org.galaxio.gatling.utils.RandomDataGenerators.{digitString, lettersString, nextValue}
 import org.galaxio.gatling.utils._
 
 /** Hand-rolled government / financial identifier generators with valid control digits (Russian INN, OGRN, OGRNIP, SNILS, KPP,
@@ -33,13 +33,13 @@ private[gatling] object GovIdGenerators {
   }
 
   private def getRandomElement(items: List[Int], intLength: Int): Int = items match {
-    case Nil => randomValue(intLength)
-    case _   => items(randomValue(items.length))
+    case Nil => nextValue(intLength)
+    case _   => items(nextValue(items.length))
   }
 
   private def getRandomElement(items: List[String], stringLength: Int): String = items match {
     case Nil => lettersString(stringLength)
-    case _   => items(randomValue(items.length))
+    case _   => items(nextValue(items.length))
   }
 
   def pan(bins: String*): String = {
@@ -64,8 +64,8 @@ private[gatling] object GovIdGenerators {
 
   def ogrn(): String = {
     val indicatorOGRN: Int   = getRandomElement(List(1, 5), 1)
-    val year: String         = zeroPad(randomValue(2, 21), 2)
-    val ruSubjectNum: String = zeroPad(randomValue(1, 90), 2)
+    val year: String         = zeroPad(nextValue(2, 21), 2)
+    val ruSubjectNum: String = zeroPad(nextValue(1, 90), 2)
     val idNum: String        = digitString(7)
     val result: String       = s"$indicatorOGRN$year$ruSubjectNum$idNum"
     val rem: Long            = result.toLong % 11
@@ -75,8 +75,8 @@ private[gatling] object GovIdGenerators {
 
   def ogrnip(): String = {
     val indicatorPSRNSP: Int = 3
-    val year: String         = zeroPad(randomValue(2, 21), 2)
-    val ruSubjectNum: String = zeroPad(randomValue(1, 90), 2)
+    val year: String         = zeroPad(nextValue(2, 21), 2)
+    val ruSubjectNum: String = zeroPad(nextValue(1, 90), 2)
     val idNum: String        = digitString(9)
     val result: String       = s"$indicatorPSRNSP$year$ruSubjectNum$idNum"
     // (first 14 digits mod 13) mod 10 — always 0..9, so no mod-11-style "== 10" special case is needed.
@@ -86,9 +86,9 @@ private[gatling] object GovIdGenerators {
   }
 
   def kpp(): String = {
-    val revenueServiceCode: String = zeroPad(randomValue(1, 10000), 4)
-    val reasonForReg: String       = zeroPad(randomValue(1, 100), 2)
-    val idNum: String              = zeroPad(randomValue(1, 1000), 3)
+    val revenueServiceCode: String = zeroPad(nextValue(1, 10000), 4)
+    val reasonForReg: String       = zeroPad(nextValue(1, 100), 2)
+    val idNum: String              = zeroPad(nextValue(1, 1000), 3)
 
     s"$revenueServiceCode$reasonForReg$idNum"
   }
@@ -98,7 +98,7 @@ private[gatling] object GovIdGenerators {
     val d    = new Array[Int](12)
     var i    = 0
     while (i < 10) {
-      d(i) = randomValue(0, 10)
+      d(i) = nextValue(0, 10)
       i += 1
     }
     var sum1 = 0
@@ -123,7 +123,7 @@ private[gatling] object GovIdGenerators {
     val d   = new Array[Int](10)
     var i   = 0
     while (i < 9) {
-      d(i) = randomValue(0, 10)
+      d(i) = nextValue(0, 10)
       i += 1
     }
     var sum = 0
@@ -140,7 +140,7 @@ private[gatling] object GovIdGenerators {
     val d       = new Array[Int](9)
     var i       = 0
     while (i < 9) {
-      d(i) = randomValue(0, 10)
+      d(i) = nextValue(0, 10)
       i += 1
     }
     var sum     = 0
@@ -158,8 +158,8 @@ private[gatling] object GovIdGenerators {
   }
 
   def rusPassport(): String = {
-    val ruSubjectNum: String = zeroPad(randomValue(1, 90), 2)
-    val year: String         = zeroPad(randomValue(0, 21), 2)
+    val ruSubjectNum: String = zeroPad(nextValue(1, 90), 2)
+    val year: String         = zeroPad(nextValue(0, 21), 2)
     val idNum: String        = digitString(6)
 
     s"$ruSubjectNum$year$idNum"

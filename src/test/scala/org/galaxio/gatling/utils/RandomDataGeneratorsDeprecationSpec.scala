@@ -1,12 +1,14 @@
 package org.galaxio.gatling.utils
 
-import org.galaxio.gatling.feeders.faker.Faker
+import org.galaxio.gatling.feeders.faker.{Faker, GovIdGenerators}
 import org.galaxio.gatling.feeders.{GovIdValidators, LuhnValidator}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit.DAYS
+import java.time.temporal.TemporalUnit
+import java.lang.reflect.Modifier
 import java.time.{LocalDateTime, ZoneId}
 import scala.annotation.nowarn
 import scala.io.Source
@@ -26,6 +28,9 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
   private val Samples = 1000
 
   private def samples[A](draw: => A): Set[A] = Iterator.continually(draw).take(Samples).toSet
+
+  /** The distinct values of the digits `from` until `until` of each identifier. */
+  private def field(ids: List[String], from: Int, until: Int): Set[Int] = ids.map(_.substring(from, until).toInt).toSet
 
   private def read(path: String): String =
     Using(Source.fromFile(path, "UTF-8"))(_.mkString).getOrElse(fail(s"cannot read $path"))
@@ -89,9 +94,58 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
       pinned shouldBe empty
     }
 
+    "FR-008: leave every method of the Faker API and of GovIdGenerators undeprecated" in {
+      val methods = methodsUnder(ru.typeOf[Faker.type], "Faker") ++
+        methodsUnder(ru.typeOf[GovIdGenerators.type], "GovIdGenerators")
+
+      val paths   = methods.map(_._1)
+      val covered = List(
+        "Faker.string.fromAlphabet",
+        "Faker.ru.inn.person",
+        "Faker.ru.inn.company",
+        "Faker.ru.kpp",
+        "Faker.ru.ogrn",
+        "Faker.ru.ogrnip",
+        "Faker.ru.snils",
+        "Faker.finance.pan",
+        "Faker.passport.ru",
+        "GovIdGenerators.pan",
+        "GovIdGenerators.ogrn",
+        "GovIdGenerators.ogrnip",
+        "GovIdGenerators.kpp",
+        "GovIdGenerators.natITN",
+        "GovIdGenerators.jurITN",
+        "GovIdGenerators.snils",
+        "GovIdGenerators.rusPassport",
+      )
+      covered.filterNot(paths.contains) shouldBe empty
+      methods.collect { case (path, pins) if pins.nonEmpty => s"$path -> $pins" } shouldBe empty
+      // The same walk sees a pin where one is: an empty answer above is not a blind reader.
+      val legacy = methodsUnder(RandomDataGeneratorsType, "RandomDataGenerators").toMap
+      legacy.get("RandomDataGenerators.randomOGRN") shouldBe Some(List(Deprecation(OgrnMessage, Since)))
+    }
+
     "FR-010: be read by a reader that sees the pin randomOGRN already carries, so a missing pin cannot pass unseen" in {
-      deprecations(RandomDataGeneratorsType, "randomOGRN").map(_._2) shouldBe
-        List(List(Deprecation("Use Faker.ru.ogrn (with GeneratedFeeder) instead", Since)))
+      deprecations(RandomDataGeneratorsType, "randomOGRN").map(_._2) shouldBe List(List(Deprecation(OgrnMessage, Since)))
+    }
+
+    "FR-010: keep the behaviour checks RandomDataGeneratorsTest had, silencing nothing but the deprecation" in {
+      val suite = read("src/test/scala/org/galaxio/gatling/utils/RandomDataGeneratorsTest.scala")
+      List(
+        "\"RandomDataGenerators.randomString\" should",
+        "\"generate strings of the requested length using only the supplied alphabet\" in",
+        "RandomDataGenerators.randomString(alphabet)(length)",
+        "\"RandomDataGenerators.randomUUID\" should",
+        "\"generate canonical lowercase UUID strings\" in",
+        "RandomDataGenerators.randomUUID should fullyMatch regex",
+        "\"RandomDataGenerators.randomValue\" should",
+        "\"stay within the requested inclusive range\" in",
+        "RandomDataGenerators.randomValue(min, max)",
+        "\"RandomDataGenerators.randomDate\" should",
+        "\"render dates with the requested formatter\" in",
+        ".randomDate(",
+      ).foreach(check => suite should include(check))
+      """@nowarn\([^)]*\)""".r.findAllIn(suite).toList shouldBe List("@nowarn(\"cat=deprecation\")")
     }
   }
 
@@ -133,6 +187,29 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
       window should fullyMatch regex raw"\d{4}-\d{2}-\d{2}"
       offset shouldBe "2026-05-08"
     }: @nowarn("cat=deprecation")
+
+    // Read by reflection, under no @nowarn: a call site would hide behind the deprecation category, which in 2.13 also
+    // carries the auto-application warning a `randomUUID` → `randomUUID()` change raises.
+    "FR-005: keep the Scala signatures source callers compile against" in {
+      val signatures = Pins.keys.toList.sorted.flatMap { name =>
+        deprecations(RandomDataGeneratorsType, name).map { case (method, _) => s"$name ${method.typeSignature}" }
+      }
+      signatures should contain theSameElementsAs ScalaSignatures
+    }
+
+    "FR-005: keep the JVM signatures binary callers link against, on the object and as static forwarders" in {
+      val module     = RandomDataGenerators.getClass
+      val forwarders = Class.forName("org.galaxio.gatling.utils.RandomDataGenerators")
+      JvmSignatures.foreach { case (name, params, result) =>
+        val instance = module.getMethod(name, params: _*)
+        val static   = forwarders.getMethod(name, params: _*)
+        withClue(s"$name(${params.map(_.getSimpleName).mkString(", ")}): ") {
+          instance.getReturnType shouldBe result
+          static.getReturnType shouldBe result
+          Modifier.isStatic(static.getModifiers) shouldBe true
+        }
+      }
+    }
 
     "FR-005: keep randomValue(1, 11) at exactly 1..10, never 11" in {
       samples(RandomDataGenerators.randomValue(1, 11)) shouldBe (1 to 10).toSet
@@ -220,6 +297,87 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
       }
     }: @nowarn("cat=deprecation")
 
+    // A Float is drawn as a double narrowed to Float (Faker) or as a Float product (legacy): either may round onto the
+    // upper bound, so the Float checks below hold the bound inclusive.
+    "FR-006: randomValue[Float]() and Faker.number.float(0f, 1f) stay in [0, 1]" in {
+      val legacy = samples(RandomDataGenerators.randomValue[Float]())
+      val faker  = samples(Faker.number.float(0f, 1f).sample())
+
+      List(legacy, faker).foreach { drawn =>
+        drawn.size should be > 1
+        all(drawn) should (be >= 0f and be <= 1f)
+      }
+    }: @nowarn("cat=deprecation")
+
+    "FR-006: randomValue[Int]() and randomValue[Long]() and Faker.number.int / long over the full range draw both signs" in {
+      val ints  = List(
+        samples(RandomDataGenerators.randomValue[Int]()),
+        samples(Faker.number.int(Int.MinValue, Int.MaxValue).sample()),
+      )
+      val longs = List(
+        samples(RandomDataGenerators.randomValue[Long]()),
+        samples(Faker.number.long(Long.MinValue, Long.MaxValue).sample()),
+      )
+
+      ints.foreach { drawn =>
+        drawn.size should be > Samples / 2
+        drawn.exists(_ < -(1 << 30)) shouldBe true
+        drawn.exists(_ > (1 << 30)) shouldBe true
+      }
+      longs.foreach { drawn =>
+        drawn.size should be > Samples / 2
+        drawn.exists(_ < -(1L << 62)) shouldBe true
+        drawn.exists(_ > (1L << 62)) shouldBe true
+      }
+    }: @nowarn("cat=deprecation")
+
+    "FR-006: randomValue(max) for Long, Float and Double and Faker.number.long(0, max - 1) / float / double(0, max) agree" in {
+      samples(RandomDataGenerators.randomValue(5L)) shouldBe (0L to 4L).toSet
+      samples(Faker.number.long(0L, 4L).sample()) shouldBe (0L to 4L).toSet
+
+      val legacyFloats  = samples(RandomDataGenerators.randomValue(2.5f))
+      val fakerFloats   = samples(Faker.number.float(0f, 2.5f).sample())
+      val legacyDoubles = samples(RandomDataGenerators.randomValue(2.5))
+      val fakerDoubles  = samples(Faker.number.double(0.0, 2.5).sample())
+
+      List(legacyFloats, fakerFloats).foreach { drawn =>
+        all(drawn) should (be >= 0f and be <= 2.5f)
+        drawn.max should be > 2f
+      }
+      List(legacyDoubles, fakerDoubles).foreach { drawn =>
+        all(drawn) should (be >= 0.0 and be < 2.5)
+        drawn.max should be > 2.0
+      }
+    }: @nowarn("cat=deprecation")
+
+    "FR-006: randomValue[Float](max) with a negative max and Faker.number.float(max, 0f) stay between max and 0" in {
+      val legacy = samples(RandomDataGenerators.randomValue(-2f))
+      val faker  = samples(Faker.number.float(-2f, 0f).sample())
+
+      List(legacy, faker).foreach { drawn =>
+        all(drawn) should (be >= -2f and be <= 0f)
+        drawn.min should be < -1.5f
+      }
+    }: @nowarn("cat=deprecation")
+
+    "FR-006: randomValue(min, max) for Float and Double and Faker.number.float / double(min, max) stay in [min, max)" in {
+      val legacyFloats  = samples(RandomDataGenerators.randomValue(1.5f, 3.5f))
+      val fakerFloats   = samples(Faker.number.float(1.5f, 3.5f).sample())
+      val legacyDoubles = samples(RandomDataGenerators.randomValue(1.5, 3.5))
+      val fakerDoubles  = samples(Faker.number.double(1.5, 3.5).sample())
+
+      List(legacyFloats, fakerFloats).foreach { drawn =>
+        all(drawn) should (be >= 1.5f and be <= 3.5f)
+        drawn.min should be < 2f
+        drawn.max should be > 3f
+      }
+      List(legacyDoubles, fakerDoubles).foreach { drawn =>
+        all(drawn) should (be >= 1.5 and be < 3.5)
+        drawn.min should be < 2.0
+        drawn.max should be > 3.0
+      }
+    }: @nowarn("cat=deprecation")
+
     "FR-006: randomDate(3, 2, …) and Faker.date.offset(from, -2, 2) give the base date -2..+2 days" in {
       samples(RandomDataGenerators.randomDate(3, 2, pattern, from, DAYS, utc)) shouldBe days(-2, -1, 0, 1, 2)
       samples(Faker.date.formatDateTime(Faker.date.offset(from, -2, 2, DAYS), pattern).sample()) shouldBe days(-2, -1, 0, 1, 2)
@@ -248,19 +406,33 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
 
   "the Faker API and the helpers that stay" should {
 
+    // Only the deprecated helpers themselves may name a deprecated helper (randomDate draws through randomValue); every
+    // other definition of these files, the helpers that stay included, must not.
     "FR-007: call none of the deprecated generators and suppress no deprecation" in {
       val callsDeprecated = """(?<!UUID\.)\brandom(String|UUID|Value|Date)\b""".r
+      val definition      = """^\s*(?:private(?:\[\w+\])?\s+)?def\s+(\w+)""".r.unanchored
       List(
         "src/main/scala/org/galaxio/gatling/feeders/faker/Faker.scala",
         "src/main/scala/org/galaxio/gatling/feeders/faker/GovIdGenerators.scala",
+        "src/main/scala/org/galaxio/gatling/utils/RandomDataGenerators.scala",
       ).foreach { path =>
         val source = read(path)
+        val code   = source.replaceAll("(?s)/\\*.*?\\*/", "")
+        val calls  = code.linesIterator
+          .scanLeft(("", "")) {
+            case (_, line @ definition(name)) => (name, line)
+            case ((enclosing, _), line)       => (enclosing, line)
+          }
+          .collect {
+            case (enclosing, line) if callsDeprecated.findFirstIn(line).nonEmpty && !Pins.contains(enclosing) =>
+              s"$enclosing: ${line.trim}"
+          }
+          .toList
         withClue(s"$path: ") {
-          callsDeprecated.findAllIn(source).toList shouldBe empty
+          calls shouldBe empty
           source should not include "@nowarn"
         }
       }
-      read("src/main/scala/org/galaxio/gatling/utils/RandomDataGenerators.scala") should not include "@nowarn"
     }
 
     "FR-007: keep the library under -deprecation and -Werror with no category downgraded" in {
@@ -300,6 +472,37 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
       }
       GovIdValidators.validNatInn("000000000001") shouldBe false
     }
+
+    // These four draw their fields through the former randomValue(min, max): an inclusive or shifted bound shows up as a
+    // field value out of its range, a lost value or a broken control digit.
+    "FR-007: keep each field of Faker.ru.ogrn, ogrnip, kpp and Faker.passport.ru in its range, with valid control digits" in {
+      val draws    = 2000
+      val ogrns    = List.fill(draws)(Faker.ru.ogrn().sample())
+      val ogrnips  = List.fill(draws)(Faker.ru.ogrnip().sample())
+      val kpps     = List.fill(draws)(Faker.ru.kpp().sample())
+      val passport = List.fill(draws)(Faker.passport.ru().sample())
+
+      all(ogrns) should fullyMatch regex "[0-9]{13}"
+      field(ogrns, 0, 1) shouldBe Set(1, 5)
+      field(ogrns, 1, 3) shouldBe (2 to 20).toSet
+      field(ogrns, 3, 5) shouldBe (1 to 89).toSet
+      ogrns.filterNot(o => o.last.asDigit == (o.take(12).toLong % 11 % 10).toInt) shouldBe empty
+
+      all(ogrnips) should fullyMatch regex "[0-9]{15}"
+      field(ogrnips, 0, 1) shouldBe Set(3)
+      field(ogrnips, 1, 3) shouldBe (2 to 20).toSet
+      field(ogrnips, 3, 5) shouldBe (1 to 89).toSet
+      ogrnips.filterNot(o => o.last.asDigit == (o.take(14).toLong % 13 % 10).toInt) shouldBe empty
+
+      all(kpps) should fullyMatch regex "[0-9]{9}"
+      all(field(kpps, 0, 4)) should (be >= 1 and be <= 9999)
+      field(kpps, 4, 6) shouldBe (1 to 99).toSet
+      all(field(kpps, 6, 9)) should (be >= 1 and be <= 999)
+
+      all(passport) should fullyMatch regex "[0-9]{10}"
+      field(passport, 0, 2) shouldBe (1 to 89).toSet
+      field(passport, 2, 4) shouldBe (0 to 20).toSet
+    }
   }
 }
 
@@ -313,6 +516,7 @@ object RandomDataGeneratorsDeprecationSpec {
   val RandomStringMessage: String = "Use Faker.string.fromAlphabet (with GeneratedFeeder) instead"
   val RandomUuidMessage: String   = "Use Faker.uuid.string (with GeneratedFeeder) instead"
   val RandomDateMessage: String   = "Use Faker.date.offset with Faker.date.formatDateTime (with GeneratedFeeder) instead"
+  val OgrnMessage: String         = "Use Faker.ru.ogrn (with GeneratedFeeder) instead"
 
   val RandomValueMessage: String =
     "Use Faker.number.int / Faker.number.long / Faker.number.float / Faker.number.double (with GeneratedFeeder) instead"
@@ -323,6 +527,39 @@ object RandomDataGeneratorsDeprecationSpec {
     "randomUUID"   -> RandomUuidMessage,
     "randomValue"  -> RandomValueMessage,
     "randomDate"   -> RandomDateMessage,
+  )
+
+  /** The Scala signature of each deprecated overload, as reflection renders it, after its name: `randomUUID String` is the
+    * parameterless `def randomUUID: String`, which a `randomUUID()` would render as `randomUUID (): String`.
+    */
+  val ScalaSignatures: List[String] = List(
+    "randomDate (positiveDelta: Int, negativeDelta: Int, datePattern: String, dateFrom: java.time.LocalDateTime, unit: java.time.temporal.TemporalUnit, timezone: java.time.ZoneId): String",
+    "randomDate (offsetDate: Long, datePattern: String, dateFrom: java.time.LocalDateTime, unit: java.time.temporal.TemporalUnit, timezone: java.time.ZoneId): String",
+    "randomString (alphabet: String)(length: Int): String",
+    "randomUUID String",
+    "randomValue [T]()(implicit rng: org.galaxio.gatling.utils.RandomProvider[T]): T",
+    "randomValue [T](max: T)(implicit rng: org.galaxio.gatling.utils.RandomProvider[T]): T",
+    "randomValue [T](min: T, max: T)(implicit rng: org.galaxio.gatling.utils.RandomProvider[T], ord: Ordering[T]): T",
+  )
+
+  /** The JVM name, parameter types and return type of each deprecated overload, and of the default `datePattern`. */
+  val JvmSignatures: List[(String, Seq[Class[_]], Class[_])] = List(
+    ("randomString", Seq(classOf[String], classOf[Int]), classOf[String]),
+    ("randomUUID", Seq.empty, classOf[String]),
+    ("randomValue", Seq(classOf[RandomProvider[_]]), classOf[Object]),
+    ("randomValue", Seq(classOf[Object], classOf[RandomProvider[_]]), classOf[Object]),
+    ("randomValue", Seq(classOf[Object], classOf[Object], classOf[RandomProvider[_]], classOf[Ordering[_]]), classOf[Object]),
+    (
+      "randomDate",
+      Seq(classOf[Int], classOf[Int], classOf[String], classOf[LocalDateTime], classOf[TemporalUnit], classOf[ZoneId]),
+      classOf[String],
+    ),
+    (
+      "randomDate",
+      Seq(classOf[Long], classOf[String], classOf[LocalDateTime], classOf[TemporalUnit], classOf[ZoneId]),
+      classOf[String],
+    ),
+    ("randomDate$default$2", Seq.empty, classOf[String]),
   )
 
   val KeptHelpers: List[String] =
@@ -338,12 +575,23 @@ object RandomDataGeneratorsDeprecationSpec {
   /** Every overload of `name` declared on `owner`, each with the `@deprecated` pins it carries. */
   def deprecations(owner: ru.Type, name: String): List[(ru.MethodSymbol, List[Deprecation])] =
     owner.decl(ru.TermName(name)).alternatives.collect {
-      case symbol if symbol.isMethod =>
-        val method = symbol.asMethod
-        // Force the signature first: an unforced symbol may report its annotations as empty.
-        method.typeSignature
-        method -> method.annotations.filter(_.tree.tpe =:= ru.typeOf[deprecated]).map(deprecation)
+      case symbol if symbol.isMethod => symbol.asMethod -> pins(symbol.asMethod)
     }
+
+  /** Every method declared on `owner` and on the objects nested in it, by its path from `path`, with its pins. */
+  def methodsUnder(owner: ru.Type, path: String): List[(String, List[Deprecation])] =
+    owner.decls.toList.flatMap {
+      case symbol if symbol.isModule =>
+        methodsUnder(symbol.asModule.moduleClass.asClass.toType, s"$path.${symbol.name.decodedName}")
+      case symbol if symbol.isMethod => List(s"$path.${symbol.name.decodedName}" -> pins(symbol.asMethod))
+      case _                         => Nil
+    }
+
+  private def pins(method: ru.MethodSymbol): List[Deprecation] = {
+    // Force the signature first: an unforced symbol may report its annotations as empty.
+    method.typeSignature
+    method.annotations.filter(_.tree.tpe =:= ru.typeOf[deprecated]).map(deprecation)
+  }
 
   /** The method a `Faker.<group>.<name>` path names, with its pins; empty when the path names nothing. */
   def fakerMethod(path: String): List[(ru.MethodSymbol, List[Deprecation])] =

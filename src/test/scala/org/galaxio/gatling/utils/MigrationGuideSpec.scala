@@ -43,6 +43,43 @@ class MigrationGuideSpec extends AnyWordSpec with Matchers {
   private val rows: List[(String, String)] =
     v1220.filter(_.startsWith("|")).map(row => row.split('|').lift(1).getOrElse("").trim -> row)
 
+  /** The prose of `lines` cut into sentences, so a word cannot pass for a claim it is not part of. */
+  private def sentences(lines: List[String]): List[String] = flat(lines).split("(?<=[.!?])\\s+").toList
+
+  /** A sentence that names deprecation only to deny or postpone it. */
+  private def negated(sentence: String): Boolean =
+    List("not deprecated", "slated for deprecation", "will be deprecated", "to be deprecated").exists(sentence.contains)
+
+  /** The argument translations of the spec's table "Аналоги Faker API", per deprecated helper. */
+  private val Translations: List[(String, List[String])] = List(
+    "randomString" -> List("Faker.string.fromAlphabet(alphabet, length)"),
+    "randomUUID"   -> List("Faker.uuid.string"),
+    "randomValue"  -> List(
+      "int(Int.MinValue, Int.MaxValue)",
+      "long(Long.MinValue, Long.MaxValue)",
+      "float(0f, 1f)",
+      "double(0.0, 1.0)",
+      "int(0, max - 1)",
+      "long(0L, max - 1)",
+      "float(0f, max)",
+      "double(0.0, max)",
+      "int(min, max - 1)",
+      "long(min, max - 1)",
+      "min == max",
+      "int(min, min)",
+      "float(min, max)",
+      "double(min, max)",
+    ),
+    "randomDate"   -> List(
+      "offset(from, -N, P - 1, unit)",
+      "P == 0 && N == 0",
+      "offset(from, 0, 0, unit)",
+      "offset(from, 1, max(1, offset - 1), unit)",
+      "offset(from, min(-1, offset + 1), -1, unit)",
+      "formatDateTime",
+    ),
+  )
+
   /** The analogues the compiler names for `method`, read from its pins. */
   private def pinnedAnalogues(method: String): List[String] =
     deprecations(RandomDataGeneratorsType, method).flatMap(_._2).map(_.message).flatMap(fakerNames).distinct
@@ -60,6 +97,18 @@ class MigrationGuideSpec extends AnyWordSpec with Matchers {
           withClue(s"row `$row` misses analogues of $method: ") {
             analogues.filterNot(row.contains) shouldBe empty
           }
+          withClue(s"row `$row` names analogues the pin of $method does not: ") {
+            fakerNames(row).filterNot(analogues.contains) shouldBe empty
+          }
+        }
+      }
+    }
+
+    "FR-009: give the argument translation of each deprecated overload, as the spec's table of analogues does" in {
+      Translations.foreach { case (method, formulas) =>
+        val own = rows.collect { case (first, row) if first.contains(method) => row }.mkString("\n")
+        withClue(s"translations of $method missing from its rows: ") {
+          formulas.filterNot(own.contains) shouldBe empty
         }
       }
     }
@@ -71,9 +120,20 @@ class MigrationGuideSpec extends AnyWordSpec with Matchers {
     }
 
     "FR-009: call randomValue deprecated, since faker-api, where the upper-bound note names it" in {
-      val note = flat(upperBound)
-      note should include("deprecated")
-      note should include("faker-api")
+      val said = sentences(upperBound).filter(s => s.contains("`randomValue`") && s.contains("deprecated"))
+      withClue(s"sentences of the upper-bound note: ${sentences(upperBound)}\n") {
+        said.filter(_.contains("faker-api")) should not be empty
+        said.filter(negated) shouldBe empty
+      }
+    }
+
+    "FR-009: call randomString, randomUUID, randomValue and randomDate deprecated, outside the table" in {
+      val prose = sentences(v1220.filterNot(_.startsWith("|")))
+      val said  = prose.filter(s => s.contains("deprecated") && Pins.keys.forall(m => s.contains(s"`$m`")))
+      withClue(s"sentences of the v1.22.0 section: $prose\n") {
+        said should not be empty
+        said.filter(negated) shouldBe empty
+      }
     }
 
     "FR-009: no longer say the helpers still work today" in {

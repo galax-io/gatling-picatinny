@@ -7,7 +7,12 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 import java.time.temporal.ChronoUnit
 import java.time.{LocalDateTime, ZoneId}
+import scala.annotation.nowarn
 
+// Regression coverage for the deprecated RandomDataGenerators helpers (randomString, randomUUID,
+// randomValue, randomDate). These tests intentionally exercise the deprecated API for as long as
+// it remains in the published surface; remove them together with the deprecated methods.
+@nowarn("cat=deprecation")
 class RandomDataGeneratorsTest extends AnyWordSpec with Matchers with ScalaCheckDrivenPropertyChecks {
 
   private val nonEmptyAlphabet: Gen[String] =
