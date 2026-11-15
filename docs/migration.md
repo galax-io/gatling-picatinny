@@ -160,8 +160,8 @@ intensity = "0.25 rps"   # injects 0.25 rps
 
 ### `randomValue(min, max)` upper bound is exclusive
 
-The scaladoc claimed `max` was inclusive; the implementation was always exclusive. The doc is now correct — if you
-trusted the wrong doc, pass an exclusive bound.
+The scaladoc claimed `max` was inclusive; the implementation was always exclusive. The doc is now correct — rather than
+work around the bound, move to the Faker API.
 
 Before — expecting `10` to be reachable (it never was):
 
@@ -171,15 +171,37 @@ import org.galaxio.gatling.utils.RandomDataGenerators.randomValue
 randomValue(1, 10)   // yields 1..9
 ```
 
-After — pass `max + 1` for an inclusive upper value:
+After — the Faker API, whose bounds are inclusive on both ends:
 
 ```scala
-import org.galaxio.gatling.utils.RandomDataGenerators.randomValue
+import org.galaxio.gatling.feeders.faker.Faker
 
-randomValue(1, 11)   // yields 1..10
+Faker.number.int(1, 10)   // yields 1..10
 ```
 
-> The `RandomDataGenerators` value helpers (`randomValue`, `randomString`, `randomDate`, …) are slated for deprecation in favour of the Faker API (`Faker.number.*` / `Faker.string.*` / `Faker.date.*`) — see [Deprecations](#deprecations) and [#239](https://github.com/galax-io/gatling-picatinny/issues/239). They still work today.
+`randomValue` is deprecated (since `faker-api`); while a scenario still calls it, its `max` stays exclusive:
+`randomValue(1, 11)` yields 1..10.
+
+### The `RandomDataGenerators` value helpers are deprecated
+
+`randomString`, `randomUUID`, `randomValue` and `randomDate` are deprecated (since `faker-api`) in favour of the Faker
+API: the compiler warning at each call names the replacement, and the table below gives it with the translation of the
+arguments. Wrap the generator in `GeneratedFeeder` where a feeder is needed; see [Deprecations](#deprecations).
+
+| Deprecated | Faker analogue | Translation |
+|------------|----------------|-------------|
+| `randomString(alphabet)(length)` | `Faker.string.fromAlphabet` | `Faker.string.fromAlphabet(alphabet, length)` — same characters, length, and errors on an empty alphabet or a length ≤ 0 |
+| `randomUUID` | `Faker.uuid.string` | `Faker.uuid.string` — the same canonical lowercase UUID string |
+| `randomValue[T]()` | `Faker.number.int` / `Faker.number.long` / `Faker.number.float` / `Faker.number.double` | `Int`: `int(Int.MinValue, Int.MaxValue)`; `Long`: `long(Long.MinValue, Long.MaxValue)`; `Float`: `float(0f, 1f)`; `Double`: `double(0.0, 1.0)` |
+| `randomValue[T](max)` | `Faker.number.int` / `Faker.number.long` / `Faker.number.float` / `Faker.number.double` | `Int` / `Long`: `int(0, max - 1)` / `long(0L, max - 1)`; `Float` / `Double`: `float(0f, max)` / `double(0.0, max)` |
+| `randomValue[T](min, max)` | `Faker.number.int` / `Faker.number.long` / `Faker.number.float` / `Faker.number.double` | `Int` / `Long`: `int(min, max - 1)` / `long(min, max - 1)`, and `int(min, min)` / `long(min, min)` when `min == max`; `Float` / `Double`: `float(min, max)` / `double(min, max)` |
+| `randomDate(P, N, pattern, from, unit, tz)` | `Faker.date.offset` + `Faker.date.formatDateTime` | `Faker.date.formatDateTime(Faker.date.offset(from, -N, P - 1, unit), pattern)`; when `P == 0 && N == 0`, `Faker.date.offset(from, 0, 0, unit)` |
+| `randomDate(offset, pattern, from, unit, tz)` | `Faker.date.offset` + `Faker.date.formatDateTime` | `offset > 0`: `Faker.date.offset(from, 1, max(1, offset - 1), unit)`; `offset < 0`: `Faker.date.offset(from, min(-1, offset + 1), -1, unit)`; then `Faker.date.formatDateTime(…, pattern)` |
+
+The upper bounds of `Faker.number.int` / `long` and of `Faker.date.offset` are inclusive, hence the `- 1`. Edge cases:
+`randomValue[Float](max)` with a negative `max` draws from `(max, 0]`, so use `Faker.number.float(max, 0f)`; a custom
+`RandomProvider[T]` maps to `Generator.delay(provider.random(min, max))`; zone-aware date patterns (`z`, `XXX`, `VV`)
+need the `atZone` mapping shown under [`RandomDateFeeder` → `Faker.date.offset`](#randomdatefeeder--fakerdateoffset).
 
 ## Correctness releases (re-baseline only)
 
@@ -216,7 +238,7 @@ Per the project's versioning policy, **removal of any deprecated API happens onl
 ### `RandomDateFeeder` → `Faker.date.offset`
 
 The legacy feeder generates a **discrete** whole-unit offset: `dateFrom.plus(k, unit)` with `k` drawn from
-`[-negativeDelta, positiveDelta)` — the **upper delta is exclusive** (same `randomValue` helper as above:
+`[-negativeDelta, positiveDelta)` — the **upper delta is exclusive** (the deprecated `randomValue` helper above:
 `randomValue(1, 11)` yields 1..10). `Faker.date.between` is NOT its replacement — it returns any whole
 second inside the range (same boundaries, different distribution and values). Use the discrete offset
 generator instead; its bounds are **inclusive** on both ends, so the upper bound becomes `positiveDelta − 1`:
