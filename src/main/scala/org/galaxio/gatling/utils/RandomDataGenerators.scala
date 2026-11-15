@@ -20,7 +20,7 @@ object RandomDataGenerators {
 
   private def randomStringFromAlphabet(alphabet: String, length: Int): String = {
     validateLength(length)
-    randomString(alphabet)(length)
+    stringFromAlphabet(alphabet, length)
   }
 
   private def validateRange[T](min: T, max: T)(implicit ordering: Ordering[T]): Unit = {
@@ -38,7 +38,11 @@ object RandomDataGenerators {
     * @throws java.lang.IllegalArgumentException
     *   if `alphabet` is empty or `length` is less than or equal to 0
     */
-  def randomString(alphabet: String)(length: Int): String = {
+  @deprecated("Use Faker.string.fromAlphabet (with GeneratedFeeder) instead", "faker-api")
+  def randomString(alphabet: String)(length: Int): String = stringFromAlphabet(alphabet, length)
+
+  // The body of the deprecated `randomString`: the Faker API and the helpers that stay call this instead.
+  private[gatling] def stringFromAlphabet(alphabet: String, length: Int): String = {
     require(alphabet.nonEmpty, "Alphabet must be non-empty")
     require(length > 0, s"String length must be > 0, but got $length")
 
@@ -112,6 +116,7 @@ object RandomDataGenerators {
     * @return
     *   a randomly generated UUID in string format
     */
+  @deprecated("Use Faker.uuid.string (with GeneratedFeeder) instead", "faker-api")
   def randomUUID: String = FastUUID.toString(UUID.randomUUID)
 
   /** Generates a random value of type `T` using the provided implicit `RandomProvider`.
@@ -123,6 +128,10 @@ object RandomDataGenerators {
     * @return
     *   a random value of type `T`
     */
+  @deprecated(
+    "Use Faker.number.int / Faker.number.long / Faker.number.float / Faker.number.double (with GeneratedFeeder) instead",
+    "faker-api",
+  )
   def randomValue[T]()(implicit rng: RandomProvider[T]): T = rng.random()
 
   /** Generates a random value of type `T` within the specified upper bound.
@@ -134,7 +143,14 @@ object RandomDataGenerators {
     * @return
     *   a randomly generated value of type `T` that is strictly less than `max` (max exclusive)
     */
-  def randomValue[T](max: T)(implicit rng: RandomProvider[T]): T = rng.random(max)
+  @deprecated(
+    "Use Faker.number.int / Faker.number.long / Faker.number.float / Faker.number.double (with GeneratedFeeder) instead",
+    "faker-api",
+  )
+  def randomValue[T](max: T)(implicit rng: RandomProvider[T]): T = nextValue(max)
+
+  // The bodies of the deprecated `randomValue(max)` and `randomValue(min, max)`, which GovIdGenerators calls instead.
+  private[gatling] def nextValue[T](max: T)(implicit rng: RandomProvider[T]): T = rng.random(max)
 
   /** Generates a random value of a specified type within a given range.
     *
@@ -152,7 +168,13 @@ object RandomDataGenerators {
     * @throws java.lang.IllegalArgumentException
     *   if the minimum value is not less than the maximum value
     */
-  def randomValue[T](min: T, max: T)(implicit rng: RandomProvider[T], ord: Ordering[T]): T = {
+  @deprecated(
+    "Use Faker.number.int / Faker.number.long / Faker.number.float / Faker.number.double (with GeneratedFeeder) instead",
+    "faker-api",
+  )
+  def randomValue[T](min: T, max: T)(implicit rng: RandomProvider[T], ord: Ordering[T]): T = nextValue(min, max)
+
+  private[gatling] def nextValue[T](min: T, max: T)(implicit rng: RandomProvider[T], ord: Ordering[T]): T = {
     validateRange(min, max)
     if (min != max)
       rng.random(min, max)
@@ -210,6 +232,7 @@ object RandomDataGenerators {
     * @throws java.lang.IllegalArgumentException
     *   if `positiveDelta` or `negativeDelta` is negative
     */
+  @deprecated("Use Faker.date.offset with Faker.date.formatDateTime (with GeneratedFeeder) instead", "faker-api")
   def randomDate(
       positiveDelta: Int,
       negativeDelta: Int,
@@ -242,6 +265,7 @@ object RandomDataGenerators {
     * @throws java.lang.IllegalArgumentException
     *   if `offsetDate` is 0
     */
+  @deprecated("Use Faker.date.offset with Faker.date.formatDateTime (with GeneratedFeeder) instead", "faker-api")
   def randomDate(
       offsetDate: Long,
       datePattern: String = "yyyy-MM-dd",

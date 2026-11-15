@@ -141,7 +141,7 @@ object Faker {
       Generator.delay(RandomDataGenerators.cyrillicString(length))
 
     def fromAlphabet(alphabet: String, length: Int): Generator[String] =
-      Generator.delay(RandomDataGenerators.randomString(alphabet)(length))
+      Generator.delay(RandomDataGenerators.stringFromAlphabet(alphabet, length))
 
     def lengthBetween(min: Int, max: Int, alphabet: String): Generator[String] =
       number.int(min, max).flatMap(fromAlphabet(alphabet, _))
