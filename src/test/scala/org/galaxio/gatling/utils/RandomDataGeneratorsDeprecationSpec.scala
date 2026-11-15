@@ -5,10 +5,10 @@ import org.galaxio.gatling.feeders.{GovIdValidators, LuhnValidator}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import java.lang.reflect.Modifier
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit.DAYS
 import java.time.temporal.TemporalUnit
-import java.lang.reflect.Modifier
 import java.time.{LocalDateTime, ZoneId}
 import scala.annotation.nowarn
 import scala.io.Source
@@ -120,6 +120,7 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
       )
       covered.filterNot(paths.contains) shouldBe empty
       methods.collect { case (path, pins) if pins.nonEmpty => s"$path -> $pins" } shouldBe empty
+
       // The same walk sees a pin where one is: an empty answer above is not a blind reader.
       val legacy = methodsUnder(RandomDataGeneratorsType, "RandomDataGenerators").toMap
       legacy.get("RandomDataGenerators.randomOGRN") shouldBe Some(List(Deprecation(OgrnMessage, Since)))
@@ -608,13 +609,17 @@ object RandomDataGeneratorsDeprecationSpec {
   private def deprecation(annotation: ru.Annotation): Deprecation = {
     import ru._ // the class tags the tree patterns below are checked with
     val positional = List("message", "since")
-    val args       = annotation.tree.children.drop(1).zipWithIndex.flatMap { case (arg, index) =>
-      arg match {
-        case NamedArg(Ident(TermName(key)), Literal(Constant(value: String))) => List(key -> value)
-        case Literal(Constant(value: String))                                 => positional.lift(index).map(_ -> value).toList
-        case _                                                                => Nil
+    val args       = annotation.tree.children
+      .drop(1)
+      .zipWithIndex
+      .flatMap { case (arg, index) =>
+        arg match {
+          case NamedArg(Ident(TermName(key)), Literal(Constant(value: String))) => List(key -> value)
+          case Literal(Constant(value: String))                                 => positional.lift(index).map(_ -> value).toList
+          case _                                                                => Nil
+        }
       }
-    }.toMap
+      .toMap
     Deprecation(args.getOrElse("message", ""), args.getOrElse("since", ""))
   }
 }
