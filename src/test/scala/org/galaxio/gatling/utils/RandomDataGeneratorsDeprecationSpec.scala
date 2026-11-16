@@ -227,6 +227,8 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
         "requirement failed: Alphabet must be non-empty"
       the[IllegalArgumentException] thrownBy RandomDataGenerators.randomString("ab")(0) should have message
         "requirement failed: String length must be > 0, but got 0"
+      the[IllegalArgumentException] thrownBy RandomDataGenerators.randomString("ab")(-3) should have message
+        "requirement failed: String length must be > 0, but got -3"
     }: @nowarn("cat=deprecation")
 
     "FR-005: keep rejecting a negative delta and a zero offset in randomDate" in {
@@ -241,12 +243,14 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
   "each deprecated helper and its Faker analogue" should {
 
     "FR-006: randomString(alphabet)(length) and Faker.string.fromAlphabet draw the same alphabet and length" in {
-      val legacy = samples(RandomDataGenerators.randomString("ab")(4))
-      val faker  = samples(Faker.string.fromAlphabet("ab", 4).sample())
+      // Six letters, not two: a lost first or last letter of a longer alphabet must show.
+      val alphabet = "abcdef"
+      val legacy   = samples(RandomDataGenerators.randomString(alphabet)(20))
+      val faker    = samples(Faker.string.fromAlphabet(alphabet, 20).sample())
 
       List(legacy, faker).foreach { drawn =>
-        drawn.map(_.length) shouldBe Set(4)
-        drawn.flatMap(_.toSet) shouldBe Set('a', 'b')
+        drawn.map(_.length) shouldBe Set(20)
+        drawn.flatMap(_.toSet) shouldBe alphabet.toSet
       }
     }: @nowarn("cat=deprecation")
 
@@ -258,6 +262,14 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
 
       fakerEmpty.getMessage shouldBe legacyEmpty.getMessage
       fakerZero.getMessage shouldBe legacyZero.getMessage
+    }: @nowarn("cat=deprecation")
+
+    "FR-006: randomString and Faker.string.fromAlphabet fail alike on a negative length" in {
+      val legacy = the[IllegalArgumentException] thrownBy RandomDataGenerators.randomString("ab")(-3)
+      val faker  = the[IllegalArgumentException] thrownBy Faker.string.fromAlphabet("ab", -3).sample()
+
+      legacy.getMessage shouldBe "requirement failed: String length must be > 0, but got -3"
+      faker.getMessage shouldBe legacy.getMessage
     }: @nowarn("cat=deprecation")
 
     "FR-006: randomUUID and Faker.uuid.string give distinct canonical lowercase UUID strings" in {
@@ -480,7 +492,8 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
       val draws    = 2000
       val ogrns    = List.fill(draws)(Faker.ru.ogrn().sample())
       val ogrnips  = List.fill(draws)(Faker.ru.ogrnip().sample())
-      val kpps     = List.fill(draws)(Faker.ru.kpp().sample())
+      // Enough draws that each of the 9999 revenue-service codes shows: a range check alone misses a bound moved by one.
+      val kpps     = List.fill(250000)(Faker.ru.kpp().sample())
       val passport = List.fill(draws)(Faker.passport.ru().sample())
 
       all(ogrns) should fullyMatch regex "[0-9]{13}"
@@ -496,13 +509,37 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
       ogrnips.filterNot(o => o.last.asDigit == (o.take(14).toLong % 13 % 10).toInt) shouldBe empty
 
       all(kpps) should fullyMatch regex "[0-9]{9}"
-      all(field(kpps, 0, 4)) should (be >= 1 and be <= 9999)
+      field(kpps, 0, 4) shouldBe (1 to 9999).toSet
       field(kpps, 4, 6) shouldBe (1 to 99).toSet
-      all(field(kpps, 6, 9)) should (be >= 1 and be <= 999)
+      field(kpps, 6, 9) shouldBe (1 to 999).toSet
 
       all(passport) should fullyMatch regex "[0-9]{10}"
       field(passport, 0, 2) shouldBe (1 to 89).toSet
       field(passport, 2, 4) shouldBe (0 to 20).toSet
+    }
+
+    // natITN, jurITN and snils draw each free digit through the former randomValue(0, 10): a shifted bound loses a digit.
+    "FR-007: keep every free digit of Faker.ru.snils and Faker.ru.inn.person / company drawn from 0..9" in {
+      List(
+        ("Faker.ru.snils", Faker.ru.snils(), 9),
+        ("Faker.ru.inn.person", Faker.ru.inn.person(), 10),
+        ("Faker.ru.inn.company", Faker.ru.inn.company(), 9),
+      ).foreach { case (name, generator, free) =>
+        val ids = List.fill(2000)(generator.sample())
+        (0 until free).foreach { position =>
+          withClue(s"$name, digit ${position + 1}: ")(field(ids, position, position + 1) shouldBe (0 to 9).toSet)
+        }
+      }
+    }
+
+    // pan picks its BIN through the former randomValue(max): every BIN given must be drawn, not only the first.
+    "FR-007: keep Faker.finance.pan drawing each BIN it is given, Luhn-valid" in {
+      val bins = List("421345", "541673")
+      val pans = List.fill(2000)(Faker.finance.pan(bins: _*).sample())
+
+      all(pans) should fullyMatch regex "[0-9]{16}"
+      pans.map(_.take(6)).toSet shouldBe bins.toSet
+      pans.filterNot(pan => LuhnValidator.validate(pan)) shouldBe empty
     }
   }
 }
