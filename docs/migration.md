@@ -171,7 +171,7 @@ import org.galaxio.gatling.utils.RandomDataGenerators.randomValue
 randomValue(1, 10)   // yields 1..9
 ```
 
-After — the Faker API, whose bounds are inclusive on both ends:
+After — `Faker.number.int`, whose bounds are inclusive on both ends:
 
 ```scala
 import org.galaxio.gatling.feeders.faker.Faker

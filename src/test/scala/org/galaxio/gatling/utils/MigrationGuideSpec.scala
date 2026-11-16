@@ -119,6 +119,16 @@ class MigrationGuideSpec extends AnyWordSpec with Matchers {
       afterExample should not include "randomValue"
     }
 
+    // Faker.number.double and float draw from [min, max): only int, long and Faker.date.offset hold the upper bound.
+    "FR-009: call inclusive only the Faker bounds that are, never double, float or the Faker API at large" in {
+      val claims = sentences(v1220.filterNot(_.startsWith("|"))).filter(_.contains("inclusive"))
+      val wrong  = """the Faker API|\b(double|float)\b""".r
+      withClue(s"sentences of the v1.22.0 section that call a bound inclusive: $claims\n") {
+        claims.filter(s => wrong.findFirstIn(s).nonEmpty) shouldBe empty
+        claims.filter(_.contains("`Faker.number.int`")) should not be empty
+      }
+    }
+
     "FR-009: call randomValue deprecated, since faker-api, where the upper-bound note names it" in {
       val said = sentences(upperBound).filter(s => s.contains("`randomValue`") && s.contains("deprecated"))
       withClue(s"sentences of the upper-bound note: ${sentences(upperBound)}\n") {
