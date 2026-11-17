@@ -153,6 +153,16 @@ The first slice includes:
 - `Generator.sequence`, `Generator.listOf`, `Generator.mapOf`, `Generator.tupleOf` — collection combinators
 - `Generator.filter` — retry-based filtering
 
+## Randomness and Thread Safety
+
+Generators are thread-safe: one generator can serve every virtual user. Most of them draw from `ThreadLocalRandom`;
+the rest use sources that are thread-safe as well — `Faker.string.*` (all but `Faker.string.matching`) and the
+generators built on it (such as `Faker.internet.email` and `password`), `Faker.phone.*`, `Faker.finance.pan`,
+`Faker.passport.ru`, `Faker.ru.ogrn` and `Faker.ru.ogrnip` use the shared `scala.util.Random`; `Faker.uuid` uses
+`UUID.randomUUID()`; `Faker.string.matching` keeps one `Generex` per thread; and `Faker.pl.pesel`,
+`Faker.finance.iban`, `Faker.br.cpf` and `Faker.br.cnpj` use their libraries' own `java.util.Random`. There is no way
+to set a seed through the Faker API, so generated data differs between runs and cannot be reproduced.
+
 ## Predefined Data
 
 `FakerData` exposes the predefined catalogs used by `Faker`, so scenarios can build custom generators without copying internal data.
