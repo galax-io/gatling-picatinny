@@ -256,6 +256,7 @@ Full reference + recommended `logback.xml` + [1.23.0 migration](docs/logging.md#
 | [Logging & Secret Masking](docs/logging.md) | SLF4J setup, recommended `logback.xml`, startup banner & diagnostics, secret redaction, **1.23.0 migration notes** |
 | [Profile](docs/profile.md) | Profile DSL: load HTTP/custom profiles from HOCON/YAML |
 | [Redis](docs/redis.md) | Redis commands as Gatling scenario actions |
+| [Storage](docs/storage.md) | `SessionStorage`: save session records, feed them back, JSON file / Redis / JDBC backends, cookie restore |
 | [Templates](docs/templates.md) | JSON/XML body DSL + file-based template loading |
 | [JWT](docs/jwt.md) | JWT generation: HMAC/RSA/EC, claims DSL, bearer helper |
 | [Assertions](docs/assertions.md) | NFR assertions from YAML (percentiles, error rate) |
