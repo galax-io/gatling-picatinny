@@ -18,6 +18,8 @@ Supported sbt majors: **1.12.15** (default — what a bare `sbt` uses, pinned in
 reports success having run zero tests.
 
 ```bash
+# install   sbt update Test/compile scalafmtCheckAll scalafmtSbtCheck "scalafixAll --check" mimaReportBinaryIssues coverage update coverageOff
+# test      sbt compile "Test/testOnly"
 sbt scalafmtAll scalafmtSbt                                          # format
 sbt scalafixAll scalafmtAll                                          # lint fix (then format; they converge)
 sbt "scalafixAll --check"                                            # lint gate (CI-enforced; TESTING.md "Static analysis & gates")
