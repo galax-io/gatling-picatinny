@@ -218,6 +218,13 @@ jobs:
         with:
           disk-cache: false # FR-007: never restore the sbt 2 task cache
 
+      - name: Set up uv
+        if: steps.scope.outputs.applies == 'true'
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.9"
+          enable-cache: false
+
       - name: Publish the base with its own launcher
         id: publish-base
         if: steps.scope.outputs.applies == 'true'
@@ -249,7 +256,7 @@ jobs:
       - name: Compare the published artifacts
         id: compare
         if: steps.scope.outputs.applies == 'true'
-        shell: python
+        shell: uv run --no-project python -I {0}
         run: |
           import difflib
           import os
