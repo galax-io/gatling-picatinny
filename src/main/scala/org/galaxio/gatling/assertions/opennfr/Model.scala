@@ -48,10 +48,7 @@ private[opennfr] object RequirementSet {
   val ApiVersion: String = "opennfr.io/v1"
   val Kind: String       = "RequirementSet"
 
-  /** The upstream release this renderer is written against, in one place. Every document that states it — the two scaladoc
-    * headers, the Java facade's javadoc, `docs/opennfr.md` and `contracts/reach.md` — is checked against this by
-    * `MigrationTableSpec`, so moving the tracked release cannot leave one of them behind.
-    */
+  /** The upstream release this renderer is written against, in one place. */
   val TracksRelease: String = "v0.8.0"
 
   private final case class Spec(requirements: List[Requirement])

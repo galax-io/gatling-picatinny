@@ -14,8 +14,8 @@ import scala.util.Using
   * name omits the marker is therefore silently counted against the coverage floor AND shipped to consumers, with no error
   * anywhere. Nothing else in the build notices.
   *
-  * Reads sources rather than reflecting over the classpath: the rule is about the FILE name, the source is where a reviewer
-  * would look, and this is the same approach `MigrationTableSpec` uses to guard docs against code.
+  * Reads sources rather than reflecting over the classpath: the rule is about the FILE name, and the source is where a reviewer
+  * would look.
   */
 class BenchmarkNamingSpec extends AnyWordSpec with Matchers {
 
