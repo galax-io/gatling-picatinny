@@ -2,7 +2,6 @@ package org.galaxio.gatling.utils
 
 import io.gatling.commons.validation.{Failure, Success}
 import io.gatling.core.Predef.Session
-import io.gatling.core.session.el._
 import org.json4s.jackson.JsonMethods._
 import pdi.jwt.algorithms.{JwtAsymmetricAlgorithm, JwtHmacAlgorithm}
 import pdi.jwt.{Jwt => PdiJwt, JwtAlgorithm}
@@ -78,7 +77,7 @@ package object jwt {
 
     private def resolveAndEncode(generator: JwtGeneratorBuilder): io.gatling.commons.validation.Validation[String] =
       for {
-        header  <- generator.header.json.el[String].apply(s)
+        header  <- generator.header.expression.get.apply(s)
         payload <- resolvePayload(generator)
       } yield encode(header, payload, generator.signingKey, generator.jwtAlgorithm)
 
@@ -87,7 +86,7 @@ package object jwt {
         case Some(cb) =>
           val basePayloadValidation =
             if (generator.payload.json.nonEmpty)
-              generator.payload.json.el[String].apply(s)
+              generator.payload.expression.get.apply(s)
             else
               Success("{}")
 
@@ -100,7 +99,7 @@ package object jwt {
           }
 
         case None =>
-          generator.payload.json.el[String].apply(s)
+          generator.payload.expression.get.apply(s)
       }
   }
 

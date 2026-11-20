@@ -2,11 +2,13 @@ package org.galaxio.gatling.utils.jwt
 
 import io.gatling.commons.validation.{Failure, Success, Validation}
 import io.gatling.core.Predef.Session
+import io.gatling.core.session.Expression
 import io.gatling.core.session.el._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 /** Forced JSON type for a session-sourced claim. Selected via [[ClaimsBuilder.SessionClaim.as]] or the `as*` terminals. */
 sealed trait ClaimType
@@ -206,6 +208,13 @@ final case class ClaimsBuilder(
         }
     }
 
+  /** The EL of each claim, compiled once per instance at the first token, in the order `resolve` walks `elClaims`. A malformed
+    * EL is kept as its failure and thrown when the walk reaches its claim, so an earlier unresolvable claim still gives its
+    * `Failure`.
+    */
+  private lazy val compiledElClaims: List[(String, Try[Expression[Any]])] =
+    elClaims.toList.map { case (name, el) => name -> Try(el.el[Any]) }
+
   private[jwt] def resolve(session: Session): Validation[String] = {
     val now = System.currentTimeMillis() / 1000
 
@@ -217,14 +226,15 @@ final case class ClaimsBuilder(
       m.toMap
     }
 
-    val resolvedEl: Validation[Map[String, JValue]] = elClaims.foldLeft[Validation[Map[String, JValue]]](Success(Map.empty)) {
-      case (Success(acc), (name, elExpr)) =>
-        elExpr.el[Any].apply(session) match {
-          case Success(raw) => toJValue(name, raw).map(jv => acc + (name -> jv))
-          case Failure(msg) => Failure(msg)
-        }
-      case (f @ Failure(_), _)            => f
-    }
+    val resolvedEl: Validation[Map[String, JValue]] =
+      compiledElClaims.foldLeft[Validation[Map[String, JValue]]](Success(Map.empty)) {
+        case (Success(acc), (name, expr)) =>
+          expr.get.apply(session) match {
+            case Success(raw) => toJValue(name, raw).map(jv => acc + (name -> jv))
+            case Failure(msg) => Failure(msg)
+          }
+        case (f @ Failure(_), _)          => f
+      }
 
     resolvedEl.map { resolved =>
       val merged = staticClaims ++ timeClaims ++ resolved
