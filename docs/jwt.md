@@ -221,3 +221,42 @@ Kotlin:
 ```
 
 Custom session key: `setJwtAsBearer(jwtGenerator, "X-Auth")`
+
+## Performance
+
+An RS256 signature with a 2048-bit key costs about 1 ms of CPU per token: 0.93 ms on an Apple M2 Pro, as the
+[measurement below](#measured-cost-of-a-token) records. An HS256 token costs about 5 µs, so the signature is almost
+all of what an RS256 token costs.
+
+Generate the token once per virtual user, at the start of the scenario or right after login, and reuse it from the
+session through `#{jwt}` or `#{Authorization}`. Do not call `setJwt` before every request: with RS256 that is a
+millisecond of CPU per request. When the token must be renewed, generate a new one when it expires, not on every
+request.
+
+```scala
+val scn = scenario("API")
+  .exec(_.setJwtAsBearer(jwtGenerator)) // once per virtual user
+  .repeat(100) {
+    exec(http("request").get("/api").header("Authorization", "#{Authorization}"))
+  }
+```
+
+### Measured cost of a token
+
+The JMH benchmark [`JwtBenchmark`](../src/main/scala/org/galaxio/gatling/utils/jwt/JwtBenchmark.scala) recorded these
+averages on 2026-11-20: Apple M2 Pro, macOS 27.2, OpenJDK 17.0.10, JMH 1.37, 3 warmup and 5 measurement iterations of
+1 s, one thread. Each token has the default header and seven claims: `sub`, four more claims, `iat` and `exp`.
+
+| Benchmark method | Token | Time per token |
+|---|---|---:|
+| `hs256TokenStaticClaims` | HS256, static claims | 4.6 ± 0.1 µs |
+| `hs256TokenFiveElClaims` | HS256, five claims from the session by EL | 5.5 ± 0.8 µs |
+| `rs256TokenFiveElClaims` | RS256, 2048-bit key, the same claims | 927.0 ± 28.0 µs |
+
+Each method ran in its own `sbt Jmh/run`, with JMH inside the JVM that `Jmh/run` forks (`-f 0`):
+
+```bash
+sbt "Jmh/run -bm avgt -tu ns -f 0 -wi 3 -i 5 .*JwtBenchmark.rs256TokenFiveElClaims$"
+```
+
+To measure on your machine, run `sbt "Jmh/run .*JwtBenchmark.*"`.
