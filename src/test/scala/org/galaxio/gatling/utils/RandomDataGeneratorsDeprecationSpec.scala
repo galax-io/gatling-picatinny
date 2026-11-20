@@ -95,8 +95,7 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
     }
 
     "FR-008: leave every method of the Faker API and of GovIdGenerators undeprecated" in {
-      val methods = methodsUnder(ru.typeOf[Faker.type], "Faker") ++
-        methodsUnder(ru.typeOf[GovIdGenerators.type], "GovIdGenerators")
+      val methods = methodsUnder(FakerType, "Faker") ++ methodsUnder(GovIdGeneratorsType, "GovIdGenerators")
 
       val paths   = methods.map(_._1)
       val covered = List(
@@ -193,7 +192,7 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
     // carries the auto-application warning a `randomUUID` → `randomUUID()` change raises.
     "FR-005: keep the Scala signatures source callers compile against" in {
       val signatures = Pins.keys.toList.sorted.flatMap { name =>
-        deprecations(RandomDataGeneratorsType, name).map { case (method, _) => s"$name ${method.typeSignature}" }
+        reflected(deprecations(RandomDataGeneratorsType, name).map { case (method, _) => s"$name ${method.typeSignature}" })
       }
       signatures should contain theSameElementsAs ScalaSignatures
     }
@@ -608,22 +607,35 @@ object RandomDataGeneratorsDeprecationSpec {
 
   val FakerAnalogues: Set[String] = Pins.values.flatMap(fakerNames).toSet
 
+  /** One lock for every read of the runtime reflection here. Scala 2.13's runtime reflection is not thread-safe: while another
+    * suite of the same JVM completes the same symbol, `annotations` can come back empty, and sbt runs the suites of this
+    * project in parallel. So the types are read once, at the object's initialisation, and every walk of them holds this lock.
+    */
+  private val Reflection = new Object
+
+  /** `body` under the lock of the reflection, for a read of a symbol outside the helpers below. */
+  def reflected[A](body: => A): A = Reflection.synchronized(body)
+
   val RandomDataGeneratorsType: ru.Type = ru.typeOf[RandomDataGenerators.type]
+  val FakerType: ru.Type                = ru.typeOf[Faker.type]
+  val GovIdGeneratorsType: ru.Type      = ru.typeOf[GovIdGenerators.type]
 
   /** Every overload of `name` declared on `owner`, each with the `@deprecated` pins it carries. */
-  def deprecations(owner: ru.Type, name: String): List[(ru.MethodSymbol, List[Deprecation])] =
+  def deprecations(owner: ru.Type, name: String): List[(ru.MethodSymbol, List[Deprecation])] = Reflection.synchronized {
     owner.decl(ru.TermName(name)).alternatives.collect {
       case symbol if symbol.isMethod => symbol.asMethod -> pins(symbol.asMethod)
     }
+  }
 
   /** Every method declared on `owner` and on the objects nested in it, by its path from `path`, with its pins. */
-  def methodsUnder(owner: ru.Type, path: String): List[(String, List[Deprecation])] =
+  def methodsUnder(owner: ru.Type, path: String): List[(String, List[Deprecation])] = Reflection.synchronized {
     owner.decls.toList.flatMap {
       case symbol if symbol.isModule =>
         methodsUnder(symbol.asModule.moduleClass.asClass.toType, s"$path.${symbol.name.decodedName}")
       case symbol if symbol.isMethod => List(s"$path.${symbol.name.decodedName}" -> pins(symbol.asMethod))
       case _                         => Nil
     }
+  }
 
   private def pins(method: ru.MethodSymbol): List[Deprecation] = {
     // Force the signature first: an unforced symbol may report its annotations as empty.
@@ -632,15 +644,16 @@ object RandomDataGeneratorsDeprecationSpec {
   }
 
   /** The method a `Faker.<group>.<name>` path names, with its pins; empty when the path names nothing. */
-  def fakerMethod(path: String): List[(ru.MethodSymbol, List[Deprecation])] =
+  def fakerMethod(path: String): List[(ru.MethodSymbol, List[Deprecation])] = Reflection.synchronized {
     path.split('.').toList match {
       case "Faker" :: rest if rest.nonEmpty =>
-        val owner = rest.init.foldLeft(Option(ru.typeOf[Faker.type])) { (tpe, group) =>
+        val owner = rest.init.foldLeft(Option(FakerType)) { (tpe, group) =>
           tpe.map(_.member(ru.TermName(group))).filter(_.isModule).map(_.asModule.moduleClass.asClass.toType)
         }
         owner.toList.flatMap(deprecations(_, rest.last))
       case _                                => Nil
     }
+  }
 
   /** `deprecated` is a `ConstantAnnotation` in 2.13: its arguments may be stored positionally or by name, so both are read. */
   private def deprecation(annotation: ru.Annotation): Deprecation = {
