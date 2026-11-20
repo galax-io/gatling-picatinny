@@ -544,7 +544,7 @@ class RandomDataGeneratorsDeprecationSpec extends AnyWordSpec with Matchers {
   }
 }
 
-/** The pins this feature sets, and the reflection that reads them; shared with [[MigrationGuideSpec]]. */
+/** The pins this feature sets, and the reflection that reads them. */
 object RandomDataGeneratorsDeprecationSpec {
 
   final case class Deprecation(message: String, since: String)
