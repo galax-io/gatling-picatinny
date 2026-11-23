@@ -153,7 +153,7 @@ object Dependencies {
 
   lazy val junit: Seq[ModuleID] = Seq(
     "org.junit.jupiter"    % "junit-jupiter"     % "6.1.3"  % Test,
-    "com.github.sbt.junit" % "jupiter-interface" % "0.19.0" % Test,
+    "com.github.sbt.junit" % "jupiter-interface" % "0.20.0" % Test,
     "org.assertj"          % "assertj-core"      % "3.27.7" % Test,
   )
 
