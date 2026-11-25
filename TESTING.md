@@ -235,11 +235,7 @@ in `build.sbt`.
 | sbt upgrade parity scope (workflow scripts) | `scripts/test-sbt-upgrade-parity-scope.sh` — the parity gate (`.github/workflows/sbt-upgrade-parity.yml`, spec 015) compares published artifacts only when a pull request changes `sbt.version` in `project/build.properties`; any other pull request (Scala Steward, Dependabot, a feature) changes the artifacts on purpose, so the gate skips it with a notice and stays green, and this test pins that decision | edit the block between the `scope-decision` markers in the workflow, then the cases in the script | none |
 
 Dependency updates are automated by Scala Steward (`.github/workflows/scala-steward.yml`,
-weekly + manual dispatch; policy in `.scala-steward.conf`). Every bot PR is auto-assigned by
-the workflow post-step to the current **active** milestone (the lowest-numbered open one,
-same definition as `scripts/check-linkage.sh`), so the
-every-PR-needs-a-milestone rule holds for bots too and dependency updates are tracked
-with the release they ship in. Gatling itself is Steward-ignored —
+weekly + manual dispatch; policy in `.scala-steward.conf`). Gatling itself is Steward-ignored —
 host-runtime bumps are a deliberate maintainer decision.
 
 If a local run seems to miss a fresh finding, the scalafix incremental cache is stale — re-run
