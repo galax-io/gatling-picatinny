@@ -167,5 +167,44 @@ class OpenNfrAssertionsSpec extends AnyWordSpec with Matchers with EitherValues 
       e.reasons should have size 1
       e.getMessage should (include(path) and include("neq"))
     }
+
+    // BCKLG-233: the reasons and the message are recorded whole, circe's part included, as they were on circe 0.15.0-M1 and
+    // circe-yaml 1.15.0, so that a change of circe cannot change what a user reads unnoticed.
+    "FR-008: throw for a document missing a required field exactly the reasons and the message it threw before" in {
+      val path   = write(document(s"""    - name: r
+                                   |      criteria:
+                                   |        - $ok
+                                   |""".stripMargin))
+      val reason = "not an OpenNFR document: Attempt to decode value on failed cursor: " +
+        "DownField(selector),DownArray,DownField(requirements),DownField(spec) at .spec.requirements[0].selector"
+      val e      = intercept[OpenNfrException](OpenNfrAssertions.assertionsFrom(path))
+      e.reasons shouldBe List(reason)
+      e.getMessage shouldBe s"$path is not a renderable OpenNFR document:\n  - $reason"
+    }
+
+    "FR-008: throw for a field of the wrong type exactly the reasons and the message it threw before" in {
+      val path   = write(document(s"""    - name: r
+                                   |      selector: []
+                                   |      criteria:
+                                   |        - $ok
+                                   |""".stripMargin))
+      val reason = "not an OpenNFR document: [K, V]Map[K, V]: " +
+        "DownField(selector),DownArray,DownField(requirements),DownField(spec) at .spec.requirements[0].selector"
+      val e      = intercept[OpenNfrException](OpenNfrAssertions.assertionsFrom(path))
+      e.reasons shouldBe List(reason)
+      e.getMessage shouldBe s"$path is not a renderable OpenNFR document:\n  - $reason"
+    }
+
+    "FR-008: throw for something that is not YAML exactly the reasons and the message it threw before" in {
+      val path   = write("\t: : not: [yaml")
+      val reason = "not an OpenNFR document: while scanning for the next token\n" +
+        "found character '\\t(TAB)' that cannot start any token. (Do not use \\t(TAB) for indentation)\n" +
+        " in 'reader', line 1, column 1:\n" +
+        "    \t: : not: [yaml\n" +
+        "    ^\n"
+      val e      = intercept[OpenNfrException](OpenNfrAssertions.assertionsFrom(path))
+      e.reasons shouldBe List(reason)
+      e.getMessage shouldBe s"$path is not a renderable OpenNFR document:\n  - $reason"
+    }
   }
 }

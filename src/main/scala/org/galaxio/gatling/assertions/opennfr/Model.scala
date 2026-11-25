@@ -81,12 +81,44 @@ private[opennfr] object RequirementSet {
           .fold(failures => Left(failures.toList.map(describe)), Right(_))
     }
 
-  /** Names the field a structural failure happened at. `DecodingFailure.getMessage` carries the reason but not the cursor
-    * history, so on its own it says "Missing required field" of a sixty-line document and leaves the reader to bisect.
+  /** A structural failure as a reader sees it: its reason, its cursor history, and the field it happened at, so that a
+    * sixty-line document does not leave the reader to bisect.
     */
   private def describe(failure: DecodingFailure): String = {
     val at = CursorOp.opsToPath(failure.history)
-    s"not an OpenNFR document: ${failure.getMessage}" + (if (at.isEmpty || at == ".") "" else s" at $at")
+    s"not an OpenNFR document: ${reason(failure)}" + (if (at.isEmpty || at == ".") "" else s" at $at")
+  }
+
+  /** The optional fields of an element, by the list it sits in: an optional field of an element that is not an object is the
+    * one failure circe 0.14 reports as a missing field where 0.15.0-M1 named the `Option` decoder.
+    */
+  private val optionalFields: Map[String, Set[String]] = {
+    val predicate = Set("name", "metric", "bad", "good")
+    Map("requirements" -> Set("guards"), "criteria" -> predicate, "guards" -> predicate)
+  }
+
+  private def optionalOfNonObject(history: List[CursorOp]): Boolean = history match {
+    case CursorOp.DownField(field) :: CursorOp.DownArray :: CursorOp.DownField(list) :: _ =>
+      optionalFields.get(list).exists(_.contains(field))
+    case _                                                                                => false
+  }
+
+  /** The reason as Picatinny has always written it (BCKLG-233, FR-008): the text circe 0.15.0-M1 gave and the cursor history.
+    * circe 0.14 words each reason anew ("Missing required field", "Got value … with wrong type, expecting string"), which would
+    * change what a reader sees, so each one is written as before. The match is over every reason circe has, with no default, so
+    * a reason a later circe adds is a compile error here rather than a silent change of the text.
+    */
+  private def reason(failure: DecodingFailure): String = {
+    val message = failure.reason match {
+      case DecodingFailure.Reason.MissingField if optionalOfNonObject(failure.history) => "[A]Option[A]"
+      case DecodingFailure.Reason.MissingField                                         => "Attempt to decode value on failed cursor"
+      case DecodingFailure.Reason.WrongTypeExpectation("string", _)                    => "String"
+      case DecodingFailure.Reason.WrongTypeExpectation("array", _)                     => "C[A]"
+      case DecodingFailure.Reason.WrongTypeExpectation("object", _)                    => "[K, V]Map[K, V]"
+      case DecodingFailure.Reason.WrongTypeExpectation(_, _)                           => failure.message
+      case DecodingFailure.Reason.CustomReason(text)                                   => text
+    }
+    if (failure.history.isEmpty) message else s"$message: ${failure.history.mkString(",")}"
   }
 
   /** The envelope: the version read, the kind, and that the document states something at all (FR-002). */
