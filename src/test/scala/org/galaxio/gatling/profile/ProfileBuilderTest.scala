@@ -123,6 +123,44 @@ class ProfileBuilderTest extends AnyWordSpec with Matchers {
     }
   }
 
+  // BCKLG-233: what both entry points read out of a profile file, pinned whole, so that a change of circe cannot change it
+  // unnoticed. The message of a broken file is Picatinny's and is pinned exactly; the text of its cause belongs to circe.
+  "ProfileBuilderNew" should {
+
+    "FR-008: parse profile1.yml into the same model through both entry points" in {
+      ProfileBuilderNew.buildFromYaml(profilePath) shouldBe expectedYaml
+      ProfileBuilderNew.buildFromYamlJava(profilePath) shouldBe expectedYaml
+    }
+
+    "FR-008: refuse incorrectProfile.yml with exactly the same message and a decoding cause through both entry points" in {
+      val path = "src/test/resources/profileTemplates/incorrectProfile.yml"
+
+      for (
+        e <- List(
+               the[ProfileBuilderException] thrownBy ProfileBuilderNew.buildFromYaml(path),
+               the[ProfileBuilderException] thrownBy ProfileBuilderNew.buildFromYamlJava(path),
+             )
+      ) {
+        e.getMessage shouldBe s"Incorrect file content in $path"
+        e.getCause shouldBe a[io.circe.DecodingFailure]
+      }
+    }
+
+    "FR-008: refuse a profile file that is not YAML with exactly the same message and a parsing cause through both entry points" in {
+      val path = "src/test/resources/profileTemplates/notYamlProfile.yml"
+
+      for (
+        e <- List(
+               the[ProfileBuilderException] thrownBy ProfileBuilderNew.buildFromYaml(path),
+               the[ProfileBuilderException] thrownBy ProfileBuilderNew.buildFromYamlJava(path),
+             )
+      ) {
+        e.getMessage shouldBe s"Incorrect file content in $path"
+        e.getCause shouldBe a[io.circe.ParsingFailure]
+      }
+    }
+  }
+
   "Request.parsedHeaders" should {
     "throw ProfileBuilderException on a header with no colon separator" in {
       val request =

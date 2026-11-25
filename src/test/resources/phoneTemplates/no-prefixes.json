@@ -1,0 +1,10 @@
+{
+  "formats": [
+    {
+      "countryCode": "+1",
+      "length": 10,
+      "areaCodes": ["212"],
+      "format": "+X(XXX)XXX-XXXX"
+    }
+  ]
+}

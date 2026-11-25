@@ -1,0 +1,11 @@
+{
+  "phones": [
+    {
+      "countryCode": "+7",
+      "length": 10,
+      "areaCodes": ["903"],
+      "prefixes": ["123"],
+      "format": "+X(XXX)XXXXXXX"
+    }
+  ]
+}
